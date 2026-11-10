@@ -1,0 +1,135 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
+import QRCode from "qrcode";
+
+export class CommerceError extends Error {
+  constructor(message: string, public status = 400) { super(message); }
+}
+
+// Never propagate provider response bodies/errors: they can contain tokens or payment details.
+export async function telegram<T = Record<string, unknown>>(method: string, body: Record<string, unknown> | FormData = {}): Promise<T> {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) throw new CommerceError("Telegram token is not configured.", 503);
+  try {
+    const multipart = body instanceof FormData;
+    const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+      method: "POST", headers: multipart ? undefined : { "content-type": "application/json" },
+      body: multipart ? body : JSON.stringify(body), signal: AbortSignal.timeout(12000),
+    });
+    const result = await response.json() as { ok: boolean; result: T };
+    if (!response.ok || !result.ok) throw new Error();
+    return result.result;
+  } catch { throw new CommerceError("Telegram could not complete the request. Try again.", 502); }
+}
+
+export interface ProviderPayment {
+  payment_id: string | number;
+  payment_status: string;
+  order_id: string;
+  price_amount: number | string;
+  price_currency: string;
+  pay_currency: string;
+  pay_amount: number | string;
+  actually_paid?: number | string;
+  pay_address: string;
+  payin_extra_id?: string | null;
+  network?: string;
+  expiration_estimate_date?: string;
+}
+export async function nowpayments<T = ProviderPayment>(path: string, body?: Record<string, unknown>): Promise<T> {
+  const key = process.env.NOWPAYMENTS_API_KEY;
+  if (!key) throw new CommerceError("NOWPayments API key is not configured.", 503);
+  try {
+    const response = await fetch(`https://api.nowpayments.io/v1${path}`, {
+      method: body ? "POST" : "GET",
+      headers: { "x-api-key": key, "content-type": "application/json" },
+      body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(12000),
+    });
+    if (!response.ok) throw new Error();
+    return await response.json() as T;
+  } catch { throw new CommerceError("NOWPayments could not complete the request. The amount may be below its minimum, or the provider may be unavailable.", 502); }
+}
+
+export function webhookSecret() {
+  if (!process.env.SESSION_SECRET) throw new CommerceError("Webhook security is not configured.", 503);
+  return createHmac("sha256", process.env.SESSION_SECRET).update("telecart-telegram-webhook-v1").digest("hex");
+}
+export function safeEqual(a: string, b: string) {
+  const aa = Buffer.from(a); const bb = Buffer.from(b);
+  return aa.length === bb.length && timingSafeEqual(aa, bb);
+}
+export function sortedJson(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortedJson);
+  if (value && typeof value === "object") return Object.fromEntries(
+    Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([k, v]) => [k, sortedJson(v)]),
+  );
+  return value;
+}
+export function verifyIpn(body: unknown, signature: string): boolean {
+  const secret = process.env.NOWPAYMENTS_IPN_SECRET;
+  if (!secret || !/^[a-f0-9]{128}$/i.test(signature)) return false;
+  return safeEqual(createHmac("sha512", secret).update(JSON.stringify(sortedJson(body))).digest("hex"), signature.toLowerCase());
+}
+export function publicBaseUrl() {
+  const raw = process.env.TELECART_PUBLIC_URL;
+  if (!raw) return "";
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash ||
+      (url.pathname !== "/" && url.pathname !== "") || /localhost|127\.0\.0\.1|\.replit\.dev$/i.test(url.hostname)) return "";
+    return url.origin;
+  } catch { return ""; }
+}
+
+export function moneyCents(value: unknown): number {
+  if (typeof value !== "string" || !/^\d{1,6}(\.\d{1,2})?$/.test(value)) throw new CommerceError("Enter a USD amount with at most two decimal places.");
+  const [whole, fraction = ""] = value.split(".");
+  const cents = Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
+  if (cents < 100 || cents > 10000000) throw new CommerceError("Enter an amount between $1 and $100,000.");
+  return cents;
+}
+
+// Exact decimal comparison (no floating point tolerance that could authorize an underpayment).
+export function decimalAtLeast(actual: unknown, required: unknown): boolean {
+  const parts = (v: unknown) => {
+    let s = String(v);
+    // Provider JSON numbers can serialize very small crypto amounts in exponent notation.
+    const scientific = /^(\d+)(?:\.(\d+))?[eE]([+-]?\d+)$/.exec(s);
+    if (scientific) {
+      const exponent = Number(scientific[3]);
+      if (!Number.isSafeInteger(exponent) || Math.abs(exponent) > 40) return null;
+      const digits = scientific[1] + (scientific[2] ?? "");
+      const point = scientific[1]!.length + exponent;
+      s = point <= 0 ? `0.${"0".repeat(-point)}${digits}` :
+        point >= digits.length ? digits + "0".repeat(point - digits.length) : `${digits.slice(0, point)}.${digits.slice(point)}`;
+    }
+    if (!/^\d+(\.\d+)?$/.test(s) || s.length > 100) return null;
+    const [whole, fraction = ""] = s.split(".");
+    return { whole, fraction };
+  };
+  const a = parts(actual); const b = parts(required);
+  if (!a || !b) return false;
+  const scale = Math.max(a.fraction.length, b.fraction.length);
+  return BigInt(a.whole + a.fraction.padEnd(scale, "0")) >= BigInt(b.whole + b.fraction.padEnd(scale, "0"));
+}
+
+export async function sendPaymentQr(chatId: string, payment: {
+  id: string; address: string; payAmount: string; coin: string; network: string; extraId: string | null; expiresAt: Date;
+}) {
+  // Encode the provider address itself, not an invented chain-specific URI.
+  // Exact amount, coin/network and memo are always written beside it.
+  const png = await QRCode.toBuffer(payment.address, { width: 700, margin: 4, errorCorrectionLevel: "M" });
+  const caption = [
+    `NOWPayments · ${payment.id}`, `Send exactly: ${payment.payAmount} ${payment.coin.toUpperCase()}`,
+    `Network: ${payment.network}`, `Address: ${payment.address}`,
+    ...(payment.extraId ? [`Required memo/tag: ${payment.extraId}`] : []),
+    `Quote valid until: ${payment.expiresAt.toISOString()}`,
+    "QR contains the address only. Enter the exact amount and verify the network.",
+    "Do not pay an expired quote. Stock or wallet credit is released only after status: finished.",
+  ].join("\n");
+  const form = new FormData();
+  form.set("chat_id", chatId);
+  form.set("photo", new Blob([new Uint8Array(png)], { type: "image/png" }), "payment.png");
+  form.set("caption", caption);
+  form.set("reply_markup", JSON.stringify({ inline_keyboard: [[{ text: "Check payment", callback_data: `check:${payment.id}` }]] }));
+  await telegram("sendPhoto", form);
+}

@@ -1,4 +1,4 @@
-import { createCipheriv, createHmac, hkdfSync, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHmac, hkdfSync, randomBytes } from "node:crypto";
 
 function key(purpose: string): Buffer {
   const secret = process.env.SESSION_SECRET;
@@ -16,4 +16,13 @@ export function encryptCredential(value: string, ownerId: string, productId: num
 
 export function credentialFingerprint(value: string, ownerId: string, productId: number) {
   return createHmac("sha256", key("deduplication")).update(`${ownerId}:${productId}:${value}`).digest("hex");
+}
+
+export function decryptCredential(value: string, ownerId: string, productId: number): string {
+  const [version, iv, tag, ciphertext] = value.split(".");
+  if (version !== "v1" || !iv || !tag || !ciphertext) throw new Error("Invalid encrypted inventory");
+  const decipher = createDecipheriv("aes-256-gcm", key("encryption"), Buffer.from(iv, "base64"));
+  decipher.setAAD(Buffer.from(`${ownerId}:${productId}`));
+  decipher.setAuthTag(Buffer.from(tag, "base64"));
+  return Buffer.concat([decipher.update(Buffer.from(ciphertext, "base64")), decipher.final()]).toString("utf8");
 }

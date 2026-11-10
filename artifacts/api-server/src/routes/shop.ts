@@ -9,6 +9,7 @@ import {
 import { productsForOwner, recordsForOwner, settingsForOwner, recordActivity } from "../lib/shop-store";
 import productRouter from "./shop-products";
 import { getClerkProxyHost } from "../middlewares/clerkProxyMiddleware";
+import commerceRouter from "./shop-commerce";
 
 const router: IRouter = Router();
 const writes = new Map<string, { count: number; expires: number }>();
@@ -38,6 +39,7 @@ router.use((req, res, next) => {
 });
 
 router.use(productRouter);
+router.use(commerceRouter);
 
 router.get("/overview", async (req, res): Promise<void> => {
   const ownerId = getAuth(req).userId;
@@ -54,14 +56,14 @@ router.get("/overview", async (req, res): Promise<void> => {
     walletBalance: customers.reduce((total, customer) => total + Math.round(customer.walletBalance * 100), 0) / 100,
     productCount: products.length, stockCount: products.reduce((total, product) => total + product.stock, 0),
     pendingPayments: orders.filter((order) => order.status === "pending").length,
-    botConnected: false, paymentsConnected: false,
+    botConnected: settings.botConnected, paymentsConnected: settings.paymentsConnected,
     recentOrders: orders.slice(0, 5), topProducts: products.slice(0, 4),
     checklist: [
       { label: "Add your first product", complete: Boolean(ownerId && products.length), href: "/products" },
       { label: "Customize your bot", complete: Boolean(ownerId && settings.botUsername), href: "/bot" },
       { label: "Add product inventory", complete: products.some((product) => product.stock > 0), href: "/inventory" },
-      { label: "Connect Telegram", complete: false, href: "/bot" },
-      { label: "Set up NOWPayments", complete: false, href: "/payments" },
+      { label: "Connect Telegram", complete: settings.botConnected, href: "/bot" },
+      { label: "Set up NOWPayments", complete: settings.paymentsConnected, href: "/payments" },
     ],
   }));
 });
@@ -87,7 +89,7 @@ router.put("/settings", async (req, res): Promise<void> => {
   await db.insert(shopSettings).values({ ownerId, preferences }).onConflictDoUpdate({
     target: shopSettings.ownerId, set: { preferences, updatedAt: new Date() },
   });
-  await recordActivity(ownerId, "Shop settings saved", "Bot and payment preferences updated. Live integrations remain disconnected.", "settings");
+  await recordActivity(ownerId, "Shop settings saved", "Bot copy and payment preferences updated.", "settings");
   res.json(SaveSettingsResponse.parse(await settingsForOwner(ownerId)));
 });
 

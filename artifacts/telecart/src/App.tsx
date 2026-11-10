@@ -1,5 +1,5 @@
-import { useEffect, useRef, type ReactNode } from "react";
-import { ClerkProvider, SignIn, SignUp, useClerk } from "@clerk/react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { ClerkProvider, SignIn, SignUp, useClerk, useUser } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
@@ -20,7 +20,18 @@ import BotPage from "@/pages/bot";
 import PaymentsPage from "@/pages/payments";
 import SettingsPage from "@/pages/settings";
 
-const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
+function SessionQueries({ children }: { children: ReactNode }) {
+  const [queryClient] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } }));
+  return <QueryClientProvider client={queryClient}><ClerkQueryClientCacheInvalidator />{children}</QueryClientProvider>;
+}
+
+function AuthScopedQueries({ children }: { children: ReactNode }) {
+  const { user, isLoaded } = useUser();
+  if (!isLoaded) return <div className="grid min-h-screen place-items-center text-sm text-muted-foreground">Loading your shop…</div>;
+  // Clearing a cache alone leaves mounted observers/forms holding their last result.
+  // Remount the entire data-consuming subtree on every identity transition.
+  return <SessionQueries key={user?.id ?? "public-preview"}>{children}</SessionQueries>;
+}
 
 const clerkPubKey = publishableKeyFromHost(
   window.location.hostname,
@@ -181,8 +192,7 @@ function ClerkProviderWithRoutes() {
       routerPush={(to) => setLocation(stripBase(to))}
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
     >
-      <QueryClientProvider client={queryClient}>
-        <ClerkQueryClientCacheInvalidator />
+      <AuthScopedQueries>
         <TooltipProvider>
           <AuthGateProvider>
             <Switch>
@@ -193,7 +203,7 @@ function ClerkProviderWithRoutes() {
           </AuthGateProvider>
           <Toaster />
         </TooltipProvider>
-      </QueryClientProvider>
+      </AuthScopedQueries>
     </ClerkProvider>
   );
 }

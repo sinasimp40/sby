@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { useShopSettings } from "@/hooks/use-shop-settings";
 import { cn } from "@/lib/utils";
+import { IntegrationPanel } from "@/components/integration-panel";
+import { PaymentAttemptsPanel } from "@/components/payment-attempts";
 
 const COINS = [
   { id: "BTC", name: "Bitcoin" }, { id: "ETH", name: "Ethereum" }, { id: "LTC", name: "Litecoin" },
@@ -23,9 +25,9 @@ type V = z.infer<typeof schema>;
 
 const steps = [
   { i: Hash, t: "Buyer picks an amount", d: "From the Wallet menu, at or above your minimum deposit, in USD." },
-  { i: QrCode, t: "Invoice is created at NOWPayments", d: "The bot would send a QR code with the exact crypto amount and deposit address." },
+  { i: QrCode, t: "Payment is created at NOWPayments", d: "The connected bot sends a real address QR plus the exact amount, coin/network and any required memo." },
   { i: Network, t: "Network is stated explicitly", d: "e.g. USDT on TRC20 vs ERC20 — sending on the wrong network loses funds." },
-  { i: Clock, t: "Invoice expires", d: "After your chosen window, the rate lock ends and a new invoice is needed." },
+  { i: Clock, t: "Quote validity is checked", d: "The earlier of your window and the provider quote expiry applies. Only provider status finished releases stock or credits." },
 ];
 
 export default function PaymentsPage() {
@@ -39,12 +41,12 @@ export default function PaymentsPage() {
 
   return (
     <div>
-      <PageHeader eyebrow="Provider · NOWPayments" title="Payments" description="Choose how crypto deposits should work. These are saved as preferences only — no payments can be taken in this build." actions={<SetupRequired label="Not connected" />} />
+      <PageHeader eyebrow="Provider · NOWPayments" title="Payments" description="Real QR checkout, verified payment status and wallet deposits. Activate the bot connection before customers can pay." actions={<SetupRequired label={settings.data?.paymentsConnected ? "Webhook configured" : "Activation required"} />} />
       <div className="rise mb-5 flex gap-3 rounded-xl border border-signal/35 bg-signal-soft p-4" data-testid="note-stars-policy">
         <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-signal" />
         <div className="text-sm">
           <div className="font-semibold">Telegram policy: digital goods inside bots must be paid with Telegram Stars.</div>
-          <p className="mt-1 text-foreground/75">Telecart is configured for NOWPayments, not Stars. Before activation, NOWPayments checkout needs a compliant approach — for example, taking payment outside the bot conversation. Live checkout stays off until that is resolved.</p>
+          <p className="mt-1 text-foreground/75">Telecart uses NOWPayments as requested. Its QR checkout does not override Telegram or payment-provider rules. Confirm that your intended use meets those requirements before activation.</p>
         </div>
       </div>
       {settings.isError ? <ErrorState message="Failed to load settings" onRetry={() => settings.refetch()} /> : settings.isLoading ? <RowsSkeleton rows={6} /> : (
@@ -80,26 +82,27 @@ export default function PaymentsPage() {
             </form>
           </Form>
           <div className="space-y-5">
-            <Panel title="Intended deposit flow" meta="not active">
+            <Panel title="Deposit flow" meta="finished-only settlement">
               <ol className="space-y-3">
                 {steps.map((s, i) => (
                   <li key={i} className="flex gap-3"><div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-border bg-background"><s.i className="h-4 w-4 text-primary" /></div>
                     <div><div className="text-sm font-medium">{s.t}</div><div className="text-xs text-muted-foreground">{s.d}</div></div></li>
                 ))}
               </ol>
-              <p className="mt-4 border-t border-border pt-3 text-xs text-muted-foreground">No sample QR codes or addresses are generated here, so nobody can mistake one for a real payment request.</p>
+              <p className="mt-4 border-t border-border pt-3 text-xs text-muted-foreground">QR images are generated only from real NOWPayments addresses and sent privately to the buyer. Repeated notifications cannot add another wallet credit or consume another stock line.</p>
             </Panel>
             <Panel title="Connection">
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between"><span>Provider</span><span className="font-mono text-xs">{settings.data?.paymentProvider || "NOWPayments"}</span></div>
-                <div className="flex items-center justify-between"><span>Status</span><SetupRequired label="Setup required" /></div>
-                <div className="flex gap-2 rounded-lg bg-muted p-3 text-xs text-muted-foreground"><KeyRound className="h-4 w-4 shrink-0" />API keys are not entered here. They will be added later through a secure secrets workflow, never stored in shop settings.</div>
-                <div className="flex gap-2 rounded-lg bg-muted p-3 text-xs text-muted-foreground"><AlertTriangle className="h-4 w-4 shrink-0" />Until connected, there is no invoice creation and wallet balances cannot change.</div>
+                <div className="flex items-center justify-between"><span>Status</span><SetupRequired label={settings.data?.paymentsConnected ? "Configured" : "Activation required"} /></div>
+                <div className="flex gap-2 rounded-lg bg-muted p-3 text-xs text-muted-foreground"><KeyRound className="h-4 w-4 shrink-0" />API keys belong in server secrets, never in shop settings or Telegram messages.</div>
+                <div className="flex gap-2 rounded-lg bg-muted p-3 text-xs text-muted-foreground"><AlertTriangle className="h-4 w-4 shrink-0" />Confirming is not paid. Partial payments and mismatches never automatically release stock or wallet credit.</div>
               </div>
             </Panel>
           </div>
         </div>
       )}
+      <div className="mt-5 space-y-5"><IntegrationPanel /><PaymentAttemptsPanel /></div>
     </div>
   );
 }

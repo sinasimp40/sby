@@ -20,3 +20,4 @@
 export * from "./shop-products";
 export * from "./shop-settings";
 export * from "./shop-records";
+export * from "./shop-commerce";

@@ -30,10 +30,13 @@ import type {
   Deposit,
   HealthStatus,
   ImportResult,
+  IntegrationInput,
+  IntegrationStatus,
   InventoryInput,
   InventoryItem,
   Order,
   Overview,
+  PaymentAttempt,
   Product,
   ProductInput,
   SettingsInput,
@@ -1386,5 +1389,413 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getSaveSettingsMutationOptions(options), queryClient);
+    }
+
+export const getGetIntegrationUrl = () => {
+
+
+
+
+  return `/api/shop/integration`
+}
+
+export const getIntegration = async ( options?: Parameters<typeof customFetch>[1]): Promise<IntegrationStatus> => {
+
+  return customFetch<IntegrationStatus>(getGetIntegrationUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetIntegrationQueryKey = () => {
+    return [
+    `/api/shop/integration`
+    ] as const;
+    }
+
+
+export const getGetIntegrationQueryOptions = <TData = Awaited<ReturnType<typeof getIntegration>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getIntegration>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetIntegrationQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getIntegration>>> = ({ signal }) => getIntegration({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getIntegration>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetIntegrationQueryResult = NonNullable<Awaited<ReturnType<typeof getIntegration>>>
+export type GetIntegrationQueryError = ErrorType<unknown>
+
+
+export function useGetIntegration<TData = Awaited<ReturnType<typeof getIntegration>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getIntegration>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getIntegration>>,
+          TError,
+          Awaited<ReturnType<typeof getIntegration>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetIntegration<TData = Awaited<ReturnType<typeof getIntegration>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getIntegration>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getIntegration>>,
+          TError,
+          Awaited<ReturnType<typeof getIntegration>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetIntegration<TData = Awaited<ReturnType<typeof getIntegration>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getIntegration>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetIntegration<TData = Awaited<ReturnType<typeof getIntegration>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getIntegration>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetIntegrationQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getConnectIntegrationUrl = () => {
+
+
+
+
+  return `/api/shop/integration/connect`
+}
+
+export const connectIntegration = async (integrationInput: IntegrationInput, options?: Parameters<typeof customFetch>[1]): Promise<IntegrationStatus> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<IntegrationStatus>(getConnectIntegrationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(integrationInput)
+  }
+);}
+
+
+
+
+
+export const getConnectIntegrationMutationKey = () => ['connectIntegration'] as const;
+
+export const getConnectIntegrationMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof connectIntegration>>, TError,ConnectIntegrationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof connectIntegration>>, TError,ConnectIntegrationMutationVariables, TContext> => {
+
+const mutationKey = getConnectIntegrationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof connectIntegration>>, ConnectIntegrationMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  connectIntegration(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConnectIntegrationMutationResult = NonNullable<Awaited<ReturnType<typeof connectIntegration>>>
+    export type ConnectIntegrationMutationBody = BodyType<IntegrationInput>
+    export type ConnectIntegrationMutationError = ErrorType<unknown>
+    export type ConnectIntegrationMutationVariables = {data: BodyType<IntegrationInput>}
+
+    export const useConnectIntegration = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof connectIntegration>>, TError,ConnectIntegrationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof connectIntegration>>,
+        TError,
+        ConnectIntegrationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getConnectIntegrationMutationOptions(options), queryClient);
+    }
+
+export const getDisconnectIntegrationUrl = () => {
+
+
+
+
+  return `/api/shop/integration/disconnect`
+}
+
+export const disconnectIntegration = async ( options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDisconnectIntegrationUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getDisconnectIntegrationMutationKey = () => ['disconnectIntegration'] as const;
+
+export const getDisconnectIntegrationMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disconnectIntegration>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof disconnectIntegration>>, TError,void, TContext> => {
+
+const mutationKey = getDisconnectIntegrationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof disconnectIntegration>>, void> = () => {
+
+
+          return  disconnectIntegration(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DisconnectIntegrationMutationResult = NonNullable<Awaited<ReturnType<typeof disconnectIntegration>>>
+
+    export type DisconnectIntegrationMutationError = ErrorType<unknown>
+
+
+    export const useDisconnectIntegration = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disconnectIntegration>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof disconnectIntegration>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDisconnectIntegrationMutationOptions(options), queryClient);
+    }
+
+export const getListPaymentAttemptsUrl = () => {
+
+
+
+
+  return `/api/shop/payment-attempts`
+}
+
+export const listPaymentAttempts = async ( options?: Parameters<typeof customFetch>[1]): Promise<PaymentAttempt[]> => {
+
+  return customFetch<PaymentAttempt[]>(getListPaymentAttemptsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPaymentAttemptsQueryKey = () => {
+    return [
+    `/api/shop/payment-attempts`
+    ] as const;
+    }
+
+
+export const getListPaymentAttemptsQueryOptions = <TData = Awaited<ReturnType<typeof listPaymentAttempts>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPaymentAttempts>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPaymentAttemptsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPaymentAttempts>>> = ({ signal }) => listPaymentAttempts({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPaymentAttempts>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListPaymentAttemptsQueryResult = NonNullable<Awaited<ReturnType<typeof listPaymentAttempts>>>
+export type ListPaymentAttemptsQueryError = ErrorType<unknown>
+
+
+export function useListPaymentAttempts<TData = Awaited<ReturnType<typeof listPaymentAttempts>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPaymentAttempts>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listPaymentAttempts>>,
+          TError,
+          Awaited<ReturnType<typeof listPaymentAttempts>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListPaymentAttempts<TData = Awaited<ReturnType<typeof listPaymentAttempts>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPaymentAttempts>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listPaymentAttempts>>,
+          TError,
+          Awaited<ReturnType<typeof listPaymentAttempts>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListPaymentAttempts<TData = Awaited<ReturnType<typeof listPaymentAttempts>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPaymentAttempts>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useListPaymentAttempts<TData = Awaited<ReturnType<typeof listPaymentAttempts>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPaymentAttempts>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListPaymentAttemptsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCheckPaymentAttemptUrl = (id: string,) => {
+
+
+
+
+  return `/api/shop/payment-attempts/${id}/check`
+}
+
+export const checkPaymentAttempt = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<PaymentAttempt> => {
+
+  return customFetch<PaymentAttempt>(getCheckPaymentAttemptUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCheckPaymentAttemptMutationKey = () => ['checkPaymentAttempt'] as const;
+
+export const getCheckPaymentAttemptMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkPaymentAttempt>>, TError,CheckPaymentAttemptMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof checkPaymentAttempt>>, TError,CheckPaymentAttemptMutationVariables, TContext> => {
+
+const mutationKey = getCheckPaymentAttemptMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof checkPaymentAttempt>>, CheckPaymentAttemptMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  checkPaymentAttempt(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CheckPaymentAttemptMutationResult = NonNullable<Awaited<ReturnType<typeof checkPaymentAttempt>>>
+
+    export type CheckPaymentAttemptMutationError = ErrorType<unknown>
+    export type CheckPaymentAttemptMutationVariables = {id: string}
+
+    export const useCheckPaymentAttempt = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkPaymentAttempt>>, TError,CheckPaymentAttemptMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof checkPaymentAttempt>>,
+        TError,
+        CheckPaymentAttemptMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCheckPaymentAttemptMutationOptions(options), queryClient);
     }
 

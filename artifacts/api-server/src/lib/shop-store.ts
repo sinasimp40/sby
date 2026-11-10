@@ -1,7 +1,8 @@
 import { and, desc, eq, sql } from "drizzle-orm";
-import { db, shopProducts, shopInventory, shopSettings, shopRecords, shopActivity } from "@workspace/db";
+import { db, shopProducts, shopInventory, shopSettings, shopRecords, shopActivity, shopPayments, botCustomers } from "@workspace/db";
 import { GetSettingsResponse, ListProductsResponse } from "@workspace/api-zod";
 import { defaultSettings, sampleProducts } from "./shop-defaults";
+import { integrationStatus } from "./commerce-connection";
 
 export async function productsForOwner(ownerId: string | null) {
   if (!ownerId) return sampleProducts;
@@ -27,6 +28,7 @@ export async function productsForOwner(ownerId: string | null) {
 }
 
 export async function settingsForOwner(ownerId: string | null) {
+  const connection = await integrationStatus(ownerId);
   const [row] = ownerId
     ? await db.select().from(shopSettings).where(eq(shopSettings.ownerId, ownerId))
     : [];
@@ -34,8 +36,8 @@ export async function settingsForOwner(ownerId: string | null) {
     ...defaultSettings,
     ...(row?.preferences ?? {}),
     isDemo: !ownerId,
-    botConnected: false,
-    paymentsConnected: false,
+    botConnected: connection.connected,
+    paymentsConnected: connection.connected && connection.apiKeyPresent && connection.ipnSecretPresent,
     paymentProvider: "NOWPayments",
   });
 }
@@ -45,7 +47,26 @@ export async function recordsForOwner(ownerId: string | null, kind: "order" | "c
   const rows = await db.select({ payload: shopRecords.payload }).from(shopRecords)
     .where(and(eq(shopRecords.ownerId, ownerId), eq(shopRecords.kind, kind)))
     .orderBy(desc(shopRecords.createdAt));
-  return rows.map((row) => row.payload);
+  const payments = await db.select().from(shopPayments).where(eq(shopPayments.ownerId, ownerId)).orderBy(desc(shopPayments.createdAt));
+  const customers = await db.select().from(botCustomers).where(eq(botCustomers.ownerId, ownerId));
+  const username = (id: string) => customers.find(c => c.id === id)?.username ?? "Telegram customer";
+  let live: Record<string, unknown>[];
+  if (kind === "customer") live = customers.map(c => {
+    const bought = payments.filter(p => p.customerId === c.id && p.kind !== "deposit" && ["allocated", "delivered"].includes(p.fulfillment));
+    return { id: c.id, username: c.username, orderCount: bought.length, spent: bought.reduce((sum, p) => sum + p.amountCents, 0) / 100, walletBalance: c.balanceCents / 100, joinedAt: c.createdAt.toISOString() };
+  });
+  else if (kind === "order") live = payments.filter(p => p.kind !== "deposit").map(p => ({
+    id: p.id, customer: username(p.customerId), productName: p.productName, amount: p.amountCents / 100,
+    status: p.fulfillment === "delivered" ? "delivered" : p.status === "finished" ? "paid" : p.status === "refunded" ? "refunded" : ["failed", "expired"].includes(p.status) ? "cancelled" : "pending",
+    paymentMethod: p.kind === "wallet" ? "Wallet" : "NOWPayments", createdAt: p.createdAt.toISOString(),
+  }));
+  else live = payments.filter(p => p.kind === "deposit").map(p => ({
+    id: p.id, customer: username(p.customerId), amount: p.amountCents / 100, currency: "USD",
+    status: p.fulfillment === "credited" ? "finished" : ["failed", "expired", "refunded"].includes(p.status) ? (p.status === "expired" ? "expired" : "failed") :
+      ["confirming", "confirmed", "sending"].includes(p.status) ? "confirming" : "waiting",
+    createdAt: p.createdAt.toISOString(),
+  }));
+  return [...live, ...rows.map((row) => row.payload)];
 }
 
 export async function recordActivity(ownerId: string, title: string, description: string, type: string) {

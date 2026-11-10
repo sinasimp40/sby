@@ -47,7 +47,7 @@ export function useShopSettings() {
           qc.setQueryData(getGetSettingsQueryKey(), data);
           qc.invalidateQueries({ queryKey: getGetOverviewQueryKey() });
           qc.invalidateQueries({ queryKey: getListActivityQueryKey() });
-          toast({ title: `${label} saved`, description: "Stored as preferences. Nothing is sent to Telegram or NOWPayments." });
+          toast({ title: `${label} saved`, description: "Saved. A connected bot uses these settings on its next interaction. Existing invoices keep their original amounts." });
           onDone?.();
         },
         onError: (e) => toast({ variant: "destructive", title: "Could not save", description: errMsg(e) }),

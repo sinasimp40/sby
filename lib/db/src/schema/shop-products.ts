@@ -19,7 +19,7 @@ export const shopInventory = pgTable("shop_inventory", {
   ownerId: text("owner_id").notNull(),
   encryptedCredential: text("encrypted_credential").notNull(),
   fingerprint: text("fingerprint").notNull(),
-  status: text("status").$type<"available" | "delivered">().notNull().default("available"),
+  status: text("status").$type<"available" | "reserved" | "delivered">().notNull().default("available"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
   uniqueIndex("shop_inventory_product_fingerprint_idx").on(table.productId, table.fingerprint),

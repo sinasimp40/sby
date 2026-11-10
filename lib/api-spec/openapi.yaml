@@ -173,6 +173,56 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ShopSettings" }
+  /shop/integration:
+    get:
+      operationId: getIntegration
+      responses:
+        "200":
+          description: Safe connection diagnostics for the signed-in shop.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IntegrationStatus" }
+  /shop/integration/connect:
+    post:
+      operationId: connectIntegration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/IntegrationInput" }
+      responses:
+        "200":
+          description: Telegram webhook configured.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IntegrationStatus" }
+  /shop/integration/disconnect:
+    post:
+      operationId: disconnectIntegration
+      responses:
+        "204": { description: Telegram disconnected; pending payments remain reconcilable. }
+  /shop/payment-attempts:
+    get:
+      operationId: listPaymentAttempts
+      responses:
+        "200":
+          description: Real payment attempts, with no delivered credentials.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PaymentAttempt" }
+  /shop/payment-attempts/{id}/check:
+    post:
+      operationId: checkPaymentAttempt
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Authoritatively checked with NOWPayments.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaymentAttempt" }
 components:
   schemas:
     HealthStatus:
@@ -241,7 +291,7 @@ components:
       properties:
         id: { type: integer }
         productId: { type: integer }
-        status: { type: string, enum: [available, delivered] }
+        status: { type: string, enum: [available, reserved, delivered] }
         createdAt: { type: string }
     ImportResult:
       type: object
@@ -288,6 +338,41 @@ components:
         title: { type: string }
         description: { type: string }
         type: { type: string }
+        createdAt: { type: string }
+    IntegrationInput:
+      type: object
+      additionalProperties: false
+      required: [acknowledgePolicy]
+      properties:
+        acknowledgePolicy: { type: boolean, const: true }
+    IntegrationStatus:
+      type: object
+      required: [signedIn, ownerId, ownerBound, isOperator, tokenPresent, apiKeyPresent, ipnSecretPresent, publicUrl, botUsername, connected, settlementStatus]
+      properties:
+        signedIn: { type: boolean }
+        ownerId: { type: string }
+        ownerBound: { type: boolean }
+        isOperator: { type: boolean }
+        tokenPresent: { type: boolean }
+        apiKeyPresent: { type: boolean }
+        ipnSecretPresent: { type: boolean }
+        publicUrl: { type: string }
+        botUsername: { type: string }
+        connected: { type: boolean }
+        settlementStatus: { type: string, enum: [finished] }
+    PaymentAttempt:
+      type: object
+      required: [id, kind, customer, productName, amount, currency, status, fulfillment, providerPaymentId, createdAt]
+      properties:
+        id: { type: string }
+        kind: { type: string }
+        customer: { type: string }
+        productName: { type: string }
+        amount: { type: number }
+        currency: { type: string }
+        status: { type: string }
+        fulfillment: { type: string }
+        providerPaymentId: { type: ["string", "null"] }
         createdAt: { type: string }
     SettingsInput:
       type: object

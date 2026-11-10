@@ -11,5 +11,6 @@ export type InventoryItemStatus = typeof InventoryItemStatus[keyof typeof Invent
 
 export const InventoryItemStatus = {
   available: 'available',
+  reserved: 'reserved',
   delivered: 'delivered',
 } as const;

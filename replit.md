@@ -7,10 +7,10 @@ A web administration workspace for a Telegram digital-product shop.
 - Product creation, editing and deletion, encrypted credential inventory, nonsecret shop/bot/payment preferences and private owner workspaces.
 - The public dashboard is a labelled preview. Its sample product listings are not real stock, and its sales totals are zero.
 - Sign in creates access to the signed-in owner's empty, private shop, not shared administrator access.
-- The Telegram interface is a **local preview**, not a running Telegram bot.
-- NOWPayments is the requested provider. Live checkout, QR invoice creation, wallet deposits, payment callbacks and credential delivery are **not connected or implemented**.
-- Order, customer and deposit views read persisted business records but start empty. Never seed paid orders, wallet balances or payment confirmations to make the dashboard appear live.
-- Telegram's rules require Stars for digital goods sold inside bots. A compliant payment architecture and provider connection must be settled before enabling NOWPayments checkout for this use case.
+- The phone mockup remains a **local preview**. A separate live Telegram webhook handles /start, products, support, wallet deposits, purchases and order history after explicit admin activation.
+- NOWPayments direct payments, address QR generation, HMAC-signed IPN verification plus authoritative API checks, integer wallet ledger and encrypted-stock delivery are implemented. Fulfillment requires provider status **finished**, full payment and matching invoice identity. Confirming/confirmed/sending never fulfill.
+- Order, customer and deposit views read persisted business records. Never seed paid orders, wallet balances or payment confirmations to make the dashboard appear live.
+- Telegram's rules require Stars for digital goods sold inside bots. NOWPayments QR payments do not override Telegram/provider rules; the activation UI states this explicitly.
 
 ## Run & Operate
 
@@ -19,6 +19,10 @@ A web administration workspace for a Telegram digital-product shop.
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate client hooks and server validation.
 - `pnpm --filter @workspace/db run push` — development schema updates only.
 - Use the existing artifact-managed workflows; do not create duplicate servers.
+- `pnpm --filter @workspace/api-server exec tsx --test tests/commerce.test.ts` — isolated-owner database tests with mocked providers, no real invoices/messages.
+- Before live activation: publish publicly, sign in on the published site (Clerk production users differ from preview), bind `TELECART_OWNER_ID` to that intended admin's Clerk ID, and set `TELECART_PUBLIC_URL` to the verified production HTTPS origin. Then use the published Payments → Connect Telegram webhook. The development API rejects live activation. Do not allow the first arbitrary signup to claim the shared environment credentials.
+- External endpoints: `/api/telegram/webhook` (Telegram secret header) and `/api/nowpayments/ipn` (NOWPayments signature); callback URL is automatically supplied at payment creation.
+- Configure your receiving wallet and IPN secret in NOWPayments. Preserve the bot identity and SESSION_SECRET; rotating to a different bot needs a buyer/payment migration.
 
 ## Stack & Source of Truth
 
@@ -36,7 +40,10 @@ A web administration workspace for a Telegram digital-product shop.
 - Never log credentials, return plaintext inventory to list APIs, store service API keys in ordinary settings, or include credentials in activity events.
 - Product deletion cascades inventory. The frontend must explain and confirm this before deleting.
 - Prices persist as integer USD cents. No administrator mutation may fabricate a paid invoice or confirmed wallet credit.
-- Future payment handlers need verified signatures, idempotent state transitions and atomic wallet/stock updates; not just a QR image or client-side status change.
+- Payment handlers use verified signatures, idempotent state transitions and atomic wallet/stock updates. A stock line is reserved at invoice creation. Local quote expiry does NOT release stock: only a verified provider terminal status can release it.
+- Uncertain provider creation (timeouts) holds stock for manual investigation by merchant order ID. Never blindly recreate an invoice or assume a timed-out request did not reach NOWPayments. Partial/wrong-asset/child/repeated deposits require manual review.
+- Exactly-once allocation/credit is enforced in PostgreSQL. Telegram cannot guarantee exactly-once message delivery: after an ambiguous send, retries may resend the same assigned line, never consume another. Buyer/admin status checks and repeated IPNs retry pending delivery.
+- Existing paid/reserved inventory cannot be deleted through product cascades; archive those products. Do not auto-refund, reverse a wallet ledger entry or release reserved stock merely because the local clock expired.
 
 ## Project structure
 

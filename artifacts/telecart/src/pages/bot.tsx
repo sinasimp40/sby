@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { useShopSettings } from "@/hooks/use-shop-settings";
 import { money } from "@/lib/format";
+import { IntegrationPanel } from "@/components/integration-panel";
 
 const handle = z.string().max(32).regex(/^@?[A-Za-z0-9_]*$/, "Letters, numbers and underscores only");
 const label = z.string().trim().min(1, "Required").max(30);
@@ -58,6 +59,7 @@ export default function BotPage() {
   return (
     <div>
       <PageHeader eyebrow="Bot copy" title="Bot messages" description="Write what buyers see. The phone on the right is a local simulation of your menu — it does not talk to Telegram." />
+      <div className="mb-5"><IntegrationPanel /></div>
       {settings.isError ? <ErrorState message="Failed to load settings" onRetry={() => settings.refetch()} /> : settings.isLoading ? <RowsSkeleton rows={8} /> : (
         <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
           <Form {...form}>

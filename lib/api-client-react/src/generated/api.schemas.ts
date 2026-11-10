@@ -135,6 +135,7 @@ export type InventoryItemStatus = typeof InventoryItemStatus[keyof typeof Invent
 
 export const InventoryItemStatus = {
   available: 'available',
+  reserved: 'reserved',
   delivered: 'delivered',
 } as const;
 
@@ -184,6 +185,46 @@ export interface Activity {
   title: string;
   description: string;
   type: string;
+  createdAt: string;
+}
+
+export const IntegrationInputValue = {
+  acknowledgePolicy: true,
+} as const;
+export type IntegrationInput = typeof IntegrationInputValue;
+
+export type IntegrationStatusSettlementStatus = typeof IntegrationStatusSettlementStatus[keyof typeof IntegrationStatusSettlementStatus];
+
+
+export const IntegrationStatusSettlementStatus = {
+  finished: 'finished',
+} as const;
+
+export interface IntegrationStatus {
+  signedIn: boolean;
+  ownerId: string;
+  ownerBound: boolean;
+  isOperator: boolean;
+  tokenPresent: boolean;
+  apiKeyPresent: boolean;
+  ipnSecretPresent: boolean;
+  publicUrl: string;
+  botUsername: string;
+  connected: boolean;
+  settlementStatus: IntegrationStatusSettlementStatus;
+}
+
+export interface PaymentAttempt {
+  id: string;
+  kind: string;
+  customer: string;
+  productName: string;
+  amount: number;
+  currency: string;
+  status: string;
+  fulfillment: string;
+  /** @nullable */
+  providerPaymentId: string | null;
   createdAt: string;
 }
 

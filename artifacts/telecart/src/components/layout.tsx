@@ -5,6 +5,7 @@ import { LayoutDashboard, Package, KeyRound, Receipt, Users, Wallet, Bot, Credit
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useGetSettings } from "@workspace/api-client-react";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -98,6 +99,7 @@ function Account() {
 
 function ModeBanner() {
   const { isSignedIn, isLoaded } = useUser();
+  const settings = useGetSettings({ query: { enabled: Boolean(isSignedIn), refetchInterval: 30000 } });
   if (!isLoaded) return null;
   if (isSignedIn) {
     return (
@@ -105,7 +107,7 @@ function ModeBanner() {
         <span className="h-1.5 w-1.5 rounded-full bg-ok" />
         <span>Private workspace</span>
         <span className="text-border">/</span>
-        <span>Telegram bot and NOWPayments are <b className="font-semibold text-signal">not connected</b> — no live orders will arrive yet.</span>
+        <span>{settings.data?.botConnected && settings.data?.paymentsConnected ? <>Bot webhook configured · NOWPayments fulfillment waits for <b>finished</b>.</> : <>Telegram bot and NOWPayments need <b className="font-semibold text-signal">activation</b> before live orders can arrive.</>}</span>
       </div>
     );
   }

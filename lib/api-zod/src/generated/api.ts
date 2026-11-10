@@ -163,7 +163,7 @@ export const ListInventoryParams = zod.object({
 export const ListInventoryResponseItem = zod.object({
   "id": zod.number().int(),
   "productId": zod.number().int(),
-  "status": zod.enum(['available', 'delivered']),
+  "status": zod.enum(['available', 'reserved', 'delivered']),
   "createdAt": zod.string()
 })
 export const ListInventoryResponse = zod.array(ListInventoryResponseItem)
@@ -395,5 +395,75 @@ export const SaveSettingsResponse = zod.object({
   "paymentsConnected": zod.boolean(),
   "paymentProvider": zod.string()
 }))
+
+
+export const GetIntegrationResponse = zod.object({
+  "signedIn": zod.boolean(),
+  "ownerId": zod.string(),
+  "ownerBound": zod.boolean(),
+  "isOperator": zod.boolean(),
+  "tokenPresent": zod.boolean(),
+  "apiKeyPresent": zod.boolean(),
+  "ipnSecretPresent": zod.boolean(),
+  "publicUrl": zod.string(),
+  "botUsername": zod.string(),
+  "connected": zod.boolean(),
+  "settlementStatus": zod.enum(['finished'])
+})
+
+
+export const ConnectIntegrationBody = zod.object({
+  "acknowledgePolicy": zod.literal(true)
+})
+
+export const ConnectIntegrationResponse = zod.object({
+  "signedIn": zod.boolean(),
+  "ownerId": zod.string(),
+  "ownerBound": zod.boolean(),
+  "isOperator": zod.boolean(),
+  "tokenPresent": zod.boolean(),
+  "apiKeyPresent": zod.boolean(),
+  "ipnSecretPresent": zod.boolean(),
+  "publicUrl": zod.string(),
+  "botUsername": zod.string(),
+  "connected": zod.boolean(),
+  "settlementStatus": zod.enum(['finished'])
+})
+
+
+export const DisconnectIntegrationResponse = zod.void()
+
+
+export const ListPaymentAttemptsResponseItem = zod.object({
+  "id": zod.string(),
+  "kind": zod.string(),
+  "customer": zod.string(),
+  "productName": zod.string(),
+  "amount": zod.number(),
+  "currency": zod.string(),
+  "status": zod.string(),
+  "fulfillment": zod.string(),
+  "providerPaymentId": zod.string().nullable(),
+  "createdAt": zod.string()
+})
+export const ListPaymentAttemptsResponse = zod.array(ListPaymentAttemptsResponseItem)
+
+
+export const CheckPaymentAttemptParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const CheckPaymentAttemptResponse = zod.object({
+  "id": zod.string(),
+  "kind": zod.string(),
+  "customer": zod.string(),
+  "productName": zod.string(),
+  "amount": zod.number(),
+  "currency": zod.string(),
+  "status": zod.string(),
+  "fulfillment": zod.string(),
+  "providerPaymentId": zod.string().nullable(),
+  "createdAt": zod.string()
+})
 
 
