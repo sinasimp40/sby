@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { initializeAdminBootstrap } from "./lib/admin-bootstrap";
 
 const rawPort = process.env["PORT"];
 
@@ -13,6 +14,15 @@ const port = Number(rawPort);
 
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
+}
+
+// Resolve privileged identities in the environment where the server runs.
+// Production Clerk credentials never need to be copied into the workspace.
+try {
+  await initializeAdminBootstrap();
+} catch {
+  logger.error("Admin bootstrap failed. No existing user was granted access or had its password changed. Check the configured admin email, binding and Clerk requirements.");
+  process.exit(1);
 }
 
 app.listen(port, (err) => {

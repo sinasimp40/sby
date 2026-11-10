@@ -9,6 +9,12 @@ Shared service credentials must be bound deliberately to the intended shop owner
 
 **How to apply:** Preserve explicit operator binding and production-only webhook activation. Changing the bot identity or merchant ownership requires a migration, not silently replacing the connection.
 
+An owner-configured first-admin bootstrap must resolve identities independently inside development and production, without importing live Clerk credentials into the workspace.
+
+**Why:** The user requested a production administrator after publishing. Creating only a preview identity would not fulfill that request; blindly promoting an existing email could take over an unrelated account.
+
+**How to apply:** Use trusted deployment configuration and secure initial-password entry. Only reaccept an account carrying the bootstrap's signed creation marker; never reset an existing user's password or restore a revoked admin grant on restart.
+
 Treat uncertain invoice creation and Telegram delivery separately from financial settlement.
 
 **Why:** A provider timeout can still create a payable invoice; a Telegram send can succeed before the process records success. Retrying by creating a new invoice or taking a new stock line could lose funds or expose multiple accounts.

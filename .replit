@@ -18,3 +18,9 @@ expertMode = true
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
+
+[userenv]
+
+[userenv.production]
+TELECART_ADMIN_EMAIL = "admin@admin.com"
+TELECART_PUBLIC_URL = "https://sales-bot-dashboard.replit.app"
