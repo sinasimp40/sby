@@ -1,36 +1,320 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Telecart shop administration. Live Telegram and payments are not connected.
 servers:
   - url: /api
-    description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: shop
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
-      summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/HealthStatus"
+              schema: { $ref: "#/components/schemas/HealthStatus" }
+  /shop/overview:
+    get:
+      operationId: getOverview
+      tags: [shop]
+      responses:
+        "200":
+          description: Shop overview or explicitly labelled public sample
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Overview" }
+  /shop/products:
+    get:
+      operationId: listProducts
+      tags: [shop]
+      responses:
+        "200":
+          description: Products
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Product" } }
+    post:
+      operationId: createProduct
+      tags: [shop]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProductInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Product" }
+  /shop/products/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    patch:
+      operationId: updateProduct
+      tags: [shop]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProductInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Product" }
+    delete:
+      operationId: deleteProduct
+      tags: [shop]
+      responses:
+        "204": { description: Deleted }
+  /shop/products/{id}/inventory:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    get:
+      operationId: listInventory
+      tags: [shop]
+      responses:
+        "200":
+          description: Metadata only, no plaintext credentials
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/InventoryItem" } }
+    post:
+      operationId: importInventory
+      tags: [shop]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InventoryInput" }
+      responses:
+        "201":
+          description: Imported securely
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ImportResult" }
+  /shop/inventory/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    delete:
+      operationId: deleteInventoryItem
+      tags: [shop]
+      responses:
+        "204": { description: Deleted }
+  /shop/orders:
+    get:
+      operationId: listOrders
+      tags: [shop]
+      responses:
+        "200":
+          description: Orders
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Order" } }
+  /shop/customers:
+    get:
+      operationId: listCustomers
+      tags: [shop]
+      responses:
+        "200":
+          description: Customers
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Customer" } }
+  /shop/deposits:
+    get:
+      operationId: listDeposits
+      tags: [shop]
+      responses:
+        "200":
+          description: Deposits
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Deposit" } }
+  /shop/activity:
+    get:
+      operationId: listActivity
+      tags: [shop]
+      responses:
+        "200":
+          description: Recent shop events
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Activity" } }
+  /shop/settings:
+    get:
+      operationId: getSettings
+      tags: [shop]
+      responses:
+        "200":
+          description: Nonsecret settings
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ShopSettings" }
+    put:
+      operationId: saveSettings
+      tags: [shop]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SettingsInput" }
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ShopSettings" }
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
-        status:
-          type: string
-      required:
-        - status
-
+        status: { type: string }
+    Overview:
+      type: object
+      required: [isDemo, revenue, orderCount, customerCount, walletBalance, productCount, stockCount, pendingPayments, botConnected, paymentsConnected, recentOrders, topProducts, checklist]
+      properties:
+        isDemo: { type: boolean }
+        revenue: { type: number }
+        orderCount: { type: integer }
+        customerCount: { type: integer }
+        walletBalance: { type: number }
+        productCount: { type: integer }
+        stockCount: { type: integer }
+        pendingPayments: { type: integer }
+        botConnected: { type: boolean }
+        paymentsConnected: { type: boolean }
+        recentOrders: { type: array, items: { $ref: "#/components/schemas/Order" } }
+        topProducts: { type: array, items: { $ref: "#/components/schemas/Product" } }
+        checklist: { type: array, items: { $ref: "#/components/schemas/ChecklistItem" } }
+    ChecklistItem:
+      type: object
+      required: [label, complete, href]
+      properties:
+        label: { type: string }
+        complete: { type: boolean }
+        href: { type: string }
+    ProductInput:
+      type: object
+      additionalProperties: false
+      required: [name, description, category, price, status, deliveryFormat]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        description: { type: string, maxLength: 2000 }
+        category: { type: string, minLength: 1, maxLength: 80 }
+        price: { type: number, minimum: 0.01, maximum: 100000 }
+        status: { type: string, enum: [active, draft, archived] }
+        deliveryFormat: { type: string, enum: ["email:pass", "user:pass"] }
+    Product:
+      type: object
+      required: [id, name, description, category, price, status, deliveryFormat, stock, sold, createdAt]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        description: { type: string }
+        category: { type: string }
+        price: { type: number }
+        status: { type: string, enum: [active, draft, archived] }
+        deliveryFormat: { type: string, enum: ["email:pass", "user:pass"] }
+        stock: { type: integer }
+        sold: { type: integer }
+        createdAt: { type: string }
+    InventoryInput:
+      type: object
+      additionalProperties: false
+      required: [entries]
+      properties:
+        entries: { type: string, minLength: 1, maxLength: 100000, description: "One login:password per line, maximum 500 lines. Credentials are encrypted server-side." }
+    InventoryItem:
+      type: object
+      required: [id, productId, status, createdAt]
+      properties:
+        id: { type: integer }
+        productId: { type: integer }
+        status: { type: string, enum: [available, delivered] }
+        createdAt: { type: string }
+    ImportResult:
+      type: object
+      required: [imported, skipped]
+      properties:
+        imported: { type: integer }
+        skipped: { type: integer }
+    Order:
+      type: object
+      required: [id, customer, productName, amount, status, paymentMethod, createdAt]
+      properties:
+        id: { type: string }
+        customer: { type: string }
+        productName: { type: string }
+        amount: { type: number }
+        status: { type: string, enum: [pending, paid, delivered, cancelled, refunded] }
+        paymentMethod: { type: string }
+        createdAt: { type: string }
+    Customer:
+      type: object
+      required: [id, username, orderCount, spent, walletBalance, joinedAt]
+      properties:
+        id: { type: string }
+        username: { type: string }
+        orderCount: { type: integer }
+        spent: { type: number }
+        walletBalance: { type: number }
+        joinedAt: { type: string }
+    Deposit:
+      type: object
+      required: [id, customer, amount, currency, status, createdAt]
+      properties:
+        id: { type: string }
+        customer: { type: string }
+        amount: { type: number }
+        currency: { type: string }
+        status: { type: string, enum: [waiting, confirming, finished, failed, expired] }
+        createdAt: { type: string }
+    Activity:
+      type: object
+      required: [id, title, description, type, createdAt]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        type: { type: string }
+        createdAt: { type: string }
+    SettingsInput:
+      type: object
+      additionalProperties: false
+      required: [shopName, botUsername, welcomeMessage, supportUsername, supportMessage, currency, minDeposit, acceptedCoins, invoiceExpiryMinutes, maintenanceMode, productsLabel, supportLabel, walletLabel, ordersLabel]
+      properties:
+        shopName: { type: string, minLength: 1, maxLength: 100 }
+        botUsername: { type: string, maxLength: 32, pattern: "^@?[A-Za-z0-9_]*$" }
+        welcomeMessage: { type: string, minLength: 1, maxLength: 3000 }
+        supportUsername: { type: string, maxLength: 32, pattern: "^@?[A-Za-z0-9_]*$" }
+        supportMessage: { type: string, maxLength: 2000 }
+        currency: { type: string, enum: [USD] }
+        minDeposit: { type: number, minimum: 1, maximum: 100000 }
+        acceptedCoins: { type: array, minItems: 1, uniqueItems: true, items: { type: string, enum: [BTC, ETH, LTC, USDTTRC20, USDTERC20, SOL] } }
+        invoiceExpiryMinutes: { type: integer, minimum: 10, maximum: 120 }
+        maintenanceMode: { type: boolean }
+        productsLabel: { type: string, minLength: 1, maxLength: 30 }
+        supportLabel: { type: string, minLength: 1, maxLength: 30 }
+        walletLabel: { type: string, minLength: 1, maxLength: 30 }
+        ordersLabel: { type: string, minLength: 1, maxLength: 30 }
+    ShopSettings:
+      allOf:
+        - { $ref: "#/components/schemas/SettingsInput" }
+        - type: object
+          required: [isDemo, botConnected, paymentsConnected, paymentProvider]
+          properties:
+            isDemo: { type: boolean }
+            botConnected: { type: boolean }
+            paymentsConnected: { type: boolean }
+            paymentProvider: { type: string }

@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Telecart · Sales Bot Admin"
+description = "An admin workspace for a Telegram digital-product shop: manage products, inventory, orders, customer wallets, bot messages and NOWPayments configuration. Live integrations remain disabled until securely connected and approved."
+version = "1.0.0"
+id = "artifacts/telecart"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18237
+
+[services.development]
+run = "pnpm --filter @workspace/telecart run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/telecart", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/telecart/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18237"
+BASE_PATH = "/"

@@ -1,0 +1,241 @@
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@layer theme, base, clerk, components, utilities;
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import '@clerk/themes/shadcn.css';
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-card-border: hsl(var(--card-border));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-popover-border: hsl(var(--popover-border));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary-border: var(--primary-border);
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-secondary-border: var(--secondary-border);
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-muted-border: var(--muted-border);
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-accent-border: var(--accent-border);
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-destructive-border: var(--destructive-border);
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+  --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-primary-border: var(--sidebar-primary-border);
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-accent-border: var(--sidebar-accent-border);
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+  --color-signal: hsl(var(--signal));
+  --color-signal-soft: hsl(var(--signal-soft));
+  --color-ok: hsl(var(--ok));
+  --color-ink: hsl(var(--ink));
+
+  --font-sans: var(--app-font-sans);
+  --font-serif: var(--app-font-serif);
+  --font-mono: var(--app-font-mono);
+  --font-display: 'Bricolage Grotesque', sans-serif;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* Telecart palette: "ledger & dispatch" — warm receipt paper, deep dispatch ink,
+   a saturated Telegram-sky signal blue for actions, and a tangerine "invoice" accent
+   reserved for setup-required / attention states. */
+:root {
+  --button-outline: rgba(20, 30, 60, 0.12);
+  --badge-outline: rgba(20, 30, 60, 0.08);
+  --opaque-button-border-intensity: -8;
+  --elevate-1: rgba(20, 40, 80, 0.04);
+  --elevate-2: rgba(20, 40, 80, 0.09);
+
+  --background: 42 33% 96%;
+  --foreground: 224 38% 13%;
+  --border: 36 18% 85%;
+  --card: 44 40% 99%;
+  --card-foreground: 224 38% 13%;
+  --card-border: 36 18% 86%;
+  --sidebar: 225 40% 12%;
+  --sidebar-foreground: 40 25% 88%;
+  --sidebar-border: 225 30% 20%;
+  --sidebar-primary: 201 92% 56%;
+  --sidebar-primary-foreground: 225 40% 10%;
+  --sidebar-accent: 225 32% 18%;
+  --sidebar-accent-foreground: 40 30% 96%;
+  --sidebar-ring: 201 92% 56%;
+  --popover: 44 40% 99%;
+  --popover-foreground: 224 38% 13%;
+  --popover-border: 36 18% 84%;
+  --primary: 203 89% 41%;
+  --primary-foreground: 44 50% 98%;
+  --secondary: 38 26% 90%;
+  --secondary-foreground: 224 38% 16%;
+  --muted: 38 22% 91%;
+  --muted-foreground: 224 12% 42%;
+  --accent: 203 70% 92%;
+  --accent-foreground: 205 80% 24%;
+  --destructive: 356 70% 48%;
+  --destructive-foreground: 44 50% 98%;
+  --input: 36 16% 80%;
+  --ring: 203 89% 41%;
+  --chart-1: 203 89% 41%;
+  --chart-2: 22 92% 52%;
+  --chart-3: 160 55% 36%;
+  --chart-4: 224 38% 30%;
+  --chart-5: 44 80% 50%;
+  --signal: 22 90% 50%;
+  --signal-soft: 28 95% 93%;
+  --ok: 158 58% 32%;
+  --ink: 225 40% 12%;
+
+  --app-font-sans: 'Instrument Sans', system-ui, sans-serif;
+  --app-font-serif: 'Bricolage Grotesque', serif;
+  --app-font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --radius: 0.625rem;
+  --shadow-2xs: 0 1px 0 0 hsl(224 40% 20% / 0.04);
+  --shadow-xs: 0 1px 2px 0 hsl(224 40% 20% / 0.05);
+  --shadow-sm: 0 1px 2px 0 hsl(224 40% 20% / 0.06), 0 1px 1px -1px hsl(224 40% 20% / 0.05);
+  --shadow: 0 2px 4px -1px hsl(224 40% 20% / 0.07), 0 1px 2px -1px hsl(224 40% 20% / 0.05);
+  --shadow-md: 0 6px 14px -4px hsl(224 40% 20% / 0.1), 0 2px 4px -2px hsl(224 40% 20% / 0.06);
+  --shadow-lg: 0 14px 30px -10px hsl(224 40% 20% / 0.16);
+  --shadow-xl: 0 22px 40px -14px hsl(224 40% 20% / 0.2);
+  --shadow-2xl: 0 30px 60px -20px hsl(224 40% 20% / 0.26);
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+
+  --sidebar-primary-border: hsl(var(--sidebar-primary));
+  --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --sidebar-accent-border: hsl(var(--sidebar-accent));
+  --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --primary-border: hsl(var(--primary));
+  --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --secondary-border: hsl(var(--secondary));
+  --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --muted-border: hsl(var(--muted));
+  --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --accent-border: hsl(var(--accent));
+  --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --destructive-border: hsl(var(--destructive));
+  --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+}
+
+.dark {
+  --button-outline: rgba(255, 255, 255, 0.1);
+  --badge-outline: rgba(255, 255, 255, 0.05);
+  --opaque-button-border-intensity: 9;
+  --elevate-1: rgba(255, 255, 255, 0.04);
+  --elevate-2: rgba(255, 255, 255, 0.09);
+  --background: 225 38% 9%;
+  --foreground: 40 25% 92%;
+  --border: 225 25% 20%;
+  --card: 225 35% 12%;
+  --card-foreground: 40 25% 92%;
+  --card-border: 225 25% 20%;
+  --sidebar: 225 40% 7%;
+  --sidebar-foreground: 40 25% 88%;
+  --sidebar-border: 225 30% 16%;
+  --sidebar-primary: 201 92% 56%;
+  --sidebar-primary-foreground: 225 40% 10%;
+  --sidebar-accent: 225 32% 16%;
+  --sidebar-accent-foreground: 40 30% 96%;
+  --sidebar-ring: 201 92% 56%;
+  --popover: 225 35% 12%;
+  --popover-foreground: 40 25% 92%;
+  --popover-border: 225 25% 22%;
+  --primary: 201 92% 56%;
+  --primary-foreground: 225 40% 10%;
+  --secondary: 225 28% 18%;
+  --secondary-foreground: 40 25% 92%;
+  --muted: 225 28% 16%;
+  --muted-foreground: 225 12% 65%;
+  --accent: 205 50% 20%;
+  --accent-foreground: 201 92% 80%;
+  --destructive: 356 70% 55%;
+  --destructive-foreground: 40 25% 96%;
+  --input: 225 22% 28%;
+  --ring: 201 92% 56%;
+  --chart-1: 201 92% 56%;
+  --chart-2: 22 92% 58%;
+  --chart-3: 160 55% 45%;
+  --chart-4: 40 25% 80%;
+  --chart-5: 44 80% 55%;
+  --signal: 22 92% 58%;
+  --signal-soft: 22 50% 18%;
+  --ok: 158 50% 50%;
+  --ink: 225 40% 7%;
+}
+
+@layer base {
+  * { @apply border-border; }
+  body { @apply font-sans antialiased bg-background text-foreground; }
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 100;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -0.02em; }
+}
+
+.masked { -webkit-text-security: disc; }
+.tabular { font-variant-numeric: tabular-nums; }
+.dotgrid {
+  background-image: radial-gradient(hsl(var(--foreground) / 0.08) 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+.tg-wall {
+  background-color: hsl(203 40% 86%);
+  background-image: radial-gradient(hsl(203 50% 70% / 0.5) 1px, transparent 1.5px);
+  background-size: 18px 18px;
+}
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.rise { animation: rise 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+@keyframes pop { from { opacity: 0; transform: translateY(6px) scale(0.97); } to { opacity: 1; transform: none; } }
+.pop { animation: pop 0.28s cubic-bezier(0.2, 0.8, 0.3, 1.2) both; }
+
+.cl-formFieldInput::placeholder { color: hsl(224 12% 55%); opacity: 1; }
+.cl-formButtonPrimary:hover { filter: brightness(1.08); }
+
+@layer utilities {
+  input[type='search']::-webkit-search-cancel-button { @apply hidden; }
+  [contenteditable][data-placeholder]:empty::before { content: attr(data-placeholder); color: hsl(var(--muted-foreground)); pointer-events: none; }
+  .no-default-hover-elevate {}
+  .no-default-active-elevate {}
+  .toggle-elevate::before, .toggle-elevate-2::before { content: ''; pointer-events: none; position: absolute; inset: 0px; border-radius: inherit; z-index: -1; }
+  .toggle-elevate.toggle-elevated::before { background-color: var(--elevate-2); }
+  .border.toggle-elevate::before { inset: -1px; }
+  .hover-elevate:not(.no-default-hover-elevate), .active-elevate:not(.no-default-active-elevate), .hover-elevate-2:not(.no-default-hover-elevate), .active-elevate-2:not(.no-default-active-elevate) { position: relative; z-index: 0; }
+  .hover-elevate:not(.no-default-hover-elevate)::after, .active-elevate:not(.no-default-active-elevate)::after, .hover-elevate-2:not(.no-default-hover-elevate)::after, .active-elevate-2:not(.no-default-active-elevate)::after { content: ''; pointer-events: none; position: absolute; inset: 0px; border-radius: inherit; z-index: 999; }
+  .hover-elevate:hover:not(.no-default-hover-elevate)::after, .active-elevate:active:not(.no-default-active-elevate)::after { background-color: var(--elevate-1); }
+  .hover-elevate-2:hover:not(.no-default-hover-elevate)::after, .active-elevate-2:active:not(.no-default-active-elevate)::after { background-color: var(--elevate-2); }
+  .border.hover-elevate:not(.no-hover-interaction-elevate)::after, .border.active-elevate:not(.no-active-interaction-elevate)::after, .border.hover-elevate-2:not(.no-hover-interaction-elevate)::after, .border.active-elevate-2:not(.no-active-interaction-elevate)::after { inset: -1px; }
+}

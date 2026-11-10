@@ -1,0 +1,113 @@
+import { Router, type IRouter } from "express";
+import { getAuth } from "@clerk/express";
+import { and, desc, eq } from "drizzle-orm";
+import { db, shopSettings, shopActivity } from "@workspace/db";
+import {
+  GetOverviewResponse, ListOrdersResponse, ListCustomersResponse, ListDepositsResponse,
+  ListActivityResponse, SaveSettingsBody, SaveSettingsResponse,
+} from "@workspace/api-zod";
+import { productsForOwner, recordsForOwner, settingsForOwner, recordActivity } from "../lib/shop-store";
+import productRouter from "./shop-products";
+import { getClerkProxyHost } from "../middlewares/clerkProxyMiddleware";
+
+const router: IRouter = Router();
+const writes = new Map<string, { count: number; expires: number }>();
+
+router.use((req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  if (["GET", "HEAD", "OPTIONS"].includes(req.method)) { next(); return; }
+  const ownerId = getAuth(req).userId;
+  if (!ownerId) { res.status(401).json({ error: "Sign in to manage your private shop." }); return; }
+  const origin = req.get("origin");
+  if (origin) {
+    try {
+      if (new URL(origin).host !== getClerkProxyHost(req)) {
+        res.status(403).json({ error: "Cross-origin changes are not permitted." }); return;
+      }
+    } catch { res.status(403).json({ error: "Invalid request origin." }); return; }
+  }
+  const now = Date.now();
+  if (writes.size > 10000) for (const [id, item] of writes) if (item.expires < now) writes.delete(id);
+  const current = writes.get(ownerId);
+  const entry = current && current.expires > now ? current : { count: 0, expires: now + 60000 };
+  entry.count += 1;
+  writes.set(ownerId, entry);
+  if (entry.count > 60) { res.status(429).json({ error: "Too many changes. Wait a minute and try again." }); return; }
+  next();
+});
+
+router.use(productRouter);
+
+router.get("/overview", async (req, res): Promise<void> => {
+  const ownerId = getAuth(req).userId;
+  const [products, settings, rawOrders, rawCustomers] = await Promise.all([
+    productsForOwner(ownerId), settingsForOwner(ownerId),
+    recordsForOwner(ownerId, "order"), recordsForOwner(ownerId, "customer"),
+  ]);
+  const orders = ListOrdersResponse.parse(rawOrders);
+  const customers = ListCustomersResponse.parse(rawCustomers);
+  const revenue = orders.filter((order) => ["paid", "delivered"].includes(order.status))
+    .reduce((total, order) => total + Math.round(order.amount * 100), 0) / 100;
+  res.json(GetOverviewResponse.parse({
+    isDemo: !ownerId, revenue, orderCount: orders.length, customerCount: customers.length,
+    walletBalance: customers.reduce((total, customer) => total + Math.round(customer.walletBalance * 100), 0) / 100,
+    productCount: products.length, stockCount: products.reduce((total, product) => total + product.stock, 0),
+    pendingPayments: orders.filter((order) => order.status === "pending").length,
+    botConnected: false, paymentsConnected: false,
+    recentOrders: orders.slice(0, 5), topProducts: products.slice(0, 4),
+    checklist: [
+      { label: "Add your first product", complete: Boolean(ownerId && products.length), href: "/products" },
+      { label: "Customize your bot", complete: Boolean(ownerId && settings.botUsername), href: "/bot" },
+      { label: "Add product inventory", complete: products.some((product) => product.stock > 0), href: "/inventory" },
+      { label: "Connect Telegram", complete: false, href: "/bot" },
+      { label: "Set up NOWPayments", complete: false, href: "/payments" },
+    ],
+  }));
+});
+
+router.get("/settings", async (req, res): Promise<void> => {
+  res.json(await settingsForOwner(getAuth(req).userId));
+});
+
+router.put("/settings", async (req, res): Promise<void> => {
+  const body = SaveSettingsBody.safeParse(req.body);
+  if (!body.success || !body.data.shopName.trim() || !body.data.welcomeMessage.trim()) {
+    res.status(400).json({ error: "Check the shop name, welcome message, payment preferences and menu labels." }); return;
+  }
+  const labels = [body.data.productsLabel, body.data.supportLabel, body.data.walletLabel, body.data.ordersLabel].map((label) => label.trim());
+  if (labels.some((label) => !label) || new Set(labels).size !== labels.length) {
+    res.status(400).json({ error: "Menu labels must be non-empty and different from one another." }); return;
+  }
+  if (new Set(body.data.acceptedCoins).size !== body.data.acceptedCoins.length) {
+    res.status(400).json({ error: "Choose each payment currency only once." }); return;
+  }
+  const ownerId = getAuth(req).userId!;
+  const preferences = { ...body.data, shopName: body.data.shopName.trim() };
+  await db.insert(shopSettings).values({ ownerId, preferences }).onConflictDoUpdate({
+    target: shopSettings.ownerId, set: { preferences, updatedAt: new Date() },
+  });
+  await recordActivity(ownerId, "Shop settings saved", "Bot and payment preferences updated. Live integrations remain disconnected.", "settings");
+  res.json(SaveSettingsResponse.parse(await settingsForOwner(ownerId)));
+});
+
+router.get("/orders", async (req, res): Promise<void> => {
+  res.json(ListOrdersResponse.parse(await recordsForOwner(getAuth(req).userId, "order")));
+});
+router.get("/customers", async (req, res): Promise<void> => {
+  res.json(ListCustomersResponse.parse(await recordsForOwner(getAuth(req).userId, "customer")));
+});
+router.get("/deposits", async (req, res): Promise<void> => {
+  res.json(ListDepositsResponse.parse(await recordsForOwner(getAuth(req).userId, "deposit")));
+});
+router.get("/activity", async (req, res): Promise<void> => {
+  const ownerId = getAuth(req).userId;
+  if (!ownerId) { res.json([]); return; }
+  const rows = await db.select({
+    id: shopActivity.id, title: shopActivity.title, description: shopActivity.description,
+    type: shopActivity.type, createdAt: shopActivity.createdAt,
+  }).from(shopActivity).where(and(eq(shopActivity.ownerId, ownerId))).orderBy(desc(shopActivity.createdAt)).limit(20);
+  res.json(ListActivityResponse.parse(rows.map((row) => ({ ...row, createdAt: row.createdAt.toISOString() }))));
+});
+
+export default router;
