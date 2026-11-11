@@ -3,7 +3,8 @@ import { and, desc, eq } from "drizzle-orm";
 import { db, pool, botCustomers, botUpdates, shopPayments } from "@workspace/db";
 import { activeConnection } from "./commerce-connection";
 import { CommerceError, moneyCents, telegram } from "./commerce-providers";
-import { cancelCustomerInvoice, createCheckout, checkPayment, sendCheckout } from "./commerce-payments";
+import { createCheckout, checkPayment, sendCheckout } from "./commerce-payments";
+import { dismissCustomerMessage } from "./telegram-navigation";
 import { productsForOwner, settingsForOwner } from "./shop-store";
 import { getBotRuntime } from "./bot-runtime";
 import { customerMessageText, depositCoinPrompt, depositPrompt, walletSummary } from "./telegram-copy";
@@ -64,11 +65,10 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         await telegram("answerCallbackQuery", { callback_query_id: update.callback_query.id }).catch(() => undefined);
       }
       if (data === "cancel_home") {
-        if (message.photo?.length && Number.isSafeInteger(message.message_id)) {
-          await cancelCustomerInvoice(connection.ownerId, customer!.id, message.message_id!);
-        }
+        const removed = Number.isSafeInteger(message.message_id)
+          ? await dismissCustomerMessage(connection.ownerId, customer!.id, message.message_id!) : true;
         await db.update(botCustomers).set({ state: {} }).where(eq(botCustomers.id, customer!.id));
-        await send(`${settings.welcomeMessage}${message.photo?.length ? "\n\n🏠 Returned to the home menu.\nDo not send funds to a cancelled invoice. Any payment already sent will still be checked automatically." : ""}`, {
+        await send(`${settings.welcomeMessage}${message.photo?.length ? "\n\n🏠 Returned to the home menu.\nAny payment already sent will still be checked automatically." : ""}${removed ? "" : "\n\nTelegram no longer allows deleting this older message. Its buttons have been disabled."}`, {
           keyboard: labels.map(row => row.map(label => ({ text: label }))), resize_keyboard: true, is_persistent: true,
         });
       } else if (data.startsWith("check:")) {

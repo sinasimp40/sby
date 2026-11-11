@@ -7,6 +7,7 @@ import { checkProviderMinimum, moneyCents, nowpayments, ProviderRejectedError, s
 import { cancelCustomerInvoice, checkPayment, getPayment } from "../src/lib/commerce-payments";
 import { reconcilePaymentBatch } from "../src/lib/payment-reconciliation";
 import { recordsForOwner } from "../src/lib/shop-store";
+import { dismissCustomerMessage } from "../src/lib/telegram-navigation";
 
 test("provider minimums, QR and automatic amount-verified deposits", async t => {
   if (process.env.NODE_ENV === "production") throw new Error("Development tests only.");
@@ -19,6 +20,7 @@ test("provider minimums, QR and automatic amount-verified deposits", async t => 
   let rejectCreate = false;
   let timeoutCreate = false;
   let provider: ProviderPayment;
+  let deletionError = "";
   globalThis.fetch = async (url, init) => {
     const target = String(url);
     if (target.startsWith("https://api.nowpayments.io/v1/min-amount?")) {
@@ -30,9 +32,12 @@ test("provider minimums, QR and automatic amount-verified deposits", async t => 
       if (rejectCreate) return new Response(JSON.stringify({ code: "AMOUNT_MINIMAL_ERROR", message: "RAW PROVIDER BODY MUST NOT ESCAPE" }), { status: 400 });
       throw new Error("Unexpected invoice creation blocked");
     }
-    if (target === "https://api.nowpayments.io/v1/payment/999999991") return new Response(JSON.stringify(provider));
+    if (/https:\/\/api\.nowpayments\.io\/v1\/payment\/99999999[12]$/.test(target)) return new Response(JSON.stringify(provider));
     if (target.startsWith("https://api.telegram.org/")) {
       sent.push({ method: target.slice(target.lastIndexOf("/") + 1), body: init?.body instanceof FormData ? init.body : JSON.parse(String(init?.body ?? "{}")) });
+      if (target.endsWith("/deleteMessage") && deletionError) {
+        return new Response(JSON.stringify({ ok: false, error_code: 400, description: deletionError }), { status: 400 });
+      }
       return new Response(JSON.stringify({ ok: true, result: { message_id: 1 } }));
     }
     throw new Error("Unexpected network request blocked");
@@ -133,6 +138,43 @@ test("provider minimums, QR and automatic amount-verified deposits", async t => 
       assert.deepEqual(JSON.parse(photo.body.get("reply_markup")), {
         inline_keyboard: [[{ text: "✖️ Cancel", callback_data: "cancel_home" }]],
       });
+    });
+    await t.test("cancel deletes text prompts, safely handles missing messages and disables undeletable old buttons", async () => {
+      await assert.rejects(dismissCustomerMessage("OTHER_OWNER", customerId, 999));
+      assert.equal(await dismissCustomerMessage(owner, customerId, 999), true);
+      assert.deepEqual(sent.at(-1)!.body, { chat_id: "TEST_ONLY_CHAT", message_id: 999 });
+      deletionError = "Bad Request: message to delete not found";
+      assert.equal(await dismissCustomerMessage(owner, customerId, 999), true);
+      deletionError = "Bad Request: message can't be deleted";
+      assert.equal(await dismissCustomerMessage(owner, customerId, 998), false);
+      assert.equal(sent.at(-1)!.method, "editMessageReplyMarkup");
+      assert.deepEqual(sent.at(-1)!.body.reply_markup, { inline_keyboard: [] });
+      deletionError = "";
+    });
+    await t.test("deleted QR stays cancelled in history and a late payment still credits exactly once", async () => {
+      const lateId = randomUUID();
+      await db.insert(shopPayments).values({
+        id: lateId, requestKey: `TEST-${randomUUID()}`, ownerId: owner, customerId,
+        kind: "deposit", amountCents: 1000, coin: "ltc", providerPaymentId: "999999992",
+        address: "TEST_ONLY_ADDRESS", payAmount: "1.4", status: "waiting",
+        rateMode: "floating", invoiceMessageId: 222, expiresAt: new Date(Date.now() + 600000),
+      });
+      assert.equal(await dismissCustomerMessage(owner, customerId, 222), true);
+      const dismissed = (await getPayment(lateId))!;
+      assert.ok(dismissed.cancelledAt);
+      assert.equal(dismissed.invoiceMessageId, null);
+      assert.equal(dismissed.invoiceNeedsUpdate, false);
+      assert.equal(dismissed.providerPaymentId, "999999992");
+      assert.equal(dismissed.status, "waiting");
+      assert.equal((await recordsForOwner(owner, "deposit")).find(p => p.id === lateId)!.status, "cancelled");
+      provider = { ...provider, payment_id: "999999992", order_id: lateId, payment_status: "finished", actually_paid: "1.4" };
+      const editCount = sent.filter(s => s.method === "editMessageCaption").length;
+      await checkPayment(lateId);
+      await checkPayment(lateId);
+      assert.equal((await getPayment(lateId))!.fulfillment, "credited");
+      assert.equal((await db.select().from(walletEntries).where(eq(walletEntries.paymentId, lateId))).length, 1);
+      assert.equal((await db.select().from(botCustomers).where(eq(botCustomers.id, customerId)))[0]!.balanceCents, 2000);
+      assert.equal(sent.filter(s => s.method === "editMessageCaption").length, editCount, "deleted QR is not edited again");
     });
   } finally {
     globalThis.fetch = savedFetch;

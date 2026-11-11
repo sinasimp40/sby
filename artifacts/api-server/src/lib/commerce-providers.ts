@@ -42,6 +42,8 @@ async function telegramRequest<T>(method: string, body: Record<string, unknown> 
     if (!response.ok || !result.ok) {
       const d = result.description?.toLowerCase() ?? "";
       const reason = d.includes("message is not modified") ? "not_modified" :
+        method === "deleteMessage" && d.includes("message to delete not found") ? "message_missing" :
+        method === "deleteMessage" && d.includes("message can't be deleted") ? "cannot_delete" :
         d.includes("terminated by other getupdates") ? "other_poller" :
         d.includes("webhook is active") ? "webhook_active" : "provider_error";
       throw new TelegramRequestError(method, result.error_code ?? response.status, reason);
