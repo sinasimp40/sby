@@ -3,12 +3,14 @@ import { and, desc, eq } from "drizzle-orm";
 import { db, pool, botCustomers, botUpdates, shopPayments } from "@workspace/db";
 import { activeConnection } from "./commerce-connection";
 import { CommerceError, moneyCents, telegram } from "./commerce-providers";
-import { createCheckout, checkPayment, sendCheckout } from "./commerce-payments";
+import { cancelCustomerPayment, createCheckout, checkPayment, invoiceDetails, sendCheckout } from "./commerce-payments";
 import { dismissCustomerMessage } from "./telegram-navigation";
 import { productsForOwner, settingsForOwner } from "./shop-store";
 import { getBotRuntime } from "./bot-runtime";
 import { customerMessageText, depositCoinPrompt, depositPrompt, walletSummary } from "./telegram-copy";
 import { telegramCustomerName, type TelegramCustomerProfile } from "./telegram-customer-name";
+import { customerPendingPayments, pendingPaymentsMenu, PendingPaymentsError } from "./pending-payments";
+import { paymentCaption } from "./payment-message";
 
 interface TelegramMessage {
   message_id?: number;
@@ -58,6 +60,10 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
     ];
     const text = message.text?.trim() ?? "";
     const data = update.callback_query?.data ?? "";
+    const showPending = async () => {
+      const menu = pendingPaymentsMenu(await customerPendingPayments(connection.ownerId, customer!.id));
+      await send(menu.text, menu.reply_markup, "HTML");
+    };
     try {
       if (update.callback_query) {
         // Acknowledge promptly; this has no financial side effects.
@@ -72,6 +78,35 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         await send(`${settings.welcomeMessage}${message.photo?.length ? "\n\n🏠 Returned to the home menu.\nAny payment already sent will still be checked automatically." : ""}${removed ? "" : "\n\nTelegram no longer allows deleting this older message. Its buttons have been disabled."}`, {
           keyboard: labels.map(row => row.map(label => ({ text: label }))), resize_keyboard: true, is_persistent: true,
         });
+      } else if (data === "pending" || text === "/pending") {
+        await showPending();
+      } else if (data.startsWith("pending_view:") || data.startsWith("pending_cancel:")) {
+        const id = data.slice(data.indexOf(":") + 1);
+        const [payment] = await db.select().from(shopPayments).where(and(
+          eq(shopPayments.id, id), eq(shopPayments.ownerId, connection.ownerId), eq(shopPayments.customerId, customer!.id),
+        ));
+        if (!payment || payment.kind === "wallet") throw new CommerceError("Payment not found.");
+        if (data.startsWith("pending_cancel:")) {
+          const complete = Boolean(payment.deliveredAt) || ["allocated", "credited", "delivered"].includes(payment.fulfillment);
+          if (!complete) {
+            await cancelCustomerPayment(connection.ownerId, customer!.id, payment.id);
+            if (payment.invoiceMessageId) await dismissCustomerMessage(connection.ownerId, customer!.id, payment.invoiceMessageId);
+          }
+          if (Number.isSafeInteger(message.message_id) && message.message_id !== payment.invoiceMessageId) {
+            await dismissCustomerMessage(connection.ownerId, customer!.id, message.message_id!);
+          }
+          await send(complete ? "✅ This payment is already complete. Nothing was cancelled." : "✅ Payment selection cancelled. Transfers already sent will still be checked.");
+          await showPending();
+        } else if (payment.address && payment.payAmount && payment.expiresAt) {
+          await send(paymentCaption(invoiceDetails(payment)), { inline_keyboard: [
+            [{ text: "✖️ Cancel invoice", callback_data: `pending_cancel:${payment.id}` }],
+            [{ text: "⬅️ Pending payments", callback_data: "pending" }],
+          ] }, "HTML");
+        } else {
+          await send("⏳ Payment details are not available yet. Do not create a replacement if you already sent funds.", {
+            inline_keyboard: [[{ text: "✖️ Cancel selection", callback_data: `pending_cancel:${payment.id}` }, { text: "⬅️ Back", callback_data: "pending" }]],
+          });
+        }
       } else if (data.startsWith("check:")) {
         const id = data.slice(6);
         const [payment] = await db.select().from(shopPayments).where(and(eq(shopPayments.id, id), eq(shopPayments.customerId, customer!.id)));
@@ -96,11 +131,17 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
             [{ text: "Add funds to wallet", callback_data: "deposit" }],
           ],
         });
-      } else if (data === "deposit") {
-        await db.update(botCustomers).set({ state: { type: "deposit-amount" } }).where(eq(botCustomers.id, customer!.id));
-        await send(depositPrompt(settings.minDeposit), {
-          inline_keyboard: [[{ text: "✖️ Cancel", callback_data: "cancel_home" }]],
-        }, "HTML");
+      } else if (data === "deposit" || data === "deposit_new") {
+        const pending = await customerPendingPayments(connection.ownerId, customer!.id);
+        if (pending.length && data === "deposit") {
+          await showPending();
+        } else {
+          if (pending.length >= 3) throw new PendingPaymentsError();
+          await db.update(botCustomers).set({ state: { type: "deposit-amount" } }).where(eq(botCustomers.id, customer!.id));
+          await send(depositPrompt(settings.minDeposit), {
+            inline_keyboard: [[{ text: "✖️ Cancel", callback_data: "cancel_home" }]],
+          }, "HTML");
+        }
       } else if (data.startsWith("pay:") || data.startsWith("wal:")) {
         const parts = data.split(":");
         const state = customer!.state;
@@ -136,7 +177,10 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         await send(`${settings.supportMessage}${settings.supportUsername ? `\n@${settings.supportUsername.replace(/^@/, "")}` : ""}`);
       } else if ([settings.walletLabel, labels[1]![0], "/wallet"].includes(text)) {
         await send(walletSummary(customer!.balanceCents, settings.minDeposit), {
-          inline_keyboard: [[{ text: "Deposit", callback_data: "deposit" }]],
+          inline_keyboard: [
+            [{ text: "💳 Deposit", callback_data: "deposit" }],
+            [{ text: "⏳ Pending payments", callback_data: "pending" }],
+          ],
         }, "HTML");
       } else if ([settings.ordersLabel, labels[1]![1], "/orders"].includes(text)) {
         const orders = await db.select().from(shopPayments).where(eq(shopPayments.customerId, customer!.id)).orderBy(desc(shopPayments.createdAt)).limit(10);
@@ -160,7 +204,8 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
     } catch (error) {
       if (!(error instanceof CommerceError)) throw error;
       if (error.status === 502 || error.status === 503) throw error; // Telegram retries; requestKey prevents duplicate financial writes.
-      await send(error.message);
+      if (error instanceof PendingPaymentsError) await showPending();
+      else await send(error.message);
     }
     await db.insert(botUpdates).values({ id: eventId }).onConflictDoNothing();
   } finally {

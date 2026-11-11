@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, notInArray, sql } from "drizzle-orm";
 import { db, pool, botCustomers, shopPayments, shopInventory, shopProducts, walletEntries, shopActivity } from "@workspace/db";
 import { CommerceError, TelegramRequestError, ProviderRejectedError, checkProviderMinimum, decimalAtLeast, nowpayments, type ProviderPayment, sendPaymentQr, telegram } from "./commerce-providers";
 import { decryptCredential } from "./inventory-encryption";
@@ -8,6 +8,7 @@ import { activeConnection } from "./commerce-connection";
 import { paymentCaption, paymentKeyboard, paymentStatusLabel, type InvoiceMessage } from "./payment-message";
 import { customerMessageText, depositReceipt } from "./telegram-copy";
 import { logger } from "./logger";
+import { assertPendingPaymentLimit } from "./pending-payments";
 
 export type Payment = typeof shopPayments.$inferSelect;
 const terminal = ["failed", "expired", "refunded"];
@@ -26,6 +27,20 @@ export async function cancelCustomerInvoice(ownerId: string, customerId: string,
     eq(shopPayments.ownerId, ownerId), eq(shopPayments.customerId, customerId),
     eq(shopPayments.invoiceMessageId, messageId), eq(shopPayments.kind, "deposit"),
     isNull(shopPayments.cancelledAt), isNull(shopPayments.deliveredAt),
+    notInArray(shopPayments.fulfillment, ["allocated", "credited", "delivered"]),
+  )).returning();
+  if (payment) await refreshPaymentMessage(payment.id);
+  return payment;
+}
+
+export async function cancelCustomerPayment(ownerId: string, customerId: string, id: string) {
+  const [payment] = await db.update(shopPayments).set({
+    cancelledAt: new Date(), invoiceNeedsUpdate: sql`${shopPayments.invoiceMessageId} is not null`, updatedAt: new Date(),
+  }).where(and(
+    eq(shopPayments.id, id), eq(shopPayments.ownerId, ownerId), eq(shopPayments.customerId, customerId),
+    inArray(shopPayments.kind, ["deposit", "purchase"]),
+    isNull(shopPayments.cancelledAt), isNull(shopPayments.deliveredAt),
+    notInArray(shopPayments.fulfillment, ["allocated", "credited", "delivered"]),
   )).returning();
   if (payment) await refreshPaymentMessage(payment.id);
   return payment;
@@ -50,7 +65,10 @@ export async function createCheckout(input: {
   if (!input.wallet && !settings.acceptedCoins.some(c => c.toLowerCase() === input.coin)) throw new CommerceError("That coin is not accepted.");
   const requestKey = `${input.customerId}:${input.token}`;
   const [prior] = await db.select().from(shopPayments).where(and(eq(shopPayments.requestKey, requestKey), eq(shopPayments.ownerId, input.ownerId)));
-  if (prior) return prior;
+  if (prior) {
+    if (prior.cancelledAt) throw new CommerceError("This invoice was cancelled. Open Wallet → Deposit for a new selection.");
+    return prior;
+  }
   if (!input.wallet) {
     const cents = input.expectedAmountCents ?? input.depositCents;
     if (!cents || !Number.isSafeInteger(cents)) throw new CommerceError("Invalid payment amount.");
@@ -63,11 +81,17 @@ export async function createCheckout(input: {
     )).for("update");
     if (!customer) throw new CommerceError("Customer not found.");
     const [existing] = await tx.select().from(shopPayments).where(eq(shopPayments.requestKey, requestKey));
-    if (existing) return { payment: existing, created: false };
-    const pending = await tx.select({ id: shopPayments.id }).from(shopPayments).where(and(
-      eq(shopPayments.customerId, customer.id), inArray(shopPayments.status, ["creating", "waiting", "confirming", "confirmed", "sending", "partially_paid"]),
-    ));
-    if (pending.length >= 3) throw new CommerceError("You already have three pending payments. Complete or check one first.");
+    if (existing) {
+      if (existing.cancelledAt) throw new CommerceError("This invoice was cancelled. Open Wallet → Deposit for a new selection.");
+      return { payment: existing, created: false };
+    }
+    if (!input.wallet) {
+      const pending = await tx.select().from(shopPayments).where(and(
+        eq(shopPayments.ownerId, input.ownerId), eq(shopPayments.customerId, customer.id),
+        inArray(shopPayments.status, ["creating", "waiting", "confirming", "confirmed", "sending", "partially_paid"]),
+      ));
+      assertPendingPaymentLimit(false, pending);
+    }
     let product: typeof shopProducts.$inferSelect | undefined;
     let stock: typeof shopInventory.$inferSelect | undefined;
     if (input.productId) {

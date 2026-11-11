@@ -26,3 +26,9 @@ Provider minimums depend on the coin, payout route and fixed-rate/fee settings; 
 **Why:** A deposit at the shop's minimum was below the selected route's provider minimum and appeared as an unexplained manual-review error.
 
 **How to apply:** Ask the provider for the same route/flags before reserving stock or creating an attempt. Never silently increase a buyer's amount. Distinguish a known validation rejection from a timeout that could already have created a payable invoice.
+
+Pending crypto deposits must not block purchases using existing wallet balance. Offer a Telegram pending-payments menu with view and cancel actions instead of a dead-end payment-limit error.
+
+**Why:** The user had a funded wallet but could not buy because old crypto invoices consumed the three-payment limit, and explicitly requested controls to resolve pending invoices.
+
+**How to apply:** Apply the pending limit only to new crypto invoices, excluding customer-cancelled and expired unpaid quotes. Cancellation changes customer intent, not provider truth; keep late-payment verification and exactly-once wallet crediting intact.

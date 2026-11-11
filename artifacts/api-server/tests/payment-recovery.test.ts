@@ -4,10 +4,11 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db, pool, botCustomers, shopPayments, walletEntries, shopActivity } from "@workspace/db";
 import { checkProviderMinimum, moneyCents, nowpayments, ProviderRejectedError, sendPaymentQr, type ProviderPayment } from "../src/lib/commerce-providers";
-import { cancelCustomerInvoice, checkPayment, getPayment } from "../src/lib/commerce-payments";
+import { cancelCustomerInvoice, cancelCustomerPayment, checkPayment, getPayment } from "../src/lib/commerce-payments";
 import { reconcilePaymentBatch } from "../src/lib/payment-reconciliation";
 import { recordsForOwner } from "../src/lib/shop-store";
 import { dismissCustomerMessage } from "../src/lib/telegram-navigation";
+import { assertPendingPaymentLimit, customerPendingPayments } from "../src/lib/pending-payments";
 
 test("provider minimums, QR and automatic amount-verified deposits", async t => {
   if (process.env.NODE_ENV === "production") throw new Error("Development tests only.");
@@ -175,6 +176,33 @@ test("provider minimums, QR and automatic amount-verified deposits", async t => 
       assert.equal((await db.select().from(walletEntries).where(eq(walletEntries.paymentId, lateId))).length, 1);
       assert.equal((await db.select().from(botCustomers).where(eq(botCustomers.id, customerId)))[0]!.balanceCents, 2000);
       assert.equal(sent.filter(s => s.method === "editMessageCaption").length, editCount, "deleted QR is not edited again");
+    });
+    await t.test("pending list is customer-scoped and cancellation without a QR frees a deposit slot", async () => {
+      const ids = [randomUUID(), randomUUID(), randomUUID()];
+      await db.insert(shopPayments).values(ids.map(id => ({
+        id, requestKey: `TEST-${randomUUID()}`, ownerId: owner, customerId,
+        kind: "deposit", amountCents: 500, coin: "sol", status: "waiting",
+        expiresAt: new Date(Date.now() + 600000),
+      })));
+      const pending = await customerPendingPayments(owner, customerId);
+      assert.equal(pending.length, 3);
+      assert.throws(() => assertPendingPaymentLimit(false, pending));
+      assert.doesNotThrow(() => assertPendingPaymentLimit(true, pending));
+      assert.equal((await customerPendingPayments("OTHER_OWNER", customerId)).length, 0);
+      assert.equal((await customerPendingPayments(owner, "OTHER_CUSTOMER")).length, 0);
+      assert.equal(await cancelCustomerPayment("OTHER_OWNER", customerId, ids[0]!), undefined);
+      assert.equal(await cancelCustomerPayment(owner, "OTHER_CUSTOMER", ids[0]!), undefined);
+      await cancelCustomerPayment(owner, customerId, ids[0]!);
+      const cancelled = (await getPayment(ids[0]!))!;
+      assert.ok(cancelled.cancelledAt);
+      assert.equal(cancelled.status, "waiting");
+      assert.equal(cancelled.invoiceMessageId, null);
+      assert.equal(cancelled.invoiceNeedsUpdate, false);
+      assert.equal((await customerPendingPayments(owner, customerId)).length, 2);
+      await db.update(shopPayments).set({ expiresAt: new Date(Date.now() - 1) }).where(eq(shopPayments.id, ids[1]!));
+      const remaining = await customerPendingPayments(owner, customerId);
+      assert.equal(remaining.length, 1);
+      assert.doesNotThrow(() => assertPendingPaymentLimit(false, remaining));
     });
   } finally {
     globalThis.fetch = savedFetch;
