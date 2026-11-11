@@ -12,7 +12,7 @@ export function PaymentAttemptsPanel() {
   const { toast } = useToast();
   return (
     <Panel title="Live payment attempts" meta="latest 200 · refreshes every 15s">
-      <p className="mb-3 text-xs text-muted-foreground">Checks query NOWPayments directly. No admin action can mark an invoice paid. “Review” requires investigation before retrying; stock stays reserved if invoice creation was uncertain.</p>
+      <p className="mb-3 text-xs text-muted-foreground">Recent pending invoices are checked automatically against NOWPayments about every 30 seconds while the server runs. Only a fully paid, finished payment credits a wallet or releases stock. “Review” requires investigation; uncertain invoices are never blindly recreated.</p>
       {payments.isError ? <ErrorState message="Could not load payments" onRetry={() => payments.refetch()} /> :
         payments.isLoading ? <p className="text-sm text-muted-foreground">Loading payments…</p> :
         !payments.data?.length ? <p className="py-4 text-sm text-muted-foreground">No real payment attempts yet. Invoices appear here when a customer chooses a payment method in the connected bot.</p> : (
@@ -21,7 +21,7 @@ export function PaymentAttemptsPanel() {
             <tbody>{payments.data.map(p => <tr key={p.id} className="border-b" data-testid={`payment-row-${p.id}`}>
               <td className="p-2"><div className="font-mono" title={p.id}>{p.id.slice(0, 8)}</div><div className="text-muted-foreground">{p.customer}</div><div className="font-mono text-muted-foreground">{p.providerPaymentId || "No provider ID"}</div></td>
               <td className="p-2"><div>{p.productName}</div><div>{money(p.amount)} · {p.currency}</div></td>
-              <td className="p-2">{p.status}</td><td className="p-2">{p.fulfillment}</td>
+              <td className="p-2"><div>{p.status}</div><div className="text-muted-foreground">Expected: {p.payAmount ?? "—"} {p.currency}</div><div className="text-muted-foreground">Received: {p.receivedAmount ?? "Not checked"} {p.currency}</div><div className="text-muted-foreground">{p.lastCheckedAt ? `Checked ${new Date(p.lastCheckedAt).toLocaleTimeString()}` : "Awaiting first check"}</div></td><td className="p-2">{p.fulfillment}</td>
               <td className="p-2"><Button size="sm" variant="outline" disabled={check.isPending || (!p.providerPaymentId && p.kind !== "wallet")} onClick={() => check.mutate({ id: p.id }, {
                 onSuccess: () => { qc.invalidateQueries(); toast({ title: "Payment checked", description: "Provider status and fulfillment have been refreshed." }); },
                 onError: e => toast({ title: "Check failed", description: errMsg(e), variant: "destructive" }),

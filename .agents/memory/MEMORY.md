@@ -1,3 +1,4 @@
 - [Payment provider requirement](payment-provider.md) — User explicitly requires NOWPayments QR invoices for purchases and deposits; do not silently substitute Stars.
 - [Shared dependency upgrades](dependency-upgrades.md) — Vite optimizer resolution can stay stale after a pnpm catalog upgrade despite matching installed React versions.
 - [Checkout integrity](commerce-integrity.md) — shared bot credentials need explicit owner binding; ambiguous provider/delivery results must not consume new stock.
+- [Dashboard sign-in requirement](admin-access.md) — user explicitly requires admin-and-password dashboard access without OTP.

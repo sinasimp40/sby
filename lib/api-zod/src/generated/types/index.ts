@@ -7,6 +7,8 @@
  */
 
 export * from './activity';
+export * from './adminCredentials';
+export * from './adminSession';
 export * from './checklistItem';
 export * from './customer';
 export * from './deposit';

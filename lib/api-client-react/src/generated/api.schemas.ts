@@ -5,6 +5,27 @@
  * Telecart shop administration. Live Telegram and payments are not connected.
  * OpenAPI spec version: 0.1.0
  */
+export interface AdminCredentials {
+  /**
+     * @minLength 3
+     * @maxLength 254
+     */
+  email: string;
+  /**
+     * @minLength 1
+     * @maxLength 256
+     */
+  password: string;
+}
+
+export interface AdminSession {
+  signedIn: boolean;
+  /** @nullable */
+  ownerId: string | null;
+  /** @nullable */
+  email: string | null;
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -225,6 +246,12 @@ export interface PaymentAttempt {
   fulfillment: string;
   /** @nullable */
   providerPaymentId: string | null;
+  /** @nullable */
+  payAmount: string | null;
+  /** @nullable */
+  receivedAmount: string | null;
+  /** @nullable */
+  lastCheckedAt: string | null;
   createdAt: string;
 }
 

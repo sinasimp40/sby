@@ -39,6 +39,8 @@ export const shopPayments = pgTable("shop_payments", {
   providerPaymentId: text("provider_payment_id").unique(),
   address: text("address"),
   payAmount: text("pay_amount"),
+  receivedAmount: text("received_amount"),
+  lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
   extraId: text("extra_id"),
   network: text("network"),
   expiresAt: timestamp("expires_at", { withTimezone: true }),

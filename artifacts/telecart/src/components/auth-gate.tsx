@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
-import { useUser } from "@clerk/react";
+import { useAdminAuth } from "@/hooks/use-admin-auth";
 import { Link } from "wouter";
 import { Lock } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -9,7 +9,7 @@ type Ctx = { isSignedIn: boolean; isLoaded: boolean; requireAuth: (action: strin
 const AuthGateContext = createContext<Ctx>({ isSignedIn: false, isLoaded: false, requireAuth: () => false });
 
 export function AuthGateProvider({ children }: { children: ReactNode }) {
-  const { isSignedIn, isLoaded } = useUser();
+  const { isSignedIn, isLoaded } = useAdminAuth();
   const [action, setAction] = useState<string | null>(null);
   const requireAuth = useCallback(
     (a: string) => {
@@ -30,14 +30,10 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
             </div>
             <DialogTitle className="font-display text-xl">Sign in to {action}</DialogTitle>
             <DialogDescription>
-              You are looking at the public preview. Nothing here is saved. Sign in to open your own private
-              shop workspace — it starts empty and only you can see it.
+              You are looking at the public preview. Sign in with the configured admin email and password to manage the private shop.
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button variant="outline" asChild onClick={() => setAction(null)}>
-              <Link href="/sign-up" data-testid="link-gate-sign-up">Create shop</Link>
-            </Button>
             <Button asChild onClick={() => setAction(null)}>
               <Link href="/sign-in" data-testid="link-gate-sign-in">Sign in</Link>
             </Button>

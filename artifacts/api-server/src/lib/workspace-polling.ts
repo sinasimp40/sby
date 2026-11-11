@@ -1,6 +1,6 @@
 import { pool } from "@workspace/db";
 import { activeConnection } from "./commerce-connection";
-import { telegram } from "./commerce-providers";
+import { telegram, TelegramRequestError } from "./commerce-providers";
 import { handleTelegramUpdate, type TelegramUpdate } from "./telegram-shop";
 import { logger } from "./logger";
 
@@ -54,8 +54,11 @@ export async function runWorkspacePolling() {
           });
           offset = await pollBatch(updates, handleTelegramUpdate, offset);
           if (updates.length) logger.info({ count: updates.length }, "Telegram messages processed successfully.");
-        } catch {
-          logger.warn("Workspace Telegram processing failed; unacknowledged messages will retry.");
+        } catch (error) {
+          logger.warn({
+            stage: error instanceof TelegramRequestError ? error.operation : "update_handler",
+            providerStatus: error instanceof TelegramRequestError ? error.providerStatus : undefined,
+          }, "Workspace Telegram processing failed; unacknowledged messages will retry.");
           await delay(3000);
         }
       }

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { getAuth } from "@clerk/express";
+import { getShopAuth as getAuth } from "../lib/admin-auth";
 import { desc, eq, and } from "drizzle-orm";
 import { db, botConnections, shopPayments, botCustomers } from "@workspace/db";
 import { GetIntegrationResponse, ConnectIntegrationBody, CheckPaymentAttemptParams, ListPaymentAttemptsResponse, CheckPaymentAttemptResponse } from "@workspace/api-zod";
@@ -17,6 +17,7 @@ export async function paymentAttempts(ownerId: string | null) {
     id: p.id, kind: p.kind, customer, productName: p.productName, amount: p.amountCents / 100,
     currency: p.coin.toUpperCase(), status: p.status, fulfillment: p.fulfillment,
     providerPaymentId: p.providerPaymentId, createdAt: p.createdAt.toISOString(),
+    payAmount: p.payAmount, receivedAmount: p.receivedAmount, lastCheckedAt: p.lastCheckedAt?.toISOString() ?? null,
   }));
 }
 router.get("/integration", async (req, res): Promise<void> => {

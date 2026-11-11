@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db, pool, botCustomers, shopPayments, shopInventory, shopProducts, walletEntries, shopActivity } from "@workspace/db";
-import { CommerceError, decimalAtLeast, nowpayments, type ProviderPayment, sendPaymentQr, telegram } from "./commerce-providers";
+import { CommerceError, ProviderRejectedError, checkProviderMinimum, decimalAtLeast, nowpayments, type ProviderPayment, sendPaymentQr, telegram } from "./commerce-providers";
 import { decryptCredential } from "./inventory-encryption";
 import { settingsForOwner } from "./shop-store";
 import { activeConnection } from "./commerce-connection";
@@ -24,6 +24,13 @@ export async function createCheckout(input: {
   if (settings.maintenanceMode) throw new CommerceError("The shop is under maintenance. Please try later.");
   if (!input.wallet && !settings.acceptedCoins.some(c => c.toLowerCase() === input.coin)) throw new CommerceError("That coin is not accepted.");
   const requestKey = `${input.customerId}:${input.token}`;
+  const [prior] = await db.select().from(shopPayments).where(and(eq(shopPayments.requestKey, requestKey), eq(shopPayments.ownerId, input.ownerId)));
+  if (prior) return prior;
+  if (!input.wallet) {
+    const cents = input.expectedAmountCents ?? input.depositCents;
+    if (!cents || !Number.isSafeInteger(cents)) throw new CommerceError("Invalid payment amount.");
+    await checkProviderMinimum(input.coin, cents);
+  }
   const result = await db.transaction(async tx => {
     // Serialize ALL balance changes/invoice creation for this customer.
     const [customer] = await tx.select().from(botCustomers).where(and(
@@ -80,6 +87,23 @@ export async function createCheckout(input: {
       !decimalAtLeast(p.pay_amount, "0.000000000000000001") ||
       !Number.isFinite(Number(p.price_amount)) || Math.abs(Number(p.price_amount) * 100 - result.payment.amountCents) > 0.00001 ||
       p.price_currency?.toLowerCase() !== "usd") throw new CommerceError("Provider returned an inconsistent invoice.", 502);
+    // Preserve provider identity immediately. A missing quote field must not
+    // strand a successfully created invoice without its reconciliation ID.
+    await db.update(shopPayments).set({
+      providerPaymentId: String(p.payment_id), address: p.pay_address, payAmount: String(p.pay_amount),
+      extraId: p.payin_extra_id || null, network: p.network || input.coin.toUpperCase(),
+      status: p.payment_status, updatedAt: new Date(),
+    }).where(eq(shopPayments.id, result.payment.id));
+    if (!p.expiration_estimate_date && p.payment_status === "waiting") {
+      const estimate = await nowpayments<{ id: string | number; pay_amount: string | number; expiration_estimate_date: string }>(
+        `/payment/${encodeURIComponent(String(p.payment_id))}/update-merchant-estimate`, {},
+      );
+      if (String(estimate.id) !== String(p.payment_id) || !decimalAtLeast(estimate.pay_amount, "0.000000000000000001")) {
+        throw new CommerceError("Provider estimate did not match this invoice.", 502);
+      }
+      p.pay_amount = estimate.pay_amount;
+      p.expiration_estimate_date = estimate.expiration_estimate_date;
+    }
     const quoteExpiry = p.expiration_estimate_date ? new Date(p.expiration_estimate_date) : null;
     if (!quoteExpiry || !Number.isFinite(quoteExpiry.getTime()) || quoteExpiry.getTime() <= Date.now()) {
       throw new CommerceError("Provider returned no usable quote expiry.", 502);
@@ -92,6 +116,15 @@ export async function createCheckout(input: {
     }).where(eq(shopPayments.id, result.payment.id)).returning();
     return saved!;
   } catch (error) {
+    if (error instanceof ProviderRejectedError) {
+      await db.transaction(async tx => {
+        const [p] = await tx.select().from(shopPayments).where(eq(shopPayments.id, result.payment.id)).for("update");
+        if (!p || p.providerPaymentId) return;
+        if (p.inventoryId) await tx.update(shopInventory).set({ status: "available" }).where(and(eq(shopInventory.id, p.inventoryId), eq(shopInventory.status, "reserved")));
+        await tx.update(shopPayments).set({ status: "rejected", fulfillment: "rejected", inventoryId: null, updatedAt: new Date() }).where(eq(shopPayments.id, p.id));
+      });
+      throw error;
+    }
     // A timeout does not prove the provider failed to create a payment.
     // Keep the reservation; never recreate the same payment or silently free its stock.
     await db.update(shopPayments).set({ fulfillment: "review", updatedAt: new Date() }).where(eq(shopPayments.id, result.payment.id));
@@ -109,7 +142,8 @@ export function matchesInvoice(payment: Payment, provider: ProviderPayment) {
     Number.isFinite(Number(provider.price_amount)) &&
     Math.abs(Number(provider.price_amount) * 100 - payment.amountCents) < 0.00001 &&
     provider.pay_currency?.toLowerCase() === payment.coin &&
-    provider.pay_address === payment.address && (provider.payin_extra_id ?? null) === payment.extraId;
+    provider.pay_address === payment.address && (provider.payin_extra_id || null) === payment.extraId &&
+    decimalAtLeast(provider.pay_amount, payment.payAmount) && decimalAtLeast(payment.payAmount, provider.pay_amount);
 }
 
 export async function checkPayment(id: string) {
@@ -125,6 +159,7 @@ export async function checkPayment(id: string) {
     await db.update(shopPayments).set({ fulfillment: "review" }).where(eq(shopPayments.id, id));
     throw new CommerceError("Provider payment identity or amount does not match. Manual review required.", 409);
   }
+  if (!decimalAtLeast(provider.actually_paid ?? "0", "0")) throw new CommerceError("Provider returned an invalid received amount.", 502);
   await applyVerifiedPayment(payment.id, provider);
   await deliverPayment(payment.id);
   return (await getPayment(id))!;
@@ -136,6 +171,10 @@ export async function applyVerifiedPayment(id: string, provider: ProviderPayment
     const [p] = await tx.select().from(shopPayments).where(eq(shopPayments.id, id)).for("update");
     if (!p || !matchesInvoice(p, provider)) throw new CommerceError("Payment mismatch.", 409);
     if (["allocated", "delivered", "credited"].includes(p.fulfillment)) return;
+    if (!decimalAtLeast(provider.actually_paid ?? "0", "0")) throw new CommerceError("Provider returned an invalid received amount.", 502);
+    await tx.update(shopPayments).set({
+      receivedAmount: String(provider.actually_paid ?? "0"), lastCheckedAt: new Date(), updatedAt: new Date(),
+    }).where(eq(shopPayments.id, p.id));
     if (provider.payment_status === "finished") {
       // Be conservative about partial, wrong-asset and additional/child deposits.
       if (!decimalAtLeast(provider.actually_paid, p.payAmount)) {
@@ -209,7 +248,8 @@ export async function sendCheckout(payment: Payment) {
   if (payment.kind === "wallet") { await deliverPayment(payment.id); return; }
   const [customer] = await db.select().from(botCustomers).where(eq(botCustomers.id, payment.customerId));
   if (!customer) throw new CommerceError("Customer not found.");
-  if (!payment.address || !payment.payAmount || !payment.expiresAt) throw new CommerceError("Invoice needs manual review. Please contact support.");
+  if (payment.status === "rejected") throw new CommerceError("NOWPayments rejected this invoice. Use Wallet → Deposit to start a new deposit with a higher amount or another coin.");
+  if (!payment.address || !payment.payAmount || !payment.expiresAt) throw new CommerceError("This earlier invoice could not be created safely. No QR is available. Use Wallet → Deposit for a new attempt; contact support about this reference if you already sent funds.");
   if (payment.expiresAt.getTime() < Date.now()) throw new CommerceError("This quote has expired. Do not send funds. Use Check payment for any funds already sent.");
   if (payment.status !== "waiting") {
     await telegram("sendMessage", { chat_id: customer.chatId, text: `Payment status: ${payment.status}. Use Check payment for updates.` });

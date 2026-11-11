@@ -9,6 +9,39 @@ tags:
   - name: health
   - name: shop
 paths:
+  /admin/session:
+    get:
+      operationId: getAdminSession
+      tags: [shop]
+      responses:
+        "200":
+          description: Current admin session
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminSession" }
+  /admin/login:
+    post:
+      operationId: loginAdmin
+      tags: [shop]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminCredentials" }
+      responses:
+        "200":
+          description: Admin signed in
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminSession" }
+        "401": { description: Invalid credentials }
+        "429": { description: Too many attempts }
+  /admin/logout:
+    post:
+      operationId: logoutAdmin
+      tags: [shop]
+      responses:
+        "204": { description: Session revoked }
   /healthz:
     get:
       operationId: healthCheck
@@ -225,6 +258,20 @@ paths:
               schema: { $ref: "#/components/schemas/PaymentAttempt" }
 components:
   schemas:
+    AdminCredentials:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email: { type: string, minLength: 3, maxLength: 254 }
+        password: { type: string, minLength: 1, maxLength: 256 }
+    AdminSession:
+      type: object
+      required: [signedIn, ownerId, email]
+      properties:
+        signedIn: { type: boolean }
+        ownerId: { type: ["string", "null"] }
+        email: { type: ["string", "null"] }
     HealthStatus:
       type: object
       required: [status]
@@ -362,7 +409,7 @@ components:
         settlementStatus: { type: string, enum: [finished] }
     PaymentAttempt:
       type: object
-      required: [id, kind, customer, productName, amount, currency, status, fulfillment, providerPaymentId, createdAt]
+      required: [id, kind, customer, productName, amount, currency, status, fulfillment, providerPaymentId, createdAt, payAmount, receivedAmount, lastCheckedAt]
       properties:
         id: { type: string }
         kind: { type: string }
@@ -373,6 +420,9 @@ components:
         status: { type: string }
         fulfillment: { type: string }
         providerPaymentId: { type: ["string", "null"] }
+        payAmount: { type: ["string", "null"] }
+        receivedAmount: { type: ["string", "null"] }
+        lastCheckedAt: { type: ["string", "null"] }
         createdAt: { type: string }
     SettingsInput:
       type: object

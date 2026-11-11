@@ -8,6 +8,35 @@
 import * as zod from 'zod';
 
 
+export const GetAdminSessionResponse = zod.object({
+  "signedIn": zod.boolean(),
+  "ownerId": zod.string().nullable(),
+  "email": zod.string().nullable()
+})
+
+
+export const loginAdminBodyEmailMin = 3;
+export const loginAdminBodyEmailMax = 254;
+
+export const loginAdminBodyPasswordMax = 256;
+
+
+
+export const LoginAdminBody = zod.object({
+  "email": zod.string().min(loginAdminBodyEmailMin).max(loginAdminBodyEmailMax),
+  "password": zod.string().min(1).max(loginAdminBodyPasswordMax)
+})
+
+export const LoginAdminResponse = zod.object({
+  "signedIn": zod.boolean(),
+  "ownerId": zod.string().nullable(),
+  "email": zod.string().nullable()
+})
+
+
+export const LogoutAdminResponse = zod.void()
+
+
 export const HealthCheckResponse = zod.object({
   "status": zod.string()
 })
@@ -444,6 +473,9 @@ export const ListPaymentAttemptsResponseItem = zod.object({
   "status": zod.string(),
   "fulfillment": zod.string(),
   "providerPaymentId": zod.string().nullable(),
+  "payAmount": zod.string().nullable(),
+  "receivedAmount": zod.string().nullable(),
+  "lastCheckedAt": zod.string().nullable(),
   "createdAt": zod.string()
 })
 export const ListPaymentAttemptsResponse = zod.array(ListPaymentAttemptsResponseItem)
@@ -463,6 +495,9 @@ export const CheckPaymentAttemptResponse = zod.object({
   "status": zod.string(),
   "fulfillment": zod.string(),
   "providerPaymentId": zod.string().nullable(),
+  "payAmount": zod.string().nullable(),
+  "receivedAmount": zod.string().nullable(),
+  "lastCheckedAt": zod.string().nullable(),
   "createdAt": zod.string()
 })
 

@@ -1,11 +1,10 @@
 import express, { type Express, type ErrorRequestHandler } from "express";
 import cors from "cors";
-import { clerkMiddleware } from "@clerk/express";
-import { publishableKeyFromHost } from "@clerk/shared/keys";
+import cookieParser from "cookie-parser";
+import { adminSessionMiddleware } from "./lib/admin-auth";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
-import { CLERK_PROXY_PATH, clerkProxyMiddleware, getClerkProxyHost } from "./middlewares/clerkProxyMiddleware";
 import { CommerceError } from "./lib/commerce-providers";
 
 const app: Express = express();
@@ -29,19 +28,12 @@ app.use(
     },
   }),
 );
-app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 app.use(cors({ credentials: true, origin: false }));
 app.use(express.json({ limit: "150kb" }));
 app.use(express.urlencoded({ extended: true }));
 
-app.use(
-  clerkMiddleware((req) => ({
-    publishableKey: publishableKeyFromHost(
-      getClerkProxyHost(req) ?? "",
-      process.env.CLERK_PUBLISHABLE_KEY,
-    ),
-  })),
-);
+app.use(cookieParser());
+app.use(adminSessionMiddleware);
 
 app.use("/api", router);
 

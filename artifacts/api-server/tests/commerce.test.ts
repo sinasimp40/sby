@@ -34,6 +34,9 @@ test("finished-only checkout, stock allocation, wallet ledger and Telegram deliv
       sent.push({ method, body });
       return new Response(JSON.stringify({ ok: true, result: { message_id: sent.length } }), { status: 200 });
     }
+    if (target.startsWith("https://api.nowpayments.io/v1/min-amount?")) {
+      return new Response(JSON.stringify({ fiat_equivalent: 1 }), { status: 200 });
+    }
     if (target === "https://api.nowpayments.io/v1/payment" && init?.method === "POST") {
       apiCreates++;
       if (failNextCreate) { failNextCreate = false; throw new Error("Mock creation timeout"); }

@@ -17,5 +17,11 @@ export interface PaymentAttempt {
   fulfillment: string;
   /** @nullable */
   providerPaymentId: string | null;
+  /** @nullable */
+  payAmount: string | null;
+  /** @nullable */
+  receivedAmount: string | null;
+  /** @nullable */
+  lastCheckedAt: string | null;
   createdAt: string;
 }

@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
-import { useClerk, useUser } from "@clerk/react";
+import { useAdminAuth } from "@/hooks/use-admin-auth";
 import { LayoutDashboard, Package, KeyRound, Receipt, Users, Wallet, Bot, CreditCard, Settings2, Menu, LogOut, Eye, LogIn } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -67,30 +67,30 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 function Account() {
-  const { user, isSignedIn, isLoaded } = useUser();
-  const { signOut } = useClerk();
+  const { user, isSignedIn, isLoaded, signOut } = useAdminAuth();
+  const [, navigate] = useLocation();
+  const [logoutError, setLogoutError] = useState("");
   if (!isLoaded) return <div className="m-3 h-14 animate-pulse rounded-lg bg-sidebar-accent/50" />;
   if (!isSignedIn) {
     return (
       <div className="m-3 rounded-lg border border-sidebar-border bg-sidebar-accent/40 p-3">
         <div className="text-xs text-sidebar-foreground/70">You are viewing the public preview.</div>
-        <div className="mt-2.5 grid grid-cols-2 gap-1.5">
+        <div className="mt-2.5">
           <Button size="sm" asChild className="bg-sidebar-primary text-sidebar-primary-foreground"><Link href="/sign-in" data-testid="link-sign-in"><LogIn className="mr-1 h-3.5 w-3.5" />Sign in</Link></Button>
-          <Button size="sm" variant="outline" asChild className="border-sidebar-border bg-transparent text-sidebar-foreground hover:bg-sidebar-accent"><Link href="/sign-up" data-testid="link-sign-up">Create</Link></Button>
         </div>
       </div>
     );
   }
-  const name = user?.firstName || user?.username || user?.primaryEmailAddress?.emailAddress || "Owner";
+  const name = user?.email || "Admin";
   const initials = name.slice(0, 2).toUpperCase();
   return (
     <div className="m-3 flex items-center gap-2.5 rounded-lg border border-sidebar-border bg-sidebar-accent/40 p-2.5">
       <div className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-sidebar-primary font-mono text-xs font-semibold text-sidebar-primary-foreground">{initials}</div>
       <div className="min-w-0 flex-1">
         <div className="truncate text-[13px] font-medium text-sidebar-accent-foreground" data-testid="text-user-name">{name}</div>
-        <div className="truncate text-[11px] text-sidebar-foreground/50">{user?.primaryEmailAddress?.emailAddress}</div>
+        <div className="truncate text-[11px] text-sidebar-foreground/50">{logoutError || "Shop administrator"}</div>
       </div>
-      <button onClick={() => signOut({ redirectUrl: basePath || "/" })} className="rounded-md p-1.5 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" title="Sign out" data-testid="button-sign-out">
+      <button onClick={() => void signOut().then(() => navigate("/")).catch(() => setLogoutError("Sign-out failed. Try again."))} className="rounded-md p-1.5 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" title="Sign out" data-testid="button-sign-out">
         <LogOut className="h-4 w-4" />
       </button>
     </div>
@@ -98,7 +98,7 @@ function Account() {
 }
 
 function ModeBanner() {
-  const { isSignedIn, isLoaded } = useUser();
+  const { isSignedIn, isLoaded } = useAdminAuth();
   const settings = useGetSettings({ query: { enabled: Boolean(isSignedIn), refetchInterval: 30000 } });
   if (!isLoaded) return null;
   if (isSignedIn) {
@@ -107,7 +107,7 @@ function ModeBanner() {
         <span className="h-1.5 w-1.5 rounded-full bg-ok" />
         <span>Private workspace</span>
         <span className="text-border">/</span>
-        <span>{settings.data?.botConnected && settings.data?.paymentsConnected ? <>Bot webhook configured · NOWPayments fulfillment waits for <b>finished</b>.</> : <>Telegram bot and NOWPayments need <b className="font-semibold text-signal">activation</b> before live orders can arrive.</>}</span>
+        <span>{settings.data?.botConnected && settings.data?.paymentsConnected ? <>Bot connected · NOWPayments fulfillment waits for <b>finished</b>.</> : <>Telegram bot and NOWPayments need <b className="font-semibold text-signal">activation</b> before live orders can arrive.</>}</span>
       </div>
     );
   }

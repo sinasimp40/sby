@@ -4,6 +4,12 @@ import QRCode from "qrcode";
 export class CommerceError extends Error {
   constructor(message: string, public status = 400) { super(message); }
 }
+export class ProviderRejectedError extends CommerceError {}
+export class TelegramRequestError extends CommerceError {
+  constructor(public operation: string, public providerStatus: number) {
+    super("Telegram could not complete the request. Try again.", 502);
+  }
+}
 
 // Never propagate provider response bodies/errors: they can contain tokens or payment details.
 export async function telegram<T = Record<string, unknown>>(method: string, body: Record<string, unknown> | FormData = {}): Promise<T> {
@@ -15,10 +21,13 @@ export async function telegram<T = Record<string, unknown>>(method: string, body
       method: "POST", headers: multipart ? undefined : { "content-type": "application/json" },
       body: multipart ? body : JSON.stringify(body), signal: AbortSignal.timeout(12000),
     });
-    const result = await response.json() as { ok: boolean; result: T };
-    if (!response.ok || !result.ok) throw new Error();
+    const result = await response.json() as { ok: boolean; result: T; error_code?: number };
+    if (!response.ok || !result.ok) throw new TelegramRequestError(method, result.error_code ?? response.status);
     return result.result;
-  } catch { throw new CommerceError("Telegram could not complete the request. Try again.", 502); }
+  } catch (error) {
+    if (error instanceof TelegramRequestError) throw error;
+    throw new TelegramRequestError(method, 0);
+  }
 }
 
 export interface ProviderPayment {
@@ -44,9 +53,37 @@ export async function nowpayments<T = ProviderPayment>(path: string, body?: Reco
       headers: { "x-api-key": key, "content-type": "application/json" },
       body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(12000),
     });
-    if (!response.ok) throw new Error();
+    if (!response.ok) {
+      const failure = await response.json().catch(() => ({})) as { code?: string };
+      // Only known validation failures prove no payable invoice was created.
+      // Never propagate raw provider messages or mark network/server errors safe.
+      const messages: Record<string, string> = {
+        AMOUNT_MINIMAL_ERROR: "This amount is below NOWPayments' current minimum for this coin. Start a new deposit with a higher amount or another coin.",
+        CURRENCY_NOT_FOUND: "That currency is not currently available at NOWPayments. Choose another coin.",
+        INVALID_REQUEST_PARAMS: "NOWPayments rejected the invoice settings. Please contact the shop admin.",
+      };
+      if (response.status >= 400 && response.status < 500 && failure.code && messages[failure.code]) {
+        throw new ProviderRejectedError(messages[failure.code], 400);
+      }
+      throw new Error();
+    }
     return await response.json() as T;
-  } catch { throw new CommerceError("NOWPayments could not complete the request. The amount may be below its minimum, or the provider may be unavailable.", 502); }
+  } catch (error) {
+    if (error instanceof ProviderRejectedError) throw error;
+    throw new CommerceError("NOWPayments could not complete the request. Try again shortly or contact support.", 502);
+  }
+}
+
+export async function checkProviderMinimum(coin: string, amountCents: number) {
+  const minimum = await nowpayments<{ fiat_equivalent: number | string }>(
+    `/min-amount?currency_from=${encodeURIComponent(coin)}&fiat_equivalent=usd&is_fixed_rate=true&is_fee_paid_by_user=false`,
+  );
+  const usd = Number(minimum.fiat_equivalent);
+  if (!Number.isFinite(usd) || usd <= 0) throw new CommerceError("NOWPayments did not return a usable minimum. Please try another coin.", 502);
+  const cents = Math.ceil(usd * 100);
+  if (amountCents < cents) {
+    throw new CommerceError(`NOWPayments currently requires at least $${(cents / 100).toFixed(2)} for ${coin.toUpperCase()}. No invoice was created. Use Wallet → Deposit to enter a higher amount, or choose another coin.`);
+  }
 }
 
 export function webhookSecret() {

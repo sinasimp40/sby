@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { getAuth } from "@clerk/express";
+import { getShopAuth as getAuth, requireSameOrigin } from "../lib/admin-auth";
 import { and, desc, eq } from "drizzle-orm";
 import { db, shopSettings, shopActivity } from "@workspace/db";
 import {
@@ -8,7 +8,6 @@ import {
 } from "@workspace/api-zod";
 import { productsForOwner, recordsForOwner, settingsForOwner, recordActivity } from "../lib/shop-store";
 import productRouter from "./shop-products";
-import { getClerkProxyHost } from "../middlewares/clerkProxyMiddleware";
 import commerceRouter from "./shop-commerce";
 
 const router: IRouter = Router();
@@ -20,14 +19,7 @@ router.use((req, res, next) => {
   if (["GET", "HEAD", "OPTIONS"].includes(req.method)) { next(); return; }
   const ownerId = getAuth(req).userId;
   if (!ownerId) { res.status(401).json({ error: "Sign in to manage your private shop." }); return; }
-  const origin = req.get("origin");
-  if (origin) {
-    try {
-      if (new URL(origin).host !== getClerkProxyHost(req)) {
-        res.status(403).json({ error: "Cross-origin changes are not permitted." }); return;
-      }
-    } catch { res.status(403).json({ error: "Invalid request origin." }); return; }
-  }
+  if (!requireSameOrigin(req)) { res.status(403).json({ error: "Cross-origin changes are not permitted." }); return; }
   const now = Date.now();
   if (writes.size > 10000) for (const [id, item] of writes) if (item.expires < now) writes.delete(id);
   const current = writes.get(ownerId);

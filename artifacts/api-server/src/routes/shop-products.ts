@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { getAuth } from "@clerk/express";
+import { getShopAuth as getAuth } from "../lib/admin-auth";
 import { and, eq } from "drizzle-orm";
 import { db, shopProducts, shopInventory, shopActivity } from "@workspace/db";
 import {

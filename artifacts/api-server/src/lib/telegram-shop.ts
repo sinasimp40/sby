@@ -63,7 +63,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         const [payment] = await db.select().from(shopPayments).where(and(eq(shopPayments.id, id), eq(shopPayments.customerId, customer!.id)));
         if (!payment) throw new CommerceError("Payment not found.");
         const checked = await checkPayment(payment.id);
-        await send(`Payment status: ${checked.status}\nDelivery / wallet credit: ${checked.fulfillment}${checked.fulfillment === "review" ? "\nPlease contact support for review." : ""}`);
+        await send(`Payment status: ${checked.status}\nExpected: ${checked.payAmount ?? "—"} ${checked.coin.toUpperCase()}\nReceived: ${checked.receivedAmount ?? "0"} ${checked.coin.toUpperCase()}\nDelivery / wallet credit: ${checked.fulfillment}${checked.fulfillment === "review" ? "\nPlease contact support for review." : ""}`);
       } else if (/^buy:\d+$/.test(data)) {
         const products = await productsForOwner(connection.ownerId);
         const product = products.find(p => p.id === Number(data.slice(4)) && p.status === "active" && p.stock > 0);
