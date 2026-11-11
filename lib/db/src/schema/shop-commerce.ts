@@ -33,6 +33,8 @@ export const shopPayments = pgTable("shop_payments", {
   kind: text("kind").notNull(),
   productId: integer("product_id").references(() => shopProducts.id, { onDelete: "set null" }),
   inventoryId: integer("inventory_id").references(() => shopInventory.id, { onDelete: "restrict" }),
+  quantity: integer("quantity").notNull().default(1),
+  inventoryIds: jsonb("inventory_ids").$type<number[]>(),
   productName: text("product_name").notNull().default("Wallet deposit"),
   amountCents: integer("amount_cents").notNull(),
   coin: text("coin").notNull(),

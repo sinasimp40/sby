@@ -289,6 +289,50 @@ export const CancelDepositResponse = zod.object({
 })
 
 
+export const GetShopTransferStatusResponse = zod.object({
+  "empty": zod.boolean(),
+  "counts": zod.record(zod.string(), zod.number().int()),
+  "blockers": zod.array(zod.string()),
+  "reviewRequired": zod.boolean(),
+  "warnings": zod.array(zod.string())
+})
+
+
+export const ExportShopDataResponse = zod.unknown()
+
+
+export const PreviewShopDataResponse = zod.object({
+  "createdAt": zod.string(),
+  "counts": zod.record(zod.string(), zod.number().int()),
+  "archiveHash": zod.string(),
+  "confirmationToken": zod.string(),
+  "canImport": zod.boolean(),
+  "blockers": zod.array(zod.string()),
+  "warnings": zod.array(zod.string())
+})
+
+
+export const ImportShopDataHeader = zod.object({
+  "X-Transfer-Token": zod.string(),
+  "X-Transfer-Confirm": zod.enum(['IMPORT EMPTY SHOP'])
+})
+
+export const ImportShopDataResponse = zod.object({
+  "counts": zod.record(zod.string(), zod.number().int()),
+  "reviewRequired": zod.boolean()
+})
+
+
+export const ReviewShopDataBody = zod.object({
+  "sourceStopped": zod.boolean(),
+  "recordsReviewed": zod.boolean()
+})
+
+export const ReviewShopDataResponse = zod.object({
+  "reviewRequired": zod.boolean()
+})
+
+
 export const ListActivityResponseItem = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),

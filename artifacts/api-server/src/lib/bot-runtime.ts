@@ -30,7 +30,7 @@ export function legacyPublicUrl() {
 
 export async function getBotRuntime(ownerId = configuredOwnerId()): Promise<BotRuntimeConfig> {
   const [row] = ownerId ? await db.select().from(botRuntimeSettings).where(eq(botRuntimeSettings.ownerId, ownerId)) : [];
-  if (row) return { enabled: row.enabled, transport: row.transport, publicUrl: row.publicUrl };
+  if (row) return { enabled: row.enabled && !row.transferReviewRequired, transport: row.transport, publicUrl: row.publicUrl };
   return {
     enabled: process.env.TELECART_TELEGRAM_DISABLED !== "true",
     transport: process.env.NODE_ENV === "production" ? "webhook" : "polling",

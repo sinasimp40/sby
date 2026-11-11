@@ -22,7 +22,7 @@ catalogs:
       specifier: ^5.90.21
       version: 5.104.1
     '@types/node':
-      specifier: ^25.3.3
+      specifier: 25.9.9
       version: 25.9.9
     '@types/react':
       specifier: ^19.2.0
@@ -67,7 +67,7 @@ catalogs:
       specifier: ^7.3.2
       version: 7.3.7
     zod:
-      specifier: ^3.25.76
+      specifier: 3.25.76
       version: 3.25.76
 
 overrides:
@@ -196,12 +196,21 @@ importers:
       drizzle-orm:
         specifier: 'catalog:'
         version: 0.45.4(@types/pg@8.23.1)(pg@8.23.1)
+      drizzle-zod:
+        specifier: ^0.8.3
+        version: 0.8.3(drizzle-orm@0.45.4(@types/pg@8.23.1)(pg@8.23.1))(zod@3.25.76)
       express:
         specifier: ^5.3.0
         version: 5.3.0
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
       http-proxy-middleware:
         specifier: ^4.2.1
         version: 4.2.1
+      pg:
+        specifier: ^8.23.1
+        version: 8.23.1
       pino:
         specifier: ^9.14.0
         version: 9.14.0
@@ -211,6 +220,9 @@ importers:
       qrcode:
         specifier: ^1.5.4
         version: 1.5.4
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
     devDependencies:
       '@types/cookie-parser':
         specifier: ^1.4.10
@@ -224,6 +236,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 25.9.9
+      '@types/pg':
+        specifier: ^8.23.1
+        version: 8.23.1
       '@types/qrcode':
         specifier: ^1.5.6
         version: 1.5.6
@@ -641,6 +656,10 @@ importers:
       zod:
         specifier: 'catalog:'
         version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.9.9
 
   lib/db:
     dependencies:
@@ -2301,6 +2320,9 @@ packages:
     peerDependenciesMeta:
       picomatch:
         optional: true
+
+  fflate@0.8.3:
+    resolution: {integrity: sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==}
 
   figures@6.1.0:
     resolution: {integrity: sha512-d+l3qxjSesT4V7v2fh+QnmFnUWv9lSpjarhShNTgBOfA0ttejbQUAlHLitbjkoRiDulW0OPoQPYIGhIC8ohejg==}
@@ -4935,6 +4957,8 @@ snapshots:
   fdir@6.5.0(picomatch@4.0.7):
     optionalDependencies:
       picomatch: 4.0.7
+
+  fflate@0.8.3: {}
 
   figures@6.1.0:
     dependencies:

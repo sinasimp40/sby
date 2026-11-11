@@ -2,5 +2,5 @@
 - [Shared dependency upgrades](dependency-upgrades.md) — Vite optimizer resolution can stay stale after a pnpm catalog upgrade despite matching installed React versions.
 - [Checkout integrity](commerce-integrity.md) — shared bot credentials need explicit owner binding; ambiguous provider/delivery results must not consume new stock.
 - [Dashboard sign-in requirement](admin-access.md) — user explicitly requires admin-and-password dashboard access without OTP.
-- [Dashboard self-hosting controls](self-hosting.md) — user wants routine bot controls in the dashboard before moving to localhost on their computer.
-- [Animated Telegram coin icons](telegram-button-icons.md) — button icons have bot-owner eligibility restrictions; identify coin logos visually, not by ordinary emoji metadata.
+- [Self-hosting and portable transfers](self-hosting.md) — Dashboard-managed controls and complete portable shop-data ZIPs support the planned move to localhost.
+- [Static Telegram coin symbols](telegram-button-icons.md) — User replaced animated icons with static coin logos; ordinary symbols avoid bot-owner custom-emoji eligibility requirements.

@@ -206,6 +206,81 @@ paths:
         "401": { description: Sign in required }
         "404": { description: Deposit not found in this shop }
         "409": { description: Deposit is already settled or closed }
+  /shop/data-transfer:
+    get:
+      operationId: getShopTransferStatus
+      responses:
+        "200":
+          description: Destination readiness and safety requirements.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ShopTransferStatus" }
+        "401": { description: Sign in required }
+  /shop/data-transfer/export:
+    post:
+      operationId: exportShopData
+      responses:
+        "200":
+          description: One-time portable shop data ZIP.
+          content:
+            application/zip:
+              schema: { type: string, format: binary }
+        "401": { description: Sign in required }
+        "413": { description: Transfer limit exceeded }
+  /shop/data-transfer/preview:
+    post:
+      operationId: previewShopData
+      requestBody:
+        required: true
+        content:
+          application/zip:
+            schema: { $ref: "#/components/schemas/ShopTransferZip" }
+      responses:
+        "200":
+          description: Verified ZIP contents and destination blockers. No rows changed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ShopTransferPreview" }
+        "400": { description: Invalid or unauthenticated archive }
+        "401": { description: Sign in required }
+        "413": { description: ZIP exceeds transfer limit }
+  /shop/data-transfer/import:
+    post:
+      operationId: importShopData
+      parameters:
+        - { name: X-Transfer-Token, in: header, required: true, schema: { type: string } }
+        - { name: X-Transfer-Confirm, in: header, required: true, schema: { type: string, enum: [IMPORT EMPTY SHOP] } }
+      requestBody:
+        required: true
+        content:
+          application/zip:
+            schema: { $ref: "#/components/schemas/ShopTransferZip" }
+      responses:
+        "200":
+          description: All records imported atomically; processing paused.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ShopTransferResult" }
+        "400": { description: Invalid archive or missing confirmation }
+        "401": { description: Sign in required }
+        "409": { description: "Nonempty destination, expired preview or conflict. No changes committed." }
+        "413": { description: ZIP exceeds transfer limit }
+  /shop/data-transfer/review:
+    post:
+      operationId: reviewShopData
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ShopTransferReview" }
+      responses:
+        "200":
+          description: Review acknowledged; Telegram remains disabled until explicitly enabled.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ShopTransferReviewResult" }
+        "400": { description: Acknowledgement required }
+        "401": { description: Sign in required }
   /shop/activity:
     get:
       operationId: listActivity
@@ -494,6 +569,47 @@ components:
         id: { type: string }
         cancelledAt: { type: string }
         telegramUpdatePending: { type: boolean }
+    ShopTransferZip: { type: string, format: binary }
+    ShopTransferCounts:
+      type: object
+      additionalProperties: { type: integer }
+    ShopTransferStatus:
+      type: object
+      required: [empty, counts, blockers, reviewRequired, warnings]
+      properties:
+        empty: { type: boolean }
+        counts: { $ref: "#/components/schemas/ShopTransferCounts" }
+        blockers: { type: array, items: { type: string } }
+        reviewRequired: { type: boolean }
+        warnings: { type: array, items: { type: string } }
+    ShopTransferPreview:
+      type: object
+      required: [createdAt, counts, archiveHash, confirmationToken, canImport, blockers, warnings]
+      properties:
+        createdAt: { type: string }
+        counts: { $ref: "#/components/schemas/ShopTransferCounts" }
+        archiveHash: { type: string }
+        confirmationToken: { type: string }
+        canImport: { type: boolean }
+        blockers: { type: array, items: { type: string } }
+        warnings: { type: array, items: { type: string } }
+    ShopTransferResult:
+      type: object
+      required: [counts, reviewRequired]
+      properties:
+        counts: { $ref: "#/components/schemas/ShopTransferCounts" }
+        reviewRequired: { type: boolean }
+    ShopTransferReview:
+      type: object
+      required: [sourceStopped, recordsReviewed]
+      properties:
+        sourceStopped: { type: boolean }
+        recordsReviewed: { type: boolean }
+    ShopTransferReviewResult:
+      type: object
+      required: [reviewRequired]
+      properties:
+        reviewRequired: { type: boolean }
     Activity:
       type: object
       required: [id, title, description, type, createdAt]

@@ -11,6 +11,7 @@ import { productsForOwner, recordsForOwner, settingsForOwner, recordActivity } f
 import productRouter from "./shop-products";
 import commerceRouter from "./shop-commerce";
 import { revealDeliveredInventory } from "../lib/order-delivery";
+import transferRouter from "./shop-transfer";
 
 const router: IRouter = Router();
 const writes = new Map<string, { count: number; expires: number }>();
@@ -34,6 +35,7 @@ router.use((req, res, next) => {
 
 router.use(productRouter);
 router.use(commerceRouter);
+router.use(transferRouter);
 
 router.get("/overview", async (req, res): Promise<void> => {
   const ownerId = getAuth(req).userId;

@@ -232,6 +232,42 @@ export interface DepositCancellation {
   telegramUpdatePending: boolean;
 }
 
+export type ShopTransferZip = Blob;
+
+export interface ShopTransferCounts {[key: string]: number}
+
+export interface ShopTransferStatus {
+  empty: boolean;
+  counts: ShopTransferCounts;
+  blockers: string[];
+  reviewRequired: boolean;
+  warnings: string[];
+}
+
+export interface ShopTransferPreview {
+  createdAt: string;
+  counts: ShopTransferCounts;
+  archiveHash: string;
+  confirmationToken: string;
+  canImport: boolean;
+  blockers: string[];
+  warnings: string[];
+}
+
+export interface ShopTransferResult {
+  counts: ShopTransferCounts;
+  reviewRequired: boolean;
+}
+
+export interface ShopTransferReview {
+  sourceStopped: boolean;
+  recordsReviewed: boolean;
+}
+
+export interface ShopTransferReviewResult {
+  reviewRequired: boolean;
+}
+
 export interface Activity {
   id: number;
   title: string;

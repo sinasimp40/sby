@@ -1,5 +1,5 @@
 import { and, asc, eq, gt, isNotNull, isNull, lt, or } from "drizzle-orm";
-import { db, pool, shopPayments } from "@workspace/db";
+import { db, pool, shopPayments, botRuntimeSettings } from "@workspace/db";
 import { configuredOwnerId } from "./admin-bootstrap";
 import { checkPayment } from "./commerce-payments";
 import { logger } from "./logger";
@@ -9,6 +9,8 @@ import { logger } from "./logger";
 export async function reconcilePaymentBatch() {
   const owner = configuredOwnerId();
   if (!owner) return;
+  const [transfer] = await db.select({ pending: botRuntimeSettings.transferReviewRequired }).from(botRuntimeSettings).where(eq(botRuntimeSettings.ownerId, owner));
+  if (transfer?.pending) return;
   const client = await pool.connect();
   let locked = false;
   try {

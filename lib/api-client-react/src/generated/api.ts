@@ -48,6 +48,11 @@ import type {
   ProductInput,
   SettingsInput,
   ShopSettings,
+  ShopTransferPreview,
+  ShopTransferResult,
+  ShopTransferReview,
+  ShopTransferReviewResult,
+  ShopTransferStatus,
   TelegramCredentialInput,
   TelegramCredentialResult,
   TelegramRuntimeInput
@@ -1508,6 +1513,415 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getCancelDepositMutationOptions(options), queryClient);
+    }
+
+export const getGetShopTransferStatusUrl = () => {
+
+
+
+
+  return `/api/shop/data-transfer`
+}
+
+export const getShopTransferStatus = async ( options?: Parameters<typeof customFetch>[1]): Promise<ShopTransferStatus> => {
+
+  return customFetch<ShopTransferStatus>(getGetShopTransferStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetShopTransferStatusQueryKey = () => {
+    return [
+    `/api/shop/data-transfer`
+    ] as const;
+    }
+
+
+export const getGetShopTransferStatusQueryOptions = <TData = Awaited<ReturnType<typeof getShopTransferStatus>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getShopTransferStatus>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetShopTransferStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getShopTransferStatus>>> = ({ signal }) => getShopTransferStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getShopTransferStatus>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetShopTransferStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getShopTransferStatus>>>
+export type GetShopTransferStatusQueryError = ErrorType<void>
+
+
+export function useGetShopTransferStatus<TData = Awaited<ReturnType<typeof getShopTransferStatus>>, TError = ErrorType<void>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getShopTransferStatus>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getShopTransferStatus>>,
+          TError,
+          Awaited<ReturnType<typeof getShopTransferStatus>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetShopTransferStatus<TData = Awaited<ReturnType<typeof getShopTransferStatus>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getShopTransferStatus>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getShopTransferStatus>>,
+          TError,
+          Awaited<ReturnType<typeof getShopTransferStatus>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetShopTransferStatus<TData = Awaited<ReturnType<typeof getShopTransferStatus>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getShopTransferStatus>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetShopTransferStatus<TData = Awaited<ReturnType<typeof getShopTransferStatus>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getShopTransferStatus>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetShopTransferStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getExportShopDataUrl = () => {
+
+
+
+
+  return `/api/shop/data-transfer/export`
+}
+
+export const exportShopData = async ( options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getExportShopDataUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportShopDataMutationKey = () => ['exportShopData'] as const;
+
+export const getExportShopDataMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof exportShopData>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof exportShopData>>, TError,void, TContext> => {
+
+const mutationKey = getExportShopDataMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof exportShopData>>, void> = () => {
+
+
+          return  exportShopData(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ExportShopDataMutationResult = NonNullable<Awaited<ReturnType<typeof exportShopData>>>
+
+    export type ExportShopDataMutationError = ErrorType<void>
+
+
+    export const useExportShopData = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof exportShopData>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof exportShopData>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getExportShopDataMutationOptions(options), queryClient);
+    }
+
+export const getPreviewShopDataUrl = () => {
+
+
+
+
+  return `/api/shop/data-transfer/preview`
+}
+
+export const previewShopData = async (previewShopDataBody: Blob, options?: Parameters<typeof customFetch>[1]): Promise<ShopTransferPreview> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ShopTransferPreview>(getPreviewShopDataUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/zip', ...getHeaders(options?.headers) },
+    body: previewShopDataBody
+  }
+);}
+
+
+
+
+
+export const getPreviewShopDataMutationKey = () => ['previewShopData'] as const;
+
+export const getPreviewShopDataMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewShopData>>, TError,PreviewShopDataMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewShopData>>, TError,PreviewShopDataMutationVariables, TContext> => {
+
+const mutationKey = getPreviewShopDataMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewShopData>>, PreviewShopDataMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  previewShopData(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewShopDataMutationResult = NonNullable<Awaited<ReturnType<typeof previewShopData>>>
+    export type PreviewShopDataMutationBody = BodyType<Blob>
+    export type PreviewShopDataMutationError = ErrorType<void>
+    export type PreviewShopDataMutationVariables = {data: BodyType<Blob>}
+
+    export const usePreviewShopData = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewShopData>>, TError,PreviewShopDataMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof previewShopData>>,
+        TError,
+        PreviewShopDataMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPreviewShopDataMutationOptions(options), queryClient);
+    }
+
+export const getImportShopDataUrl = () => {
+
+
+
+
+  return `/api/shop/data-transfer/import`
+}
+
+export const importShopData = async (importShopDataBody: Blob, options?: Parameters<typeof customFetch>[1]): Promise<ShopTransferResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ShopTransferResult>(getImportShopDataUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/zip', ...getHeaders(options?.headers) },
+    body: importShopDataBody
+  }
+);}
+
+
+
+
+
+export const getImportShopDataMutationKey = () => ['importShopData'] as const;
+
+export const getImportShopDataMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importShopData>>, TError,ImportShopDataMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof importShopData>>, TError,ImportShopDataMutationVariables, TContext> => {
+
+const mutationKey = getImportShopDataMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof importShopData>>, ImportShopDataMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  importShopData(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ImportShopDataMutationResult = NonNullable<Awaited<ReturnType<typeof importShopData>>>
+    export type ImportShopDataMutationBody = BodyType<Blob>
+    export type ImportShopDataMutationError = ErrorType<void>
+    export type ImportShopDataMutationVariables = {data: BodyType<Blob>}
+
+    export const useImportShopData = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importShopData>>, TError,ImportShopDataMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof importShopData>>,
+        TError,
+        ImportShopDataMutationVariables,
+        TContext
+      > => {
+      return useMutation(getImportShopDataMutationOptions(options), queryClient);
+    }
+
+export const getReviewShopDataUrl = () => {
+
+
+
+
+  return `/api/shop/data-transfer/review`
+}
+
+export const reviewShopData = async (shopTransferReview: ShopTransferReview, options?: Parameters<typeof customFetch>[1]): Promise<ShopTransferReviewResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ShopTransferReviewResult>(getReviewShopDataUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(shopTransferReview)
+  }
+);}
+
+
+
+
+
+export const getReviewShopDataMutationKey = () => ['reviewShopData'] as const;
+
+export const getReviewShopDataMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewShopData>>, TError,ReviewShopDataMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewShopData>>, TError,ReviewShopDataMutationVariables, TContext> => {
+
+const mutationKey = getReviewShopDataMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewShopData>>, ReviewShopDataMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  reviewShopData(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewShopDataMutationResult = NonNullable<Awaited<ReturnType<typeof reviewShopData>>>
+    export type ReviewShopDataMutationBody = BodyType<ShopTransferReview>
+    export type ReviewShopDataMutationError = ErrorType<void>
+    export type ReviewShopDataMutationVariables = {data: BodyType<ShopTransferReview>}
+
+    export const useReviewShopData = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewShopData>>, TError,ReviewShopDataMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof reviewShopData>>,
+        TError,
+        ReviewShopDataMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReviewShopDataMutationOptions(options), queryClient);
     }
 
 export const getListActivityUrl = () => {

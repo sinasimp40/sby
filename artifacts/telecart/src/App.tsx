@@ -20,6 +20,7 @@ import WalletsPage from "@/pages/wallets";
 import BotPage from "@/pages/bot";
 import PaymentsPage from "@/pages/payments";
 import SettingsPage from "@/pages/settings";
+import DataTransferPage from "@/pages/data-transfer";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 function SessionQueries({ children }: { children: ReactNode }) {
@@ -86,6 +87,7 @@ function AdminRoutes() {
     <Route path="/bot" component={BotPage} />
     <Route path="/payments" component={PaymentsPage} />
     <Route path="/settings" component={SettingsPage} />
+    <Route path="/data-transfer" component={DataTransferPage} />
     <Route component={NotFound} />
   </Switch></RoutedErrorBoundary></AppShell>;
 }

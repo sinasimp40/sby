@@ -15,6 +15,8 @@ import { historyMenu, historyOrderView, isHistoryScope, topupCategoryMenu, topup
 import { customerHistoryPage, customerHistorySummary } from "./telegram-history-store";
 import { sendDepositCoinMenu } from "./deposit-coin-buttons";
 import { customerDeliveredInventory } from "./order-delivery";
+import { quantityPrompt, quantityKeyboard, purchaseConfirmation } from "./purchase-copy";
+import { MAX_PURCHASE_QUANTITY } from "./checkout-allocation";
 
 interface TelegramMessage {
   message_id?: number;
@@ -64,6 +66,43 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
     ];
     const text = message.text?.trim() ?? "";
     const data = update.callback_query?.data ?? "";
+    const showPurchaseQuote = async (rawQuantity: string, selectionToken?: string) => {
+      const state = customer!.state;
+      if (state.type !== "purchase-quantity" || (selectionToken !== undefined && selectionToken !== state.token) ||
+        !Number.isFinite(Number(state.expires)) || Number(state.expires) < Date.now()) {
+        throw new CommerceError("This quantity selection expired. Open the product again.");
+      }
+      if (!/^\d{1,3}$/.test(rawQuantity)) throw new CommerceError("🔢 Please send a whole-number quantity, such as 1, 2 or 3.");
+      const quantity = Number(rawQuantity);
+      const product = (await productsForOwner(connection.ownerId)).find(p => p.id === Number(state.productId) && p.status === "active");
+      if (!product || !product.stock) throw new CommerceError("📦 This product is out of stock. Please choose another product.");
+      if (quantity < 1 || quantity > Math.min(product.stock, MAX_PURCHASE_QUANTITY)) {
+        throw new CommerceError(`🔢 Choose a quantity from 1 to ${Math.min(product.stock, MAX_PURCHASE_QUANTITY)}. 📦 Stock left: ${product.stock}.`);
+      }
+      const token = randomUUID();
+      const amountCents = Math.round(product.price * 100);
+      await db.update(botCustomers).set({ state: {
+        type: "purchase", token, productId: product.id, quantity, amountCents, expires: Date.now() + 10 * 60000,
+      } }).where(eq(botCustomers.id, customer!.id));
+      const keyboard = { inline_keyboard: [
+        ...(customer!.balanceCents >= amountCents * quantity
+          ? [[{ text: `✅ Pay $${(amountCents * quantity / 100).toFixed(2)} with wallet`, callback_data: `wal:${token}` }]] : []),
+        [{ text: "👛 Add funds", callback_data: "deposit" }, { text: "🔢 Change quantity", callback_data: `buy:${product.id}` }],
+        [{ text: "🏠 Cancel", callback_data: "cancel_home" }],
+      ] };
+      const quote = purchaseConfirmation(product, quantity, customer!.balanceCents);
+      const messageId = update.callback_query ? message.message_id : Number(state.promptMessageId);
+      if (Number.isSafeInteger(messageId) && messageId! > 0) {
+        try {
+          await telegram("editMessageText", { chat_id: customer!.chatId, message_id: messageId, text: quote, reply_markup: keyboard, parse_mode: "HTML" });
+          return;
+        } catch (error) {
+          if (error instanceof TelegramRequestError && error.reason === "not_modified") return;
+          if (!(error instanceof TelegramRequestError && error.providerStatus === 400)) throw error;
+        }
+      }
+      await send(quote, keyboard, "HTML");
+    };
     const showPending = async () => {
       const menu = pendingPaymentsMenu(await customerPendingPayments(connection.ownerId, customer!.id));
       await send(menu.text, menu.reply_markup, "HTML");
@@ -162,15 +201,15 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         const product = products.find(p => p.id === Number(data.slice(4)) && p.status === "active" && p.stock > 0);
         if (!product) throw new CommerceError("This product is out of stock or no longer available.");
         const token = randomUUID();
-        await db.update(botCustomers).set({ state: {
-          type: "purchase", token, productId: product.id, amountCents: Math.round(product.price * 100), expires: Date.now() + 10 * 60000,
-        } }).where(eq(botCustomers.id, customer!.id));
-        await send(`${product.name}\n${product.description}\nPrice: $${product.price.toFixed(2)}\nWallet balance: $${(customer!.balanceCents / 100).toFixed(2)}\nProducts are paid with wallet balance only. Deposit first if needed. One account per purchase.`, {
-          inline_keyboard: [
-            [{ text: "Pay with wallet balance", callback_data: `wal:${token}` }],
-            [{ text: "Add funds to wallet", callback_data: "deposit" }],
-          ],
-        });
+        const state = { type: "purchase-quantity", token, productId: product.id, expires: Date.now() + 10 * 60000 };
+        await db.update(botCustomers).set({ state }).where(eq(botCustomers.id, customer!.id));
+        const prompt = await send(quantityPrompt(product, customer!.balanceCents), quantityKeyboard(product.stock, token), "HTML");
+        if (Number.isSafeInteger(prompt.message_id)) await db.update(botCustomers).set({
+          state: { ...state, promptMessageId: Number(prompt.message_id) },
+        }).where(eq(botCustomers.id, customer!.id));
+      } else if (data.startsWith("qty:")) {
+        const [, token, quantity] = data.split(":");
+        await showPurchaseQuote(quantity ?? "", token ?? "");
       } else if (data === "deposit" || data === "deposit_new") {
         const pending = await customerPendingPayments(connection.ownerId, customer!.id);
         if (pending.length && data === "deposit") {
@@ -190,6 +229,9 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         }
         const wallet = parts[0] === "wal";
         if (wallet && state.type !== "purchase") throw new CommerceError("Invalid payment method.");
+        if (wallet && (!Number.isSafeInteger(state.quantity) || Number(state.quantity) < 1 || Number(state.quantity) > MAX_PURCHASE_QUANTITY)) {
+          throw new CommerceError("🔢 Please open the product and choose your quantity first.");
+        }
         if (!wallet && state.type === "purchase") throw new CommerceError("Products now use wallet balance only. Open Wallet → Deposit to add funds, then select the product again.");
         const productId = state.type === "purchase" ? Number(state.productId) : undefined;
         if (productId) {
@@ -201,6 +243,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
           coin: wallet ? "usd" : parts[2] ?? "", productId,
           depositCents: state.type === "deposit" ? Number(state.amountCents) : undefined, wallet,
           expectedAmountCents: Number(state.amountCents),
+          quantity: wallet ? Number(state.quantity) : undefined,
         });
         await sendCheckout(payment);
       } else if (text === "/cancel" || text === "/start" || text.startsWith("/start ")) {
@@ -208,11 +251,13 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         await send(text === "/cancel" ? "Cancelled. Choose an option below." : settings.welcomeMessage, {
           keyboard: labels.map(row => row.map(label => ({ text: label }))), resize_keyboard: true, is_persistent: true,
         });
-      } else if ([settings.productsLabel, labels[0]![0], "/products"].includes(text)) {
+      } else if (data === "products" || [settings.productsLabel, labels[0]![0], "/products"].includes(text)) {
         const products = (await productsForOwner(connection.ownerId)).filter(p => p.status === "active" && p.stock > 0).slice(0, 25);
-        await send(products.length ? "Choose a product:" : "No products are available right now.", products.length ? {
-          inline_keyboard: products.map(p => [{ text: `${p.name.slice(0, 35)} · $${p.price.toFixed(2)} · ${p.stock} left`, callback_data: `buy:${p.id}` }]),
-        } : undefined);
+        await send(products.length
+          ? "🛍 <b>Browse products</b>\n\n💵 Unit prices · 📦 Available stock\nTap a product, then choose how many you want."
+          : "📦 <b>No stock available</b>\n\nPlease check back soon.", products.length ? {
+          inline_keyboard: products.map(p => [{ text: `🛍 ${p.name.slice(0, 30)} · $${p.price.toFixed(2)} · 📦 ${p.stock}`, callback_data: `buy:${p.id}` }]),
+        } : undefined, "HTML");
       } else if ([settings.supportLabel, labels[0]![1], "/support"].includes(text)) {
         await send(`${settings.supportMessage}${settings.supportUsername ? `\n@${settings.supportUsername.replace(/^@/, "")}` : ""}`);
       } else if ([settings.walletLabel, labels[1]![0], "/wallet"].includes(text)) {
@@ -222,6 +267,8 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
             [{ text: "⏳ Pending payments", callback_data: "pending" }],
           ],
         }, "HTML");
+      } else if (customer!.state.type === "purchase-quantity" && !data) {
+        await showPurchaseQuote(text);
       } else if (customer!.state.type === "deposit-amount") {
         const amountCents = moneyCents(text);
         if (amountCents < Math.round(settings.minDeposit * 100)) throw new CommerceError(`Minimum deposit is $${settings.minDeposit.toFixed(2)}.`);

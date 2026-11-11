@@ -1,14 +1,17 @@
+import { assertTransferReviewed } from "./shop-transfer-safety";
+import { allocateCheckout, checkoutQuantity, type CheckoutInput } from "./checkout-allocation";
+import { assignedOrderCredentials } from "./payment-inventory";
+import { purchaseDeliveryHeader } from "./purchase-copy";
+import { escapeHtml } from "./payment-message";
 import { createHash, randomUUID } from "node:crypto";
 import { and, eq, inArray, isNull, notInArray, sql } from "drizzle-orm";
-import { db, pool, botCustomers, shopPayments, shopInventory, shopProducts, walletEntries, shopActivity } from "@workspace/db";
+import { db, pool, botCustomers, shopPayments, shopInventory, walletEntries, shopActivity } from "@workspace/db";
 import { CommerceError, TelegramRequestError, ProviderRejectedError, checkProviderMinimum, decimalAtLeast, nowpayments, type ProviderPayment, sendPaymentQr, telegram } from "./commerce-providers";
-import { decryptCredential } from "./inventory-encryption";
 import { settingsForOwner } from "./shop-store";
 import { activeConnection } from "./commerce-connection";
 import { paymentCaption, paymentKeyboard, paymentStatusLabel, type InvoiceMessage } from "./payment-message";
-import { customerMessageText, depositReceipt } from "./telegram-copy";
+import { depositReceipt } from "./telegram-copy";
 import { logger } from "./logger";
-import { assertPendingPaymentLimit } from "./pending-payments";
 
 export type Payment = typeof shopPayments.$inferSelect;
 const terminal = ["failed", "expired", "refunded"];
@@ -46,10 +49,9 @@ export async function cancelCustomerPayment(ownerId: string, customerId: string,
   return payment;
 }
 
-export async function createCheckout(input: {
-  ownerId: string; customerId: string; token: string; coin: string;
-  productId?: number; depositCents?: number; expectedAmountCents?: number; wallet?: boolean;
-}) {
+export async function createCheckout(input: CheckoutInput) {
+  await assertTransferReviewed(input.ownerId);
+  checkoutQuantity(input);
   // Enforce wallet-only product purchases even for old Telegram buttons or
   // callers that bypass the current menu. Existing invoices still reconcile.
   if (input.productId !== undefined && !input.wallet) {
@@ -74,56 +76,7 @@ export async function createCheckout(input: {
     if (!cents || !Number.isSafeInteger(cents)) throw new CommerceError("Invalid payment amount.");
     await checkProviderMinimum(input.coin, cents, settings.rateMode);
   }
-  const result = await db.transaction(async tx => {
-    // Serialize ALL balance changes/invoice creation for this customer.
-    const [customer] = await tx.select().from(botCustomers).where(and(
-      eq(botCustomers.id, input.customerId), eq(botCustomers.ownerId, input.ownerId),
-    )).for("update");
-    if (!customer) throw new CommerceError("Customer not found.");
-    const [existing] = await tx.select().from(shopPayments).where(eq(shopPayments.requestKey, requestKey));
-    if (existing) {
-      if (existing.cancelledAt) throw new CommerceError("This invoice was cancelled. Open Wallet → Deposit for a new selection.");
-      return { payment: existing, created: false };
-    }
-    if (!input.wallet) {
-      const pending = await tx.select().from(shopPayments).where(and(
-        eq(shopPayments.ownerId, input.ownerId), eq(shopPayments.customerId, customer.id),
-        inArray(shopPayments.status, ["creating", "waiting", "confirming", "confirmed", "sending", "partially_paid"]),
-      ));
-      assertPendingPaymentLimit(false, pending);
-    }
-    let product: typeof shopProducts.$inferSelect | undefined;
-    let stock: typeof shopInventory.$inferSelect | undefined;
-    if (input.productId) {
-      [product] = await tx.select().from(shopProducts).where(and(
-        eq(shopProducts.id, input.productId), eq(shopProducts.ownerId, input.ownerId), eq(shopProducts.status, "active"),
-      )).for("update");
-      if (!product) throw new CommerceError("This product is no longer available.");
-      if (input.expectedAmountCents !== undefined && product.priceCents !== input.expectedAmountCents) throw new CommerceError("The price changed. Select this product again.");
-      [stock] = await tx.select().from(shopInventory).where(and(
-        eq(shopInventory.productId, product.id), eq(shopInventory.ownerId, input.ownerId), eq(shopInventory.status, "available"),
-      )).limit(1).for("update", { skipLocked: true });
-      if (!stock) throw new CommerceError("This product is out of stock.");
-    }
-    const cents = product?.priceCents ?? input.depositCents ?? 0;
-    if (cents <= 0 || !Number.isSafeInteger(cents) || cents > 10000000) throw new CommerceError("Invalid payment amount.");
-    if (!product && cents < Math.round(settings.minDeposit * 100)) throw new CommerceError(`Minimum deposit is $${settings.minDeposit.toFixed(2)}.`);
-    if (input.wallet && (!product || customer.balanceCents < cents)) throw new CommerceError("Insufficient wallet balance. Deposit first.");
-    const [payment] = await tx.insert(shopPayments).values({
-      id: randomUUID(), requestKey, ownerId: input.ownerId, customerId: customer.id,
-      kind: input.wallet ? "wallet" : product ? "purchase" : "deposit",
-      productId: product?.id, inventoryId: stock?.id, productName: product?.name ?? "Wallet deposit",
-      amountCents: cents, coin: input.wallet ? "usd" : input.coin,
-      rateMode: settings.rateMode,
-      status: input.wallet ? "finished" : "creating", fulfillment: input.wallet ? "allocated" : "pending",
-    }).returning();
-    if (stock) await tx.update(shopInventory).set({ status: input.wallet ? "delivered" : "reserved" }).where(eq(shopInventory.id, stock.id));
-    if (input.wallet) {
-      await tx.insert(walletEntries).values({ id: randomUUID(), customerId: customer.id, paymentId: payment!.id, amountCents: -cents });
-      await tx.update(botCustomers).set({ balanceCents: sql`${botCustomers.balanceCents} - ${cents}` }).where(eq(botCustomers.id, customer.id));
-    }
-    return { payment: payment!, created: true };
-  });
+  const result = await allocateCheckout(input, settings);
   if (!result.created || input.wallet) return result.payment;
   try {
     const p = await nowpayments("/payment", {
@@ -198,6 +151,8 @@ export function matchesInvoice(payment: Payment, provider: ProviderPayment) {
 }
 
 export async function checkPayment(id: string) {
+  const transferPayment = await getPayment(id);
+  if (transferPayment) await assertTransferReviewed(transferPayment.ownerId);
   const payment = await getPayment(id);
   if (!payment) throw new CommerceError("Payment not found.", 404);
   if (payment.kind === "wallet" || ["allocated", "delivered", "credited"].includes(payment.fulfillment)) {
@@ -268,6 +223,8 @@ export async function applyVerifiedPayment(id: string, provider: ProviderPayment
 }
 
 export async function deliverPayment(id: string) {
+  const transferPayment = await getPayment(id);
+  if (transferPayment) await assertTransferReviewed(transferPayment.ownerId);
   // Distributed lock: IPN, buyer checks and admin checks cannot concurrently send.
   // If Telegram acknowledges but the process dies before DB commit, retry sends
   // the SAME assigned line, never takes another account.
@@ -285,12 +242,23 @@ export async function deliverPayment(id: string) {
     if (p.kind === "deposit") {
       text = depositReceipt(p.amountCents, p.id);
     } else {
-      const [stock] = p.inventoryId ? await db.select().from(shopInventory).where(eq(shopInventory.id, p.inventoryId)) : [];
-      if (!stock || p.productId === null) throw new CommerceError("Assigned stock needs manual review.", 409);
-      text = `Payment complete · ${customerMessageText(p.productName)}\nOrder: ${p.id}\n\n${decryptCredential(stock.encryptedCredential, p.ownerId, p.productId)}\n\nKeep these credentials private.`;
+      const assigned = await assignedOrderCredentials(p);
+      const header = purchaseDeliveryHeader(p, customer.balanceCents);
+      text = `${header}\n\n🔐 <b>Your account${p.quantity > 1 ? "s" : ""}</b>\n<pre>${escapeHtml(assigned.credential)}</pre>\n\n🔒 <i>Keep these details private.</i>`;
+      if (text.length > 3800) {
+        // One complete attachment avoids truncated credentials and per-chat flood limits.
+        const form = new FormData();
+        form.set("chat_id", customer.chatId); form.set("protect_content", "true");
+        form.set("parse_mode", "HTML");
+        form.set("caption", `${header}\n\n📎 <b>All account details are in the attached file.</b>\n🔒 Keep it private.`);
+        form.set("document", new Blob([assigned.credential], { type: "text/plain;charset=utf-8" }), `order-${p.id}.txt`);
+        await telegram("sendDocument", form);
+        await db.update(shopPayments).set({ fulfillment: "delivered", deliveredAt: new Date(), updatedAt: new Date() }).where(eq(shopPayments.id, id));
+        return;
+      }
     }
     // Delivery goes only to the stored buyer chat, never an IPN/client-supplied chat.
-    await telegram("sendMessage", { chat_id: customer.chatId, text, protect_content: true, ...(p.kind === "deposit" ? { parse_mode: "HTML" } : {}) });
+    await telegram("sendMessage", { chat_id: customer.chatId, text, protect_content: true, parse_mode: "HTML" });
     await db.update(shopPayments).set({
       fulfillment: p.kind === "deposit" ? "credited" : "delivered", deliveredAt: new Date(), updatedAt: new Date(),
     }).where(eq(shopPayments.id, id));

@@ -4,6 +4,7 @@ import { requireOperator } from "./commerce-connection";
 import { CommerceError } from "./commerce-providers";
 import { connectShop } from "./connect-shop";
 import { getBotRuntime, saveBotRuntime, httpsOrigin, setPollingHealth, type BotRuntimeConfig } from "./bot-runtime";
+import { assertTransferReviewed } from "./shop-transfer-safety";
 
 interface RuntimeEffects {
   get: () => Promise<BotRuntimeConfig>;
@@ -39,9 +40,11 @@ export async function applyBotRuntime(input: BotRuntimeConfig, acknowledgePolicy
 
 export async function updateBotRuntime(ownerId: string, input: BotRuntimeConfig, acknowledgePolicy: boolean) {
   requireOperator(ownerId);
+  if (input.enabled) await assertTransferReviewed(ownerId);
   const client = await pool.connect();
   try {
     await client.query("SELECT pg_advisory_lock(hashtextextended('telecart-runtime-control', 5))");
+    if (input.enabled) await assertTransferReviewed(ownerId);
     await applyBotRuntime(input, acknowledgePolicy, {
       get: () => getBotRuntime(ownerId),
       save: config => saveBotRuntime(ownerId, config),
