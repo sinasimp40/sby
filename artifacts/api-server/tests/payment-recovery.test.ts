@@ -100,7 +100,7 @@ test("provider minimums, QR and automatic amount-verified deposits", async t => 
       const lastEdit = sent.filter(s => s.method === "editMessageCaption").at(-1)!;
       assert.match(lastEdit.body.caption, /wallet credited/);
       assert.equal(lastEdit.body.message_id, 111);
-      assert.deepEqual(lastEdit.body.reply_markup, { inline_keyboard: [] });
+      assert.deepEqual(lastEdit.body.reply_markup, { inline_keyboard: [[{ text: "🏠 Home", callback_data: "cancel_home" }]] });
     });
     await t.test("QR image contains provider address and caption shows exact amount, coin and expiry", async () => {
       await sendPaymentQr("TEST_ONLY_CHAT", { id: paymentId, address: "TEST_ONLY_ADDRESS", payAmount: "1.25", coin: "ltc", network: "LTC", extraId: null, expiresAt: new Date(Date.now() + 600000) });
@@ -110,7 +110,9 @@ test("provider minimums, QR and automatic amount-verified deposits", async t => 
       assert.equal(bytes.subarray(1, 4).toString(), "PNG");
       assert.match(photo.body.get("caption"), /1.25 LTC/);
       assert.match(photo.body.get("caption"), /TEST_ONLY_ADDRESS/);
-      assert.equal(photo.body.get("reply_markup"), null);
+      assert.deepEqual(JSON.parse(photo.body.get("reply_markup")), {
+        inline_keyboard: [[{ text: "✖️ Cancel", callback_data: "cancel_home" }]],
+      });
     });
   } finally {
     globalThis.fetch = savedFetch;

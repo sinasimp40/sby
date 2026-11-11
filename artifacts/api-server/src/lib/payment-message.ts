@@ -13,6 +13,13 @@ export interface InvoiceMessage {
   fulfillment?: string;
 }
 export const escapeHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+export function paymentKeyboard(p: InvoiceMessage) {
+  const complete = ["delivered", "credited"].includes(p.fulfillment ?? "");
+  return { inline_keyboard: [[{
+    text: complete ? "🏠 Home" : "✖️ Cancel",
+    callback_data: "cancel_home",
+  }]] };
+}
 export const coinNames: Record<string, { symbol: string; network: string }> = {
   btc: { symbol: "BTC", network: "Bitcoin" },
   eth: { symbol: "ETH", network: "Ethereum" },

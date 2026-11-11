@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { paymentCaption, paymentStatusLabel, type InvoiceMessage } from "../src/lib/payment-message";
+import { paymentCaption, paymentKeyboard, paymentStatusLabel, type InvoiceMessage } from "../src/lib/payment-message";
 import { customerMessageText, depositCoinPrompt, depositPrompt, depositReceipt, walletSummary } from "../src/lib/telegram-copy";
 
 const now = Date.parse("2026-11-11T12:00:00Z");
@@ -10,6 +10,15 @@ const invoice: InvoiceMessage = {
   extraId: null, expiresAt: new Date(now + 30 * 60000),
   title: "Wallet deposit", amountUSD: "5.00", status: "waiting", fulfillment: "pending",
 };
+
+test("invoices offer cancel-to-home even after expiry and home after completion", () => {
+  for (const p of [invoice, { ...invoice, expiresAt: new Date(now - 1) }, { ...invoice, status: "confirming" }]) {
+    assert.deepEqual(paymentKeyboard(p), {
+      inline_keyboard: [[{ text: "✖️ Cancel", callback_data: "cancel_home" }]],
+    });
+  }
+  assert.equal(paymentKeyboard({ ...invoice, fulfillment: "credited" }).inline_keyboard[0]![0]!.text, "🏠 Home");
+});
 
 test("deposit and wallet copy is formatted, clear and provider-neutral", () => {
   const messages = [depositPrompt(5), walletSummary(1234, 5), depositCoinPrompt(500), depositReceipt(500, invoice.id)];

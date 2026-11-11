@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import QRCode from "qrcode";
-import { paymentCaption, type InvoiceMessage } from "./payment-message";
+import { paymentCaption, paymentKeyboard, type InvoiceMessage } from "./payment-message";
 import { readProviderCredentials } from "./provider-credentials";
 import { getBotRuntime, legacyPublicUrl } from "./bot-runtime";
 
@@ -212,5 +212,6 @@ export async function sendPaymentQr(chatId: string, payment: InvoiceMessage) {
   form.set("photo", new Blob([new Uint8Array(png)], { type: "image/png" }), "payment.png");
   form.set("caption", caption);
   form.set("parse_mode", "HTML");
+  form.set("reply_markup", JSON.stringify(paymentKeyboard(payment)));
   return telegram<{ message_id: number }>("sendPhoto", form);
 }

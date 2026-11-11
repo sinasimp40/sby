@@ -63,7 +63,13 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         // Its failure must not block idempotent checkout/delivery recovery.
         await telegram("answerCallbackQuery", { callback_query_id: update.callback_query.id }).catch(() => undefined);
       }
-      if (data.startsWith("check:")) {
+      if (data === "cancel_home") {
+        // Navigation only: never cancel provider settlement or discard a paid invoice.
+        await db.update(botCustomers).set({ state: {} }).where(eq(botCustomers.id, customer!.id));
+        await send(`${settings.welcomeMessage}${message.photo?.length ? "\n\n🏠 Returned to the home menu.\nAny payment already sent will still be checked automatically." : ""}`, {
+          keyboard: labels.map(row => row.map(label => ({ text: label }))), resize_keyboard: true, is_persistent: true,
+        });
+      } else if (data.startsWith("check:")) {
         const id = data.slice(6);
         const [payment] = await db.select().from(shopPayments).where(and(eq(shopPayments.id, id), eq(shopPayments.customerId, customer!.id)));
         if (!payment) throw new CommerceError("Payment not found.");
@@ -89,7 +95,9 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         });
       } else if (data === "deposit") {
         await db.update(botCustomers).set({ state: { type: "deposit-amount" } }).where(eq(botCustomers.id, customer!.id));
-        await send(depositPrompt(settings.minDeposit), undefined, "HTML");
+        await send(depositPrompt(settings.minDeposit), {
+          inline_keyboard: [[{ text: "✖️ Cancel", callback_data: "cancel_home" }]],
+        }, "HTML");
       } else if (data.startsWith("pay:") || data.startsWith("wal:")) {
         const parts = data.split(":");
         const state = customer!.state;
@@ -138,7 +146,10 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         const token = randomUUID();
         await db.update(botCustomers).set({ state: { type: "deposit", token, amountCents, expires: Date.now() + 10 * 60000 } }).where(eq(botCustomers.id, customer!.id));
         await send(depositCoinPrompt(amountCents), {
-          inline_keyboard: settings.acceptedCoins.map(coin => [{ text: coin, callback_data: `pay:${token}:${coin.toLowerCase()}` }]),
+          inline_keyboard: [
+            ...settings.acceptedCoins.map(coin => [{ text: coin, callback_data: `pay:${token}:${coin.toLowerCase()}` }]),
+            [{ text: "✖️ Cancel", callback_data: "cancel_home" }],
+          ],
         }, "HTML");
       } else {
         await send("Use /start to open the menu, or /cancel to cancel a deposit.");

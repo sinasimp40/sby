@@ -5,7 +5,7 @@ import { CommerceError, TelegramRequestError, ProviderRejectedError, checkProvid
 import { decryptCredential } from "./inventory-encryption";
 import { settingsForOwner } from "./shop-store";
 import { activeConnection } from "./commerce-connection";
-import { paymentCaption, paymentStatusLabel, type InvoiceMessage } from "./payment-message";
+import { paymentCaption, paymentKeyboard, paymentStatusLabel, type InvoiceMessage } from "./payment-message";
 import { customerMessageText, depositReceipt } from "./telegram-copy";
 import { logger } from "./logger";
 
@@ -285,7 +285,7 @@ export async function sendCheckout(initial: Payment) {
   if (!Number.isSafeInteger(message.message_id)) throw new CommerceError("Telegram did not return the invoice message reference.", 502);
   await db.update(shopPayments).set({
     invoiceMessageId: message.message_id,
-    invoiceCaptionHash: captionHash(paymentCaption(invoiceDetails(payment))),
+    invoiceCaptionHash: captionHash(paymentCaption(invoiceDetails(payment)), paymentKeyboard(invoiceDetails(payment))),
     invoiceNeedsUpdate: false,
   }).where(eq(shopPayments.id, payment.id));
   } finally {
@@ -304,7 +304,8 @@ export function invoiceDetails(payment: Payment): InvoiceMessage {
     receivedAmount: payment.receivedAmount, fulfillment: payment.fulfillment,
   };
 }
-const captionHash = (caption: string) => createHash("sha256").update(caption).digest("hex");
+const captionHash = (caption: string, keyboard: ReturnType<typeof paymentKeyboard>) =>
+  createHash("sha256").update(JSON.stringify({ caption, keyboard })).digest("hex");
 
 export async function refreshPaymentMessage(id: string) {
   const client = await pool.connect();
@@ -316,13 +317,14 @@ export async function refreshPaymentMessage(id: string) {
     const p = await getPayment(id);
     if (!p?.invoiceMessageId || !p.address || !p.payAmount || !p.expiresAt) return;
     const caption = paymentCaption(invoiceDetails(p));
-    const hash = captionHash(caption);
+    const keyboard = paymentKeyboard(invoiceDetails(p));
+    const hash = captionHash(caption, keyboard);
     if (hash !== p.invoiceCaptionHash) {
       const [customer] = await db.select().from(botCustomers).where(eq(botCustomers.id, p.customerId));
       if (!customer) return;
       await telegram("editMessageCaption", {
         chat_id: customer.chatId, message_id: p.invoiceMessageId, caption, parse_mode: "HTML",
-        reply_markup: { inline_keyboard: [] },
+        reply_markup: keyboard,
       }).catch(error => { if (!(error instanceof TelegramRequestError && error.reason === "not_modified")) throw error; });
     }
     // Only clear the notification flag if settlement hasn't changed this row
