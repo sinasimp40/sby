@@ -5,7 +5,8 @@ import { CommerceError, TelegramRequestError, ProviderRejectedError, checkProvid
 import { decryptCredential } from "./inventory-encryption";
 import { settingsForOwner } from "./shop-store";
 import { activeConnection } from "./commerce-connection";
-import { paymentCaption, type InvoiceMessage } from "./payment-message";
+import { paymentCaption, paymentStatusLabel, type InvoiceMessage } from "./payment-message";
+import { customerMessageText, depositReceipt } from "./telegram-copy";
 import { logger } from "./logger";
 
 export type Payment = typeof shopPayments.$inferSelect;
@@ -166,7 +167,7 @@ export async function checkPayment(id: string) {
     await refreshPaymentMessage(payment.id);
     return (await getPayment(id))!;
   }
-  if (!payment.providerPaymentId) throw new CommerceError("Invoice creation needs manual review; check the order ID in NOWPayments before retrying.", 409);
+  if (!payment.providerPaymentId) throw new CommerceError("This invoice needs support review before retrying. Please contact support with your reference.", 409);
   const provider = await nowpayments(`/payment/${encodeURIComponent(payment.providerPaymentId)}`);
   if (!matchesInvoice(payment, provider)) {
     await db.update(shopPayments).set({ fulfillment: "review" }).where(eq(shopPayments.id, id));
@@ -244,14 +245,14 @@ export async function deliverPayment(id: string) {
     if (!customer) throw new CommerceError("Customer not found.");
     let text: string;
     if (p.kind === "deposit") {
-      text = `Payment finished. $${(p.amountCents / 100).toFixed(2)} was credited once to your wallet.\nReference: ${p.id}`;
+      text = depositReceipt(p.amountCents, p.id);
     } else {
       const [stock] = p.inventoryId ? await db.select().from(shopInventory).where(eq(shopInventory.id, p.inventoryId)) : [];
       if (!stock || p.productId === null) throw new CommerceError("Assigned stock needs manual review.", 409);
-      text = `Payment complete · ${p.productName}\nOrder: ${p.id}\n\n${decryptCredential(stock.encryptedCredential, p.ownerId, p.productId)}\n\nKeep these credentials private.`;
+      text = `Payment complete · ${customerMessageText(p.productName)}\nOrder: ${p.id}\n\n${decryptCredential(stock.encryptedCredential, p.ownerId, p.productId)}\n\nKeep these credentials private.`;
     }
     // Delivery goes only to the stored buyer chat, never an IPN/client-supplied chat.
-    await telegram("sendMessage", { chat_id: customer.chatId, text, protect_content: true });
+    await telegram("sendMessage", { chat_id: customer.chatId, text, protect_content: true, ...(p.kind === "deposit" ? { parse_mode: "HTML" } : {}) });
     await db.update(shopPayments).set({
       fulfillment: p.kind === "deposit" ? "credited" : "delivered", deliveredAt: new Date(), updatedAt: new Date(),
     }).where(eq(shopPayments.id, id));
@@ -272,11 +273,11 @@ export async function sendCheckout(initial: Payment) {
   if (payment.kind === "wallet") { await deliverPayment(payment.id); return; }
   const [customer] = await db.select().from(botCustomers).where(eq(botCustomers.id, payment.customerId));
   if (!customer) throw new CommerceError("Customer not found.");
-  if (payment.status === "rejected") throw new CommerceError("NOWPayments rejected this invoice. Use Wallet → Deposit to start a new deposit with a higher amount or another coin.");
+  if (payment.status === "rejected") throw new CommerceError("This invoice could not be created. Use Wallet → Deposit to try a higher amount or another coin.");
   if (!payment.address || !payment.payAmount || !payment.expiresAt) throw new CommerceError("This earlier invoice could not be created safely. No QR is available. Use Wallet → Deposit for a new attempt; contact support about this reference if you already sent funds.");
-  if (payment.expiresAt.getTime() < Date.now()) throw new CommerceError("This quote has expired. Do not send funds. Use Check payment for any funds already sent.");
+  if (payment.expiresAt.getTime() < Date.now()) throw new CommerceError("This quote has expired. Do not send funds. If you already paid, payment detection will continue automatically.");
   if (payment.status !== "waiting") {
-    await telegram("sendMessage", { chat_id: customer.chatId, text: `Payment status: ${payment.status}. Use Check payment for updates.` });
+    await telegram("sendMessage", { chat_id: customer.chatId, text: `Payment update\n${paymentStatusLabel(invoiceDetails(payment))}\n\nUpdates automatically. Do not send another payment.` });
     return;
   }
   if (payment.invoiceMessageId) { await refreshPaymentMessage(payment.id); return; }

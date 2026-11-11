@@ -131,7 +131,7 @@ test("finished-only checkout, stock allocation, wallet ledger and Telegram deliv
       assert.match(String(form.get("caption")), /1.25 LTC/);
       assert.match(String(form.get("caption")), /Litecoin/);
       assert.match(String(form.get("caption")), /TEST_ONLY_ADDRESS_/);
-      assert.match(String(form.get("caption")), /Quote expires:/);
+      assert.match(String(form.get("caption")), /Pay before:/);
       assert.equal(form.get("reply_markup"), null);
     });
     await t.test("all pre-finished statuses withhold credentials; finished consumes only its reserved line once", async () => {

@@ -6,6 +6,7 @@ import { CommerceError, moneyCents, telegram } from "./commerce-providers";
 import { createCheckout, checkPayment, sendCheckout } from "./commerce-payments";
 import { productsForOwner, settingsForOwner } from "./shop-store";
 import { getBotRuntime } from "./bot-runtime";
+import { customerMessageText, depositCoinPrompt, depositPrompt, walletSummary } from "./telegram-copy";
 
 interface TelegramMessage {
   message_id?: number;
@@ -45,8 +46,9 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
       target: [botCustomers.ownerId, botCustomers.telegramId], set: { username, chatId: String(message.chat.id) },
     }).returning();
     const settings = await settingsForOwner(connection.ownerId);
-    const send = (text: string, reply_markup?: object) => telegram("sendMessage", {
-      chat_id: customer!.chatId, text, ...(reply_markup ? { reply_markup } : {}),
+    const send = (text: string, reply_markup?: object, parse_mode?: "HTML") => telegram("sendMessage", {
+      chat_id: customer!.chatId, text: customerMessageText(text), ...(reply_markup ? { reply_markup } : {}),
+      ...(parse_mode ? { parse_mode } : {}),
     });
     const labels = [
       [`🛍 ${settings.productsLabel}`, `💬 ${settings.supportLabel}`],
@@ -87,7 +89,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         });
       } else if (data === "deposit") {
         await db.update(botCustomers).set({ state: { type: "deposit-amount" } }).where(eq(botCustomers.id, customer!.id));
-        await send(`Enter your deposit amount in USD, for example 10.00.\n${settings.minDeposit > 0 ? `Shop minimum: $${settings.minDeposit.toFixed(2)}. ` : ""}NOWPayments coin minimums still apply. Type /cancel to cancel.`);
+        await send(depositPrompt(settings.minDeposit), undefined, "HTML");
       } else if (data.startsWith("pay:") || data.startsWith("wal:")) {
         const parts = data.split(":");
         const state = customer!.state;
@@ -122,9 +124,9 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
       } else if ([settings.supportLabel, labels[0]![1], "/support"].includes(text)) {
         await send(`${settings.supportMessage}${settings.supportUsername ? `\n@${settings.supportUsername.replace(/^@/, "")}` : ""}`);
       } else if ([settings.walletLabel, labels[1]![0], "/wallet"].includes(text)) {
-        await send(`Wallet balance: $${(customer!.balanceCents / 100).toFixed(2)}\nUse your balance to buy products. Minimum deposit: $${settings.minDeposit.toFixed(2)}; some coins require more.\nDeposits use NOWPayments. Credit is added only after status: finished.`, {
+        await send(walletSummary(customer!.balanceCents, settings.minDeposit), {
           inline_keyboard: [[{ text: "Deposit", callback_data: "deposit" }]],
-        });
+        }, "HTML");
       } else if ([settings.ordersLabel, labels[1]![1], "/orders"].includes(text)) {
         const orders = await db.select().from(shopPayments).where(eq(shopPayments.customerId, customer!.id)).orderBy(desc(shopPayments.createdAt)).limit(10);
         await send(orders.length ? orders.map(p => `${p.productName} · $${(p.amountCents / 100).toFixed(2)}\n${p.id}\n${p.status} · ${p.fulfillment}`).join("\n\n") : "You have no orders or deposits yet.", orders.length ? {
@@ -135,9 +137,9 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         if (amountCents < Math.round(settings.minDeposit * 100)) throw new CommerceError(`Minimum deposit is $${settings.minDeposit.toFixed(2)}.`);
         const token = randomUUID();
         await db.update(botCustomers).set({ state: { type: "deposit", token, amountCents, expires: Date.now() + 10 * 60000 } }).where(eq(botCustomers.id, customer!.id));
-        await send(`Deposit $${(amountCents / 100).toFixed(2)}. Choose the exact coin/network:`, {
+        await send(depositCoinPrompt(amountCents), {
           inline_keyboard: settings.acceptedCoins.map(coin => [{ text: coin, callback_data: `pay:${token}:${coin.toLowerCase()}` }]),
-        });
+        }, "HTML");
       } else {
         await send("Use /start to open the menu, or /cancel to cancel a deposit.");
       }

@@ -32,3 +32,9 @@ Use SOL instead of USDT-TRC20 for this shop's accepted deposit coins.
 **Why:** The user explicitly asked to replace TRC20 after its $5 invoice was rejected.
 
 **How to apply:** Do not silently re-enable TRC20 when updating accepted coins; preserve historical invoice reconciliation.
+
+Do not mention NOWPayments in any customer-facing Telegram content; use clean, shop-neutral deposit and payment messages.
+
+**Why:** The user explicitly requested no provider branding anywhere in Telegram, including deposit prompts and invoice footers.
+
+**How to apply:** Keep provider identity visible in admin configuration, but not Telegram prompts, captions, receipts, errors or status updates. Never redact or alter delivered stock credentials.

@@ -22,39 +22,53 @@ export const coinNames: Record<string, { symbol: string; network: string }> = {
   bnbbsc: { symbol: "BNB", network: "BNB Smart Chain · BEP20" },
   sol: { symbol: "SOL", network: "Solana" },
 };
-export function paymentCaption(p: InvoiceMessage, now = Date.now()) {
-  const coin = coinNames[p.coin.toLowerCase()] ?? { symbol: p.coin.toUpperCase(), network: p.network };
+export function paymentStatusLabel(p: InvoiceMessage, now = Date.now()) {
   const status = p.status ?? "waiting";
   const fulfilled = ["delivered", "credited"].includes(p.fulfillment ?? "");
-  const closed = ["failed", "expired", "refunded", "rejected"].includes(status);
   const quoteExpired = p.expiresAt.getTime() <= now;
   const labels: Record<string, string> = {
+    creating: "Preparing payment",
     waiting: quoteExpired ? "Quote expired — do not send funds" : "Awaiting payment",
     confirming: "Payment detected · confirming",
     confirmed: "Blockchain confirmed · processing",
     sending: "Settlement in progress",
     partially_paid: "Partial payment received",
     finished: fulfilled ? (p.fulfillment === "credited" ? "Complete · wallet credited" : "Complete · order delivered") :
-      p.fulfillment === "review" ? "Payment received · support review required" : "Payment received · preparing delivery",
+      p.fulfillment === "review" ? "Payment received · support review required" : "Payment received · finalizing",
     expired: "Expired — do not send funds", failed: "Payment failed", refunded: "Refunded", rejected: "Invoice rejected",
   };
+  return labels[status] ?? "Payment processing";
+}
+export function paymentCaption(p: InvoiceMessage, now = Date.now()) {
+  const coin = coinNames[p.coin.toLowerCase()] ?? { symbol: p.coin.toUpperCase(), network: p.network };
+  const status = p.status ?? "waiting";
+  const fulfilled = ["delivered", "credited"].includes(p.fulfillment ?? "");
+  const closed = ["failed", "expired", "refunded", "rejected"].includes(status);
+  const quoteExpired = p.expiresAt.getTime() <= now;
+  const canPay = !closed && !fulfilled && p.fulfillment !== "review" && !quoteExpired && status === "waiting";
   const stamp = p.expiresAt.toISOString().replace("T", " ").slice(0, 16) + " UTC";
   const lines = [
-    `<b>${escapeHtml((p.title ?? "Payment").slice(0, 60))}</b>${p.amountUSD ? ` · $${escapeHtml(p.amountUSD)}` : ""}`,
-    `<b>${escapeHtml(labels[status] ?? status)}</b>`,
+    `<b>${escapeHtml((p.title ?? "Payment").replace(/nowpayments/gi, "Payment").slice(0, 60))}</b>`,
+    ...(p.amountUSD ? [`Total: <b>$${escapeHtml(p.amountUSD)}</b>`] : []),
+    `Status: <b>${escapeHtml(paymentStatusLabel(p, now))}</b>`,
     "",
-    `Amount: <code>${escapeHtml(p.payAmount)} ${escapeHtml(coin.symbol)}</code>`,
+    `<b>${canPay ? "Send exactly" : "Invoice amount"}</b>`,
+    `<code>${escapeHtml(p.payAmount)} ${escapeHtml(coin.symbol)}</code>`,
     `Network: <b>${escapeHtml(coin.network)}</b>`,
-    ...(!closed && status !== "finished" ? ["", "<b>Payment address</b>", `<code>${escapeHtml(p.address)}</code>`] : []),
-    ...(p.extraId && !closed && status !== "finished" ? [`Memo / tag: <code>${escapeHtml(p.extraId)}</code>`] : []),
+    ...(canPay ? ["", "<b>Payment address</b>", `<code>${escapeHtml(p.address)}</code>`] : []),
+    ...(p.extraId && canPay ? [`<b>Required memo / tag</b>`, `<code>${escapeHtml(p.extraId)}</code>`] : []),
     "",
     `Received: <b>${escapeHtml(p.receivedAmount ?? "0")} ${escapeHtml(coin.symbol)}</b>`,
-    ...(status === "waiting" || status === "partially_paid" ? [`Quote expires: ${stamp}`] : []),
-    fulfilled ? "Payment complete. Do not pay this invoice again." :
-      closed || quoteExpired && status === "waiting" ? "Already paid? Detection continues automatically." :
-      "Updates automatically · credit/delivery after finished",
-    `<i>Ref ${escapeHtml(p.id.slice(0, 8))} · NOWPayments</i>`,
-    ...(!closed && status === "waiting" && !quoteExpired ? ["<i>QR = address only. Enter the exact amount above.</i>"] : []),
+    ...(canPay ? [`Pay before: <b>${stamp}</b>`] : []),
+    "",
+    fulfilled ? "Complete. Do not send another payment." :
+      closed || quoteExpired && ["waiting", "partially_paid"].includes(status) ? "Do not send funds to this invoice. Already paid? We will keep checking automatically." :
+      p.fulfillment === "review" ? "Please contact support with the reference below. Do not pay again." :
+      status === "partially_paid" ? "A partial payment was detected. Contact support before sending more." :
+      "Updates automatically after final payment verification.",
+    ...(canPay ? ["<i>QR contains the address only. Enter the exact amount shown above.</i>"] : []),
+    "",
+    `<i>Reference: ${escapeHtml(p.id.slice(0, 8))}</i>`,
   ];
   const caption = lines.join("\n");
   if (caption.length > 1024) throw new Error("Invoice caption exceeds Telegram limit.");
