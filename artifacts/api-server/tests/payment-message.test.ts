@@ -15,6 +15,7 @@ test("deposit and wallet copy is formatted, clear and provider-neutral", () => {
   const messages = [depositPrompt(5), walletSummary(1234, 5), depositCoinPrompt(500), depositReceipt(500, invoice.id)];
   for (const message of messages) {
     assert.match(message, /<b>/);
+    assert.match(message, /\p{Extended_Pictographic}/u);
     assert.doesNotMatch(message, /nowpayments|status: finished|credit\/delivery/i);
   }
   assert.match(messages[0]!, /Minimum deposit: <b>\$5\.00/);
@@ -30,6 +31,8 @@ test("waiting invoice preserves exact amount, network, address and QR warning", 
   assert.match(caption, /<b>Wallet deposit<\/b>/);
   assert.match(caption, /Total: <b>\$5\.00<\/b>/);
   assert.match(caption, /Awaiting payment/);
+  assert.match(caption, /⏳ <b>Awaiting payment<\/b>/);
+  assert.match(caption, /📋 <b>Payment address<\/b>/);
   assert.match(caption, /<code>0\.0978356 LTC<\/code>/);
   assert.match(caption, /<code>TEST_ONLY_LTC_ADDRESS<\/code>/);
   assert.match(caption, /Litecoin/);
@@ -51,7 +54,19 @@ test("every status remains neutral and never promises early wallet credit", () =
   }
   assert.match(paymentStatusLabel({ ...invoice, status: "finished", fulfillment: "credited" }, now), /wallet credited/);
   assert.match(paymentStatusLabel({ ...invoice, status: "finished", fulfillment: "delivered" }, now), /order delivered/);
+  assert.match(paymentCaption({ ...invoice, status: "finished", fulfillment: "credited" }, now), /✅ <b>Complete/);
   assert.match(paymentCaption({ ...invoice, status: "finished", fulfillment: "credited" }, now), /Do not send another payment/);
+});
+
+test("styled invoices fit Telegram captions across supported networks", () => {
+  for (const coin of ["btc", "eth", "ltc", "usdterc20", "usdttrc20", "bnbbsc", "sol"]) {
+    const caption = paymentCaption({
+      ...invoice, coin, address: "a".repeat(128), extraId: "12345678901234567890",
+      id: "a".repeat(36), title: "Wallet deposit", payAmount: "0.123456789012345678",
+    }, now);
+    assert.ok(caption.length <= 1024);
+    assert.match(caption, /<code>a{128}<\/code>/);
+  }
 });
 
 test("expired and review invoices cannot invite another payment", () => {

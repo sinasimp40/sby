@@ -38,3 +38,9 @@ Do not mention NOWPayments in any customer-facing Telegram content; use clean, s
 **Why:** The user explicitly requested no provider branding anywhere in Telegram, including deposit prompts and invoice footers.
 
 **How to apply:** Keep provider identity visible in admin configuration, but not Telegram prompts, captions, receipts, errors or status updates. Never redact or alter delivered stock credentials.
+
+Use helpful emojis, bold headings, clear spacing, and copyable payment details in Telegram deposit and payment messages.
+
+**Why:** The user said the plain presentation was too dry and asked for emojis and better text styling.
+
+**How to apply:** Keep the formatting compatible with Telegram HTML and caption limits; preserve exact amounts, addresses, and safety warnings.

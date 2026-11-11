@@ -46,29 +46,35 @@ export function paymentCaption(p: InvoiceMessage, now = Date.now()) {
   const closed = ["failed", "expired", "refunded", "rejected"].includes(status);
   const quoteExpired = p.expiresAt.getTime() <= now;
   const canPay = !closed && !fulfilled && p.fulfillment !== "review" && !quoteExpired && status === "waiting";
+  const statusIcon = fulfilled ? "✅" :
+    p.fulfillment === "review" || status === "partially_paid" ? "⚠️" :
+    closed ? (status === "refunded" ? "↩️" : "❌") :
+    quoteExpired && status === "waiting" ? "⌛" :
+    status === "waiting" ? "⏳" : "🔄";
   const stamp = p.expiresAt.toISOString().replace("T", " ").slice(0, 16) + " UTC";
   const lines = [
-    `<b>${escapeHtml((p.title ?? "Payment").replace(/nowpayments/gi, "Payment").slice(0, 60))}</b>`,
+    `💳 <b>${escapeHtml((p.title ?? "Payment").replace(/nowpayments/gi, "Payment").slice(0, 60))}</b>`,
     ...(p.amountUSD ? [`Total: <b>$${escapeHtml(p.amountUSD)}</b>`] : []),
-    `Status: <b>${escapeHtml(paymentStatusLabel(p, now))}</b>`,
     "",
-    `<b>${canPay ? "Send exactly" : "Invoice amount"}</b>`,
+    `${statusIcon} <b>${escapeHtml(paymentStatusLabel(p, now))}</b>`,
+    "",
+    `🪙 <b>${canPay ? "Send exactly" : "Invoice amount"}</b>`,
     `<code>${escapeHtml(p.payAmount)} ${escapeHtml(coin.symbol)}</code>`,
     `Network: <b>${escapeHtml(coin.network)}</b>`,
-    ...(canPay ? ["", "<b>Payment address</b>", `<code>${escapeHtml(p.address)}</code>`] : []),
-    ...(p.extraId && canPay ? [`<b>Required memo / tag</b>`, `<code>${escapeHtml(p.extraId)}</code>`] : []),
+    ...(canPay ? ["", "📋 <b>Payment address</b>", `<code>${escapeHtml(p.address)}</code>`] : []),
+    ...(p.extraId && canPay ? ["", "⚠️ <b>Required memo / tag</b>", `<code>${escapeHtml(p.extraId)}</code>`] : []),
     "",
-    `Received: <b>${escapeHtml(p.receivedAmount ?? "0")} ${escapeHtml(coin.symbol)}</b>`,
-    ...(canPay ? [`Pay before: <b>${stamp}</b>`] : []),
+    `💰 Received: <b>${escapeHtml(p.receivedAmount ?? "0")} ${escapeHtml(coin.symbol)}</b>`,
+    ...(canPay ? [`🕒 Pay before: <b>${stamp}</b>`] : []),
     "",
-    fulfilled ? "Complete. Do not send another payment." :
-      closed || quoteExpired && ["waiting", "partially_paid"].includes(status) ? "Do not send funds to this invoice. Already paid? We will keep checking automatically." :
-      p.fulfillment === "review" ? "Please contact support with the reference below. Do not pay again." :
-      status === "partially_paid" ? "A partial payment was detected. Contact support before sending more." :
-      "Updates automatically after final payment verification.",
-    ...(canPay ? ["<i>QR contains the address only. Enter the exact amount shown above.</i>"] : []),
+    fulfilled ? "🎉 Complete. Do not send another payment." :
+      closed || quoteExpired && ["waiting", "partially_paid"].includes(status) ? "⚠️ Do not send funds to this invoice.\nAlready paid? Automatic checking continues." :
+      p.fulfillment === "review" ? "💬 Contact support with your reference.\nDo not pay again." :
+      status === "partially_paid" ? "💬 Contact support before sending more." :
+      "🔄 <i>Status updates here automatically.</i>\nCredit follows final payment verification.",
+    ...(canPay ? ["", "<i>QR contains the address only.\nEnter the exact amount shown above.</i>"] : []),
     "",
-    `<i>Reference: ${escapeHtml(p.id.slice(0, 8))}</i>`,
+    `🧾 <i>Reference: ${escapeHtml(p.id.slice(0, 8))}</i>`,
   ];
   const caption = lines.join("\n");
   if (caption.length > 1024) throw new Error("Invoice caption exceeds Telegram limit.");
