@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID, createHmac } from "node:crypto";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   db, pool, botConnections, botCustomers, botUpdates, shopPayments, walletEntries,
   shopProducts, shopInventory, shopSettings, shopActivity,
@@ -80,7 +80,14 @@ test("finished-only checkout, stock allocation, wallet ledger and Telegram deliv
     const customer = await makeCustomer();
     const { product, stocks } = await makeProduct(stockCount);
     const input = { ownerId: owner, customerId: customer.id, token: randomUUID(), coin: "ltc", productId: product.id, expectedAmountCents: 1000 };
-    return { customer, product, stocks, input, payment: await createCheckout(input) };
+    // Seed a legacy direct-purchase fixture from a mocked deposit quote.
+    // New direct product checkout is forbidden; old invoices must still settle.
+    const quote = await createCheckout({ ownerId: owner, customerId: customer.id, token: randomUUID(), coin: "ltc", depositCents: 1000 });
+    const [payment] = await db.update(shopPayments).set({
+      kind: "purchase", productId: product.id, inventoryId: stocks[0]!.id, productName: product.name,
+    }).where(eq(shopPayments.id, quote.id)).returning();
+    await db.update(shopInventory).set({ status: "reserved" }).where(eq(shopInventory.id, stocks[0]!.id));
+    return { customer, product, stocks, input, payment: payment! };
   };
   const ledgerCount = async (paymentId: string) => (await db.select({ n: sql<number>`count(*)::integer` }).from(walletEntries).where(eq(walletEntries.paymentId, paymentId)))[0]!.n;
   try {
@@ -111,7 +118,7 @@ test("finished-only checkout, stock allocation, wallet ledger and Telegram deliv
       assert.match(keyboard[0][0].text, /Products/);
       assert.match(keyboard[1][1].text, /Order History/);
     });
-    await t.test("real checkout response becomes a PNG QR with amount/network/expiry and buyer check button", async () => {
+    await t.test("legacy invoice response becomes a PNG QR with amount/network/expiry", async () => {
       const { payment } = await makePurchase();
       const stock = (await db.select().from(shopInventory).where(eq(shopInventory.id, payment.inventoryId!)))[0]!;
       assert.equal(stock.status, "reserved");
@@ -183,7 +190,9 @@ test("finished-only checkout, stock allocation, wallet ledger and Telegram deliv
     await t.test("simultaneous buyers cannot buy the same last line", async () => {
       const { product } = await makeProduct(1);
       const a = await makeCustomer(); const b = await makeCustomer();
-       const results = await Promise.allSettled([a, b].map(c => createCheckout({ ownerId: owner, customerId: c.id, token: randomUUID(), coin: "ltc", productId: product.id, expectedAmountCents: 1000 })));
+      // Test-only funded customers; no real wallet or provider is touched.
+      await db.update(botCustomers).set({ balanceCents: 1000 }).where(inArray(botCustomers.id, [a.id, b.id]));
+      const results = await Promise.allSettled([a, b].map(c => createCheckout({ ownerId: owner, customerId: c.id, token: randomUUID(), coin: "usd", wallet: true, productId: product.id, expectedAmountCents: 1000 })));
       assert.equal(results.filter(r => r.status === "fulfilled").length, 1);
       assert.equal(results.filter(r => r.status === "rejected").length, 1);
     });
@@ -197,16 +206,16 @@ test("finished-only checkout, stock allocation, wallet ledger and Telegram deliv
       await checkPayment(payment.id);
       assert.equal((await getPayment(payment.id))!.fulfillment, "review");
     });
-    await t.test("ambiguous provider timeout holds stock and never recreates the same invoice", async () => {
-      const customer = await makeCustomer(); const { product } = await makeProduct(1);
-      const input = { ownerId: owner, customerId: customer.id, token: randomUUID(), coin: "ltc", productId: product.id, expectedAmountCents: 1000 };
+    await t.test("ambiguous provider timeout never recreates the same deposit invoice", async () => {
+      const customer = await makeCustomer();
+      const input = { ownerId: owner, customerId: customer.id, token: randomUUID(), coin: "ltc", depositCents: 1000 };
       failNextCreate = true;
       const before = apiCreates;
       await assert.rejects(() => createCheckout(input));
       const payment = await createCheckout(input);
       assert.equal(apiCreates, before + 1);
       assert.equal(payment.fulfillment, "review");
-      assert.equal((await db.select().from(shopInventory).where(eq(shopInventory.id, payment.inventoryId!)))[0]!.status, "reserved");
+      assert.equal(payment.inventoryId, null);
     });
     await t.test("failed Telegram delivery retries the assigned credential without allocating again", async () => {
       const { payment } = await makePurchase(1);

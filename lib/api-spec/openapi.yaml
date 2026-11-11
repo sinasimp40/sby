@@ -543,7 +543,7 @@ components:
         supportUsername: { type: string, maxLength: 32, pattern: "^@?[A-Za-z0-9_]*$" }
         supportMessage: { type: string, maxLength: 2000 }
         currency: { type: string, enum: [USD] }
-        minDeposit: { type: number, minimum: 0, maximum: 100000, description: "Optional shop deposit minimum in USD. Zero adds no shop minimum; provider minimums still apply." }
+        minDeposit: { type: number, minimum: 5, maximum: 100000, description: "Shop deposit minimum in USD, at least $5. Provider coin minimums may be higher." }
         acceptedCoins: { type: array, minItems: 1, uniqueItems: true, items: { type: string, enum: [BTC, ETH, LTC, USDTTRC20, USDTERC20, BNBBSC, SOL] } }
         rateMode: { type: string, enum: [fixed, floating] }
         invoiceExpiryMinutes: { type: integer, minimum: 10, maximum: 120 }

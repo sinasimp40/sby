@@ -20,6 +20,14 @@ export async function createCheckout(input: {
   ownerId: string; customerId: string; token: string; coin: string;
   productId?: number; depositCents?: number; expectedAmountCents?: number; wallet?: boolean;
 }) {
+  // Enforce wallet-only product purchases even for old Telegram buttons or
+  // callers that bypass the current menu. Existing invoices still reconcile.
+  if (input.productId !== undefined && !input.wallet) {
+    throw new CommerceError("Products can only be purchased with wallet balance. Open Wallet → Deposit to add funds, then select the product again.");
+  }
+  if (input.wallet && input.productId === undefined) {
+    throw new CommerceError("Wallet balance can only be used to purchase a product.");
+  }
   const settings = await settingsForOwner(input.ownerId);
   const connection = await activeConnection();
   if (!connection || connection.active !== "yes" || connection.ownerId !== input.ownerId) throw new CommerceError("This shop is not connected.");

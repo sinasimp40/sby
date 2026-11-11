@@ -79,10 +79,10 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         await db.update(botCustomers).set({ state: {
           type: "purchase", token, productId: product.id, amountCents: Math.round(product.price * 100), expires: Date.now() + 10 * 60000,
         } }).where(eq(botCustomers.id, customer!.id));
-        await send(`${product.name}\n${product.description}\nPrice: $${product.price.toFixed(2)}\nChoose payment method. One account per purchase.`, {
+        await send(`${product.name}\n${product.description}\nPrice: $${product.price.toFixed(2)}\nWallet balance: $${(customer!.balanceCents / 100).toFixed(2)}\nProducts are paid with wallet balance only. Deposit first if needed. One account per purchase.`, {
           inline_keyboard: [
-            ...settings.acceptedCoins.map(coin => [{ text: coin, callback_data: `pay:${token}:${coin.toLowerCase()}` }]),
             [{ text: "Pay with wallet balance", callback_data: `wal:${token}` }],
+            [{ text: "Add funds to wallet", callback_data: "deposit" }],
           ],
         });
       } else if (data === "deposit") {
@@ -96,6 +96,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         }
         const wallet = parts[0] === "wal";
         if (wallet && state.type !== "purchase") throw new CommerceError("Invalid payment method.");
+        if (!wallet && state.type === "purchase") throw new CommerceError("Products now use wallet balance only. Open Wallet → Deposit to add funds, then select the product again.");
         const productId = state.type === "purchase" ? Number(state.productId) : undefined;
         if (productId) {
           const product = (await productsForOwner(connection.ownerId)).find(p => p.id === productId);
@@ -121,7 +122,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
       } else if ([settings.supportLabel, labels[0]![1], "/support"].includes(text)) {
         await send(`${settings.supportMessage}${settings.supportUsername ? `\n@${settings.supportUsername.replace(/^@/, "")}` : ""}`);
       } else if ([settings.walletLabel, labels[1]![0], "/wallet"].includes(text)) {
-        await send(`Wallet balance: $${(customer!.balanceCents / 100).toFixed(2)}\nDeposits use NOWPayments. Credit is added only after status: finished.`, {
+        await send(`Wallet balance: $${(customer!.balanceCents / 100).toFixed(2)}\nUse your balance to buy products. Minimum deposit: $${settings.minDeposit.toFixed(2)}; some coins require more.\nDeposits use NOWPayments. Credit is added only after status: finished.`, {
           inline_keyboard: [[{ text: "Deposit", callback_data: "deposit" }]],
         });
       } else if ([settings.ordersLabel, labels[1]![1], "/orders"].includes(text)) {

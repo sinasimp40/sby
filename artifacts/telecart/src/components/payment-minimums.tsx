@@ -9,7 +9,7 @@ export function PaymentMinimumsPanel() {
   const query = useGetPaymentMinimums({ query: { enabled: Boolean(status.data?.isOperator), refetchInterval: 60000 } });
   if (!status.data?.isOperator) return null;
   return <Panel title="Live provider minimums" meta="USD · your merchant route">
-    <p className="mb-3 text-xs text-muted-foreground">Minimums vary by coin, network, payout route and rate mode. Deposits use the higher of your optional shop minimum and the provider minimum; direct purchases use the provider minimum. Rechecked before each invoice. Floating-rate crypto amounts can change with market prices; a lower minimum does not guarantee the final fees or quote.</p>
+    <p className="mb-3 text-xs text-muted-foreground">Minimums vary by coin, network, payout route and rate mode. Wallet deposits use the higher of your shop minimum ($5 or more) and the provider minimum, checked before each invoice. Products use wallet balance only, with no new crypto invoice. Floating-rate crypto amounts can change with market prices.</p>
     {query.isError ? <ErrorState message="Provider minimum lookup failed" onRetry={() => query.refetch()} /> :
       query.isLoading ? <p className="text-sm">Fetching NOWPayments minimums…</p> :
         <table className="w-full text-left text-xs"><thead><tr className="border-b"><th className="py-2">Coin / network</th><th>Fixed rate</th><th>Floating rate</th></tr></thead>

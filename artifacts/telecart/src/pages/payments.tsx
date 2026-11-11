@@ -18,7 +18,7 @@ const COINS = [
   { id: "USDTTRC20", name: "USDT · TRON" }, { id: "USDTERC20", name: "USDT · Ethereum" }, { id: "BNBBSC", name: "BNB · Smart Chain" }, { id: "SOL", name: "Solana" },
 ] as const;
 const schema = z.object({
-  minDeposit: z.coerce.number().min(0, "Use 0 for no shop minimum").max(100000),
+  minDeposit: z.coerce.number().min(5, "Minimum deposit is $5 or higher").max(100000),
   rateMode: z.enum(["fixed", "floating"]),
   invoiceExpiryMinutes: z.coerce.number().int("Whole minutes").min(10, "Minimum 10 minutes").max(120, "Maximum 120 minutes"),
   acceptedCoins: z.array(z.enum(["BTC", "ETH", "LTC", "USDTTRC20", "USDTERC20", "BNBBSC", "SOL"])).min(1, "Select at least one coin"),
@@ -29,12 +29,12 @@ const steps = [
   { i: Hash, t: "Buyer picks an amount", d: "From the Wallet menu, at or above your minimum deposit, in USD." },
   { i: QrCode, t: "Payment is created at NOWPayments", d: "The connected bot sends a real address QR plus the exact amount, coin/network and any required memo." },
   { i: Network, t: "Network is stated explicitly", d: "e.g. USDT on TRC20 vs ERC20 — sending on the wrong network loses funds." },
-  { i: Clock, t: "Quote validity is checked", d: "The earlier of your window and the provider quote expiry applies. Only provider status finished releases stock or credits." },
+  { i: Clock, t: "Wallet credit is verified", d: "Only provider status finished credits a deposit. Products are purchased with wallet balance only; no direct crypto product checkout." },
 ];
 
 export default function PaymentsPage() {
   const { settings, savePartial, saving } = useShopSettings();
-  const form = useForm<V>({ resolver: zodResolver(schema), defaultValues: { minDeposit: 0, invoiceExpiryMinutes: 30, rateMode: "fixed", acceptedCoins: ["BTC"] } });
+  const form = useForm<V>({ resolver: zodResolver(schema), defaultValues: { minDeposit: 5, invoiceExpiryMinutes: 30, rateMode: "floating", acceptedCoins: ["BTC"] } });
   const inited = useRef(false);
   useEffect(() => {
     const s = settings.data;
@@ -43,7 +43,7 @@ export default function PaymentsPage() {
 
   return (
     <div>
-      <PageHeader eyebrow="Provider · NOWPayments" title="Payments" description="Real QR checkout, verified payment status and wallet deposits. Activate the bot connection before customers can pay." actions={<SetupRequired label={settings.data?.paymentsConnected ? "Webhook configured" : "Activation required"} />} />
+      <PageHeader eyebrow="Provider · NOWPayments" title="Payments" description="NOWPayments funds customer wallets. Products are purchased with wallet balance only. Deposits start at $5; coin minimums may be higher." actions={<SetupRequired label={settings.data?.paymentsConnected ? "Webhook configured" : "Activation required"} />} />
       <div className="rise mb-5 flex gap-3 rounded-xl border border-signal/35 bg-signal-soft p-4" data-testid="note-stars-policy">
         <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-signal" />
         <div className="text-sm">
@@ -84,7 +84,7 @@ export default function PaymentsPage() {
                   </FormControl><FormDescription>Applies to new invoices only. Floating rates can change during payment processing; it does not bypass network fees or provider minimums.</FormDescription><FormMessage /></FormItem>
                 )} />
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <FormField control={form.control} name="minDeposit" render={({ field }) => (<FormItem><FormLabel>Optional shop deposit minimum (USD)</FormLabel><FormControl><Input type="number" min="0" step="0.01" {...field} data-testid="input-min-deposit" /></FormControl><p className="text-xs text-muted-foreground">Set 0 for no extra shop minimum. NOWPayments coin minimums still apply.</p><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="minDeposit" render={({ field }) => (<FormItem><FormLabel>Minimum wallet deposit (USD)</FormLabel><FormControl><Input type="number" min="5" step="0.01" {...field} data-testid="input-min-deposit" /></FormControl><p className="text-xs text-muted-foreground">Customers must deposit $5 or more. You can raise this limit. NOWPayments may require more for a particular coin or network.</p><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="invoiceExpiryMinutes" render={({ field }) => (<FormItem><FormLabel>Invoice expiry (minutes)</FormLabel><FormControl><Input type="number" {...field} data-testid="input-invoice-expiry" /></FormControl><FormDescription>10–120 minutes</FormDescription><FormMessage /></FormItem>)} />
                 </div>
               </Panel>

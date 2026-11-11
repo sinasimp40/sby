@@ -21,8 +21,8 @@ The user chose to wait for NOWPayments API status `finished` before delivering e
 
 **How to apply:** Never fulfill at `confirming`, `confirmed`, or `sending`. Verify payment identity, amount, and currency server-side, and prevent repeated notifications from consuming or delivering additional stock.
 
-The user asked to remove the app-imposed payment minimum, rather than treating $0.10 as a NOWPayments requirement.
+The user requires floating-rate NOWPayments wallet deposits of $5 or higher, and wallet balance as the only way to buy products.
 
-**Why:** The user wants small deposits and product payments where the selected provider route supports them.
+**Why:** After a real $0.10 LTC floating invoice succeeded, the user explicitly chose a $5 minimum top-up and wallet-only product purchases.
 
-**How to apply:** Do not reintroduce an arbitrary app floor. Keep positive USD-cent precision, optional merchant limits, and live provider minimum checks distinct. Do not automatically switch rate mode to make quotes cheaper.
+**How to apply:** Keep deposit limits separate from product prices: cheap products can use an existing wallet balance without a crypto invoice. Enforce wallet-only purchases server-side, including stale Telegram crypto buttons. Preserve reconciliation for older direct-payment invoices. Some coin/network provider minimums exceed $5; do not promise every coin accepts $5.
