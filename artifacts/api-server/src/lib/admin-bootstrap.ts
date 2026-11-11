@@ -71,6 +71,16 @@ export async function seedConfiguredAdmin(config: BootstrapConfig, users: Bootst
 }
 
 export async function initializeAdminBootstrap() {
+  // A fresh self-hosted install may bind a trusted local owner without Clerk.
+  // Never auto-map an existing cloud account or migrate any owner's records.
+  if (!process.env.CLERK_SECRET_KEY) {
+    if (!process.env.TELECART_OWNER_ID || !process.env.SESSION_SECRET ||
+      !process.env.TELECART_ADMIN_EMAIL || !process.env.TELECART_ADMIN_INITIAL_PASSWORD) {
+      throw new Error("Local setup requires an explicit owner ID, admin email/password and SESSION_SECRET.");
+    }
+    logger.info("Using the explicitly configured local admin identity.");
+    return;
+  }
   const email = process.env.TELECART_ADMIN_EMAIL;
   if (!email) return;
   const id = await seedConfiguredAdmin({

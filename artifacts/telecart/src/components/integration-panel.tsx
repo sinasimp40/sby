@@ -1,30 +1,25 @@
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { useGetIntegration, useConnectIntegration, useDisconnectIntegration, useSaveTelegramCredential, useSaveNowpaymentsCredentials } from "@workspace/api-client-react";
+import { useGetIntegration, useSaveTelegramCredential, useSaveNowpaymentsCredentials } from "@workspace/api-client-react";
 import { Panel, ErrorState } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { errMsg } from "@/lib/format";
+import { TelegramRuntimeControls } from "./telegram-runtime-controls";
 
 export function IntegrationPanel() {
-  const query = useGetIntegration({ query: { refetchInterval: 30000 } });
-  const connect = useConnectIntegration();
-  const disconnect = useDisconnectIntegration();
+  const query = useGetIntegration({ query: { refetchInterval: 5000 } });
   const saveTelegram = useSaveTelegramCredential();
   const saveNowpayments = useSaveNowpaymentsCredentials();
-  const [accepted, setAccepted] = useState(false);
   const [telegramToken, setTelegramToken] = useState("");
   const [nowpaymentsApiKey, setNowpaymentsApiKey] = useState("");
   const [nowpaymentsIpnSecret, setNowpaymentsIpnSecret] = useState("");
-  const qc = useQueryClient();
   const { toast } = useToast();
   const s = query.data;
-  const busy = connect.isPending || disconnect.isPending || saveTelegram.isPending || saveNowpayments.isPending;
-  const success = () => { qc.invalidateQueries(); toast({ title: "Connection updated" }); };
+  const busy = saveTelegram.isPending || saveNowpayments.isPending;
   const error = (e: unknown) => toast({ title: "Connection failed", description: errMsg(e), variant: "destructive" });
   return (
-    <Panel title="Provider connections" meta={s?.connected ? (s.publicUrl.includes(".replit.dev") ? "workspace polling" : "webhook configured") : "activation required"}>
+    <Panel title="Provider connections" meta={s?.telegramProcessingEnabled ? s.telegramRuntimeState : "Telegram disabled"}>
       {query.isError ? <ErrorState message="Could not load connection status" onRetry={() => query.refetch()} /> :
         !s ? <p className="text-sm text-muted-foreground">Checking configuration…</p> :
         !s.signedIn ? <p className="text-sm text-muted-foreground">Sign in to see your private shop connection and setup instructions.</p> : (
@@ -37,6 +32,7 @@ export function IntegrationPanel() {
             </div>}
             {s.ownerBound && !s.isOperator && <p className="text-muted-foreground">This account is not the configured bot operator. Sign in to the bound admin account to connect the shared bot.</p>}
             {s.isOperator && <>
+              <TelegramRuntimeControls status={s} onRefresh={() => { void query.refetch(); }} />
               <div className="space-y-4 rounded-lg border p-3">
                 <div>
                   <label htmlFor="telegram-bot-token" className="text-xs font-medium">Telegram bot token</label>
@@ -66,25 +62,16 @@ export function IntegrationPanel() {
                 </div>
               </div>
               <dl className="grid grid-cols-[1fr_auto] gap-2 text-xs">
-                <dt>Telegram bot</dt><dd>{s.connected ? "Connected" : s.telegramVerified ? `Token verified · ${s.telegramProcessingEnabled ? "not connected" : "processing disabled"}` : "Not verified"}</dd>
+                <dt>Telegram token</dt><dd>{s.telegramVerified ? "Verified" : "Not verified"}</dd>
                 <dt>NOWPayments API</dt><dd>{s.nowpaymentsVerified ? "Verified" : "Not verified"}</dd>
                 <dt>Public callback origin</dt><dd className="max-w-56 break-all">{s.publicUrl || "Not configured"}</dd>
               </dl>
-              {!s.publicUrl && <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">Set TELECART_PUBLIC_URL to the public HTTPS origin. For workspace testing, also enable TELECART_ALLOW_WORKSPACE_TESTING. Providers must be able to reach the URL without signing in.</p>}
               <p className="text-xs text-muted-foreground">Provider credentials are encrypted before storage and never sent back to the browser. Saving checks the Telegram token and NOWPayments API key with their providers. The IPN secret is saved for signature verification; the provider does not offer a way to check it in advance. The IPN URL is supplied automatically for each invoice. Configure your receiving wallet in NOWPayments.</p>
-              {!s.telegramProcessingEnabled && <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">Telegram processing is disabled in this workspace for safety. The token check still verifies it with Telegram, but connecting the bot and processing messages requires enabling TELECART_TELEGRAM_DISABLED=false when you are ready for live bot activity.</p>}
-              {s.publicUrl.includes(".replit.dev") && <p className="rounded-lg bg-muted p-3 text-xs">{s.telegramProcessingEnabled ? "Workspace Telegram testing uses outbound polling. Connecting replaces this bot's other receiver." : "Telegram polling is disabled in this workspace."} Payment status and received amounts are checked against NOWPayments while the workspace runs, even if incoming notifications are blocked. The invoice's Check payment button also refreshes immediately. Messages and invoices are real after activation.</p>}
-              {!s.connected && <label className="flex items-start gap-2 text-xs">
-                <input type="checkbox" checked={accepted} onChange={e => setAccepted(e.target.checked)} className="mt-0.5" data-testid="checkbox-activate-policy" />
-                <span>I understand Telegram requires Stars for digital goods inside bots, and I am responsible for meeting Telegram and NOWPayments requirements. This setup does not override their rules.</span>
-              </label>}
-              <div className="flex flex-wrap gap-2">
-                <Button disabled={busy || !accepted || !s.publicUrl || !s.tokenPresent || !s.apiKeyPresent || !s.ipnSecretPresent || s.connected || !s.telegramProcessingEnabled}
-                  onClick={() => connect.mutate({ data: { acknowledgePolicy: true } }, { onSuccess: success, onError: error })}
-                  data-testid="button-connect-telegram">{connect.isPending ? "Connecting…" : "Connect Telegram bot"}</Button>
-                {s.connected && <Button variant="outline" disabled={busy} onClick={() => disconnect.mutate(undefined, { onSuccess: success, onError: error })} data-testid="button-disconnect-telegram">Disconnect bot</Button>}
-              </div>
-              <p className="text-xs text-muted-foreground">Disconnecting stops new Telegram messages. Existing payment notifications can still settle and deliver orders.</p>
+              <p className="text-xs text-muted-foreground">For localhost: choose Polling above, keep your computer and server running, and disable Telegram here before running the same bot on another computer. Database, admin login, and encryption secrets still need one-time installation setup.</p>
+              <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">Moving this shop to your computer</summary>
+                <p className="mt-2">Follow LOCAL_SETUP.md in the project. Keep this owner ID and your original SESSION_SECRET when using the existing database; a different encryption secret cannot decrypt stored provider keys or stock. Disable this copy before enabling the local one.</p>
+                <Input readOnly value={s.ownerId} aria-label="Shop owner ID for local migration" className="mt-2 font-mono text-xs" />
+              </details>
             </>}
           </div>
         )}

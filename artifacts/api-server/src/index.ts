@@ -27,7 +27,7 @@ try {
   process.exit(1);
 }
 
-app.listen(port, (err) => {
+app.listen(port, process.env.TELECART_LOCAL_ONLY === "true" ? "127.0.0.1" : "0.0.0.0", (err) => {
   if (err) {
     logger.error({ err }, "Error listening on port");
     process.exit(1);

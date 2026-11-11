@@ -4,11 +4,16 @@ import { db, shopPayments } from "@workspace/db";
 import { CommerceError, safeEqual, verifyIpn, webhookSecret } from "../lib/commerce-providers";
 import { checkPayment } from "../lib/commerce-payments";
 import { handleTelegramUpdate } from "../lib/telegram-shop";
+import { getBotRuntime } from "../lib/bot-runtime";
 
 const router: IRouter = Router();
 router.post("/telegram/webhook", async (req, res): Promise<void> => {
   if (!process.env.SESSION_SECRET || !safeEqual(req.get("x-telegram-bot-api-secret-token") ?? "", webhookSecret())) {
     res.status(401).json({ error: "Invalid Telegram webhook signature." }); return;
+  }
+  const runtime = await getBotRuntime();
+  if (!runtime.enabled || runtime.transport !== "webhook") {
+    res.status(503).json({ error: "Telegram webhook processing is disabled." }); return;
   }
   await handleTelegramUpdate(req.body);
   res.sendStatus(200);

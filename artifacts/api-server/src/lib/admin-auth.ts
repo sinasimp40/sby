@@ -7,6 +7,24 @@ import { configuredOwnerId } from "./admin-bootstrap";
 
 const scrypt = promisify(nodeScrypt);
 export const ADMIN_COOKIE = "__Host-telecart_admin";
+export function adminOrigin() {
+  return process.env.TELECART_ADMIN_ORIGIN || process.env.TELECART_PUBLIC_URL || "";
+}
+export function localAdminHttp() {
+  try {
+    const url = new URL(adminOrigin());
+    return process.env.NODE_ENV !== "production" && url.protocol === "http:" &&
+      ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+  } catch { return false; }
+}
+export function adminCookieName() {
+  return localAdminHttp() ? "telecart_admin_local" : ADMIN_COOKIE;
+}
+export function adminCookieOptions() {
+  return localAdminHttp()
+    ? { httpOnly: true, secure: false, sameSite: "lax" as const, path: "/" }
+    : { httpOnly: true, secure: true, sameSite: "none" as const, partitioned: true, path: "/" };
+}
 export const SESSION_MS = 8 * 3600000;
 const authenticated = new WeakMap<Request, string>();
 
@@ -54,7 +72,7 @@ export function getShopAuth(req: Request) {
 }
 export const adminSessionMiddleware: RequestHandler = async (req, res, next) => {
   try {
-    const token = req.cookies?.[ADMIN_COOKIE];
+    const token = req.cookies?.[adminCookieName()];
     const s = settings();
     if (s && typeof token === "string" && /^[a-f0-9]{64}$/.test(token)) {
       const [session] = await db.select().from(adminSessions).where(and(
@@ -73,7 +91,7 @@ export function requireSameOrigin(req: Request) {
   // Browser mutations require an exact configured origin; no forged host/header
   // may select a different trusted origin.
   const origin = req.get("origin");
-  const expected = process.env.TELECART_PUBLIC_URL;
+  const expected = adminOrigin();
   if (!origin || !expected) return false;
   try { return new URL(origin).origin === new URL(expected).origin; }
   catch { return false; }

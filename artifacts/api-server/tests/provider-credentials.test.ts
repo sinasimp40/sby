@@ -4,7 +4,7 @@ import { decryptProviderSecret, encryptProviderSecret } from "../src/lib/provide
 import { checkNOWPaymentsKey, checkTelegramToken, sortedJson, verifyIpn } from "../src/lib/commerce-providers";
 import { createHmac, randomUUID } from "node:crypto";
 import app from "../src/app";
-import { adminLoginLimits, adminSessions, botConnections, db, pool, providerCredentials } from "@workspace/db";
+import { adminLoginLimits, adminSessions, botConnections, botRuntimeSettings, db, pool, providerCredentials } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 test("provider credentials are encrypted and bound to their owner and purpose", () => {
@@ -55,7 +55,7 @@ test("provider checks return safe errors without echoing submitted credentials",
 });
 
 test("admin can verify and save provider credentials without returning their values", async t => {
-  const envKeys = ["TELECART_ADMIN_EMAIL", "TELECART_ADMIN_INITIAL_PASSWORD", "TELECART_OWNER_ID", "TELECART_PUBLIC_URL", "TELECART_TELEGRAM_DISABLED"];
+  const envKeys = ["TELECART_ADMIN_EMAIL", "TELECART_ADMIN_INITIAL_PASSWORD", "TELECART_OWNER_ID", "TELECART_PUBLIC_URL", "TELECART_ADMIN_ORIGIN", "TELECART_TELEGRAM_DISABLED"];
   const savedEnv = Object.fromEntries(envKeys.map(key => [key, process.env[key]]));
   const owner = `credential-test-${randomUUID()}`;
   const email = "credential-test@example.invalid";
@@ -69,6 +69,7 @@ test("admin can verify and save provider credentials without returning their val
   process.env.TELECART_ADMIN_INITIAL_PASSWORD = password;
   process.env.TELECART_OWNER_ID = owner;
   process.env.TELECART_PUBLIC_URL = "https://credential-test.invalid";
+  delete process.env.TELECART_ADMIN_ORIGIN;
   process.env.TELECART_TELEGRAM_DISABLED = "true";
   globalThis.fetch = async (input, init) => {
     const url = String(input);
@@ -131,6 +132,31 @@ test("admin can verify and save provider credentials without returning their val
     const notification = { payment_id: "987654", payment_status: "waiting" };
     const signature = createHmac("sha512", ipnSecret).update(JSON.stringify(sortedJson(notification))).digest("hex");
     assert.equal(await verifyIpn(notification, signature), true);
+    const runtimeInput = { enabled: false, transport: "polling", publicUrl: "", acknowledgePolicy: false };
+    assert.equal((await request("/shop/integration/runtime", { method: "POST", body: JSON.stringify(runtimeInput) })).status, 401);
+    assert.equal((await request("/shop/integration/runtime", { method: "POST", headers: { cookie, origin: "https://evil.invalid" }, body: JSON.stringify(runtimeInput) })).status, 403);
+    response = await request("/shop/integration/runtime", { method: "POST", headers: { cookie }, body: JSON.stringify(runtimeInput) });
+    assert.equal(response.status, 200);
+    const paused = await response.json();
+    assert.equal(paused.telegramProcessingEnabled, false);
+    assert.equal(paused.telegramRuntimeState, "disabled");
+    assert.equal(paused.publicUrl, "");
+    assert.equal(paused.connected, false);
+    process.env.TELECART_TELEGRAM_DISABLED = "false";
+    const persisted = await (await request("/shop/integration", { headers: { cookie } })).json();
+    assert.equal(persisted.telegramProcessingEnabled, false, "Dashboard setting overrides the legacy environment default.");
+    assert.equal((await request("/shop/integration/runtime", { method: "POST", headers: { cookie }, body: JSON.stringify({ ...runtimeInput, enabled: true }) })).status, 400);
+
+    // Exercise HTTP localhost login without exposing real credentials or weakening HTTPS cookies.
+    process.env.TELECART_ADMIN_ORIGIN = "http://localhost:5173";
+    response = await request("/admin/login", { method: "POST", headers: { origin: "http://localhost:5173" }, body: JSON.stringify({ email, password }) });
+    assert.equal(response.status, 200);
+    const localCookie = response.headers.get("set-cookie")!;
+    assert.match(localCookie, /^telecart_admin_local=/);
+    assert.match(localCookie, /HttpOnly/);
+    assert.match(localCookie, /SameSite=Lax/);
+    assert.doesNotMatch(localCookie, /Secure|Partitioned/);
+    assert.equal((await (await request("/admin/session", { headers: { cookie: localCookie.split(";")[0]! } })).json()).signedIn, true);
 
     const [stored] = await db.select().from(providerCredentials).where(eq(providerCredentials.ownerId, owner));
     assert.ok(stored);
@@ -142,6 +168,7 @@ test("admin can verify and save provider credentials without returning their val
     await new Promise<void>(resolve => server.close(() => resolve()));
     globalThis.fetch = originalFetch;
     await db.delete(providerCredentials).where(eq(providerCredentials.ownerId, owner));
+    await db.delete(botRuntimeSettings).where(eq(botRuntimeSettings.ownerId, owner));
     await db.delete(adminSessions).where(eq(adminSessions.ownerId, owner));
     await db.delete(adminLoginLimits).where(eq(adminLoginLimits.bucket, `admin-login:development:${owner}`));
     for (const key of envKeys) {

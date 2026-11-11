@@ -5,6 +5,7 @@ import { activeConnection } from "./commerce-connection";
 import { CommerceError, moneyCents, telegram } from "./commerce-providers";
 import { createCheckout, checkPayment, sendCheckout } from "./commerce-payments";
 import { productsForOwner, settingsForOwner } from "./shop-store";
+import { getBotRuntime } from "./bot-runtime";
 
 interface TelegramMessage {
   message_id?: number;
@@ -22,7 +23,7 @@ export interface TelegramUpdate {
 export async function handleTelegramUpdate(update: TelegramUpdate) {
   if (!Number.isSafeInteger(update?.update_id) || update.update_id < 0) throw new CommerceError("Invalid Telegram update.");
   const connection = await activeConnection();
-  if (!connection || connection.active !== "yes") throw new CommerceError("Bot is not active.", 503);
+  if (!connection || connection.active !== "yes" || !(await getBotRuntime()).enabled) throw new CommerceError("Bot is not active.", 503);
   const message = update.callback_query?.message ?? update.message;
   const from = update.callback_query?.from ?? message?.from;
   if (!message || message.chat?.type !== "private" || !from || !Number.isSafeInteger(from.id) ||

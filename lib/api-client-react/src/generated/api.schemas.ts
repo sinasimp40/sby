@@ -257,6 +257,41 @@ export const NOWPaymentsCredentialResultValue = {
 } as const;
 export type NOWPaymentsCredentialResult = typeof NOWPaymentsCredentialResultValue;
 
+export type TelegramRuntimeInputTransport = typeof TelegramRuntimeInputTransport[keyof typeof TelegramRuntimeInputTransport];
+
+
+export const TelegramRuntimeInputTransport = {
+  polling: 'polling',
+  webhook: 'webhook',
+} as const;
+
+export interface TelegramRuntimeInput {
+  enabled: boolean;
+  transport: TelegramRuntimeInputTransport;
+  /** @maxLength 2048 */
+  publicUrl: string;
+  acknowledgePolicy: boolean;
+}
+
+export type IntegrationStatusTelegramTransport = typeof IntegrationStatusTelegramTransport[keyof typeof IntegrationStatusTelegramTransport];
+
+
+export const IntegrationStatusTelegramTransport = {
+  polling: 'polling',
+  webhook: 'webhook',
+} as const;
+
+export type IntegrationStatusTelegramRuntimeState = typeof IntegrationStatusTelegramRuntimeState[keyof typeof IntegrationStatusTelegramRuntimeState];
+
+
+export const IntegrationStatusTelegramRuntimeState = {
+  disabled: 'disabled',
+  starting: 'starting',
+  running: 'running',
+  error: 'error',
+  webhook: 'webhook',
+} as const;
+
 export type IntegrationStatusSettlementStatus = typeof IntegrationStatusSettlementStatus[keyof typeof IntegrationStatusSettlementStatus];
 
 
@@ -275,6 +310,11 @@ export interface IntegrationStatus {
   telegramVerified: boolean;
   nowpaymentsVerified: boolean;
   telegramProcessingEnabled: boolean;
+  telegramTransport: IntegrationStatusTelegramTransport;
+  telegramRuntimeState: IntegrationStatusTelegramRuntimeState;
+  telegramRuntimeError: string;
+  /** @nullable */
+  telegramLastCheckedAt: string | null;
   publicUrl: string;
   botUsername: string;
   connected: boolean;

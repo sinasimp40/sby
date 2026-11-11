@@ -215,6 +215,21 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/IntegrationStatus" }
+  /shop/integration/runtime:
+    post:
+      operationId: updateTelegramRuntime
+      tags: [shop]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TelegramRuntimeInput" }
+      responses:
+        "200":
+          description: Saved Telegram operation settings
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IntegrationStatus" }
   /shop/integration/credentials/telegram:
     post:
       operationId: saveTelegramCredential
@@ -469,9 +484,18 @@ components:
       properties:
         verified: { type: boolean, const: true }
         ipnSecretSaved: { type: boolean, const: true }
+    TelegramRuntimeInput:
+      type: object
+      additionalProperties: false
+      required: [enabled, transport, publicUrl, acknowledgePolicy]
+      properties:
+        enabled: { type: boolean }
+        transport: { type: string, enum: [polling, webhook] }
+        publicUrl: { type: string, maxLength: 2048 }
+        acknowledgePolicy: { type: boolean }
     IntegrationStatus:
       type: object
-      required: [signedIn, ownerId, ownerBound, isOperator, tokenPresent, apiKeyPresent, ipnSecretPresent, telegramVerified, nowpaymentsVerified, telegramProcessingEnabled, publicUrl, botUsername, connected, settlementStatus]
+      required: [signedIn, ownerId, ownerBound, isOperator, tokenPresent, apiKeyPresent, ipnSecretPresent, telegramVerified, nowpaymentsVerified, telegramProcessingEnabled, telegramTransport, telegramRuntimeState, telegramRuntimeError, telegramLastCheckedAt, publicUrl, botUsername, connected, settlementStatus]
       properties:
         signedIn: { type: boolean }
         ownerId: { type: string }
@@ -483,6 +507,10 @@ components:
         telegramVerified: { type: boolean }
         nowpaymentsVerified: { type: boolean }
         telegramProcessingEnabled: { type: boolean }
+        telegramTransport: { type: string, enum: [polling, webhook] }
+        telegramRuntimeState: { type: string, enum: [disabled, starting, running, error, webhook] }
+        telegramRuntimeError: { type: string }
+        telegramLastCheckedAt: { type: ["string", "null"] }
         publicUrl: { type: string }
         botUsername: { type: string }
         connected: { type: boolean }

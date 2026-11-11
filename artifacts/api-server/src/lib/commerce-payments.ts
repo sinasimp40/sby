@@ -82,7 +82,7 @@ export async function createCheckout(input: {
     const p = await nowpayments("/payment", {
       price_amount: result.payment.amountCents / 100, price_currency: "usd", pay_currency: input.coin,
       order_id: result.payment.id, order_description: result.payment.productName,
-      ipn_callback_url: `${connection.publicUrl}/api/nowpayments/ipn`,
+      ...(connection.publicUrl ? { ipn_callback_url: `${connection.publicUrl}/api/nowpayments/ipn` } : {}),
       is_fixed_rate: settings.rateMode === "fixed", is_fee_paid_by_user: false,
     });
     if (!p.payment_id || !/^\d+$/.test(String(p.payment_id)) || !p.pay_address ||

@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { IntegrationStatusSettlementStatus } from './integrationStatusSettlementStatus';
+import type { IntegrationStatusTelegramRuntimeState } from './integrationStatusTelegramRuntimeState';
+import type { IntegrationStatusTelegramTransport } from './integrationStatusTelegramTransport';
 
 export interface IntegrationStatus {
   signedIn: boolean;
@@ -18,6 +20,11 @@ export interface IntegrationStatus {
   telegramVerified: boolean;
   nowpaymentsVerified: boolean;
   telegramProcessingEnabled: boolean;
+  telegramTransport: IntegrationStatusTelegramTransport;
+  telegramRuntimeState: IntegrationStatusTelegramRuntimeState;
+  telegramRuntimeError: string;
+  /** @nullable */
+  telegramLastCheckedAt: string | null;
   publicUrl: string;
   botUsername: string;
   connected: boolean;

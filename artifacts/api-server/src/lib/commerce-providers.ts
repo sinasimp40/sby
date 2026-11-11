@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import QRCode from "qrcode";
 import { paymentCaption, type InvoiceMessage } from "./payment-message";
 import { readProviderCredentials } from "./provider-credentials";
+import { getBotRuntime, legacyPublicUrl } from "./bot-runtime";
 
 export class CommerceError extends Error {
   constructor(message: string, public status = 400) { super(message); }
@@ -15,9 +16,20 @@ export class TelegramRequestError extends CommerceError {
 
 // Never propagate provider response bodies/errors: they can contain tokens or payment details.
 export async function telegram<T = Record<string, unknown>>(method: string, body: Record<string, unknown> | FormData = {}): Promise<T> {
-  if (process.env.TELECART_TELEGRAM_DISABLED === "true") {
-    throw new CommerceError("Telegram bot calls are disabled in this workspace.", 503);
+  if (!(await getBotRuntime()).enabled) {
+    throw new CommerceError("Telegram processing is disabled. Enable it in the dashboard.", 503);
   }
+  return telegramRequest<T>(method, body);
+}
+
+// Administrative calls may configure a paused bot, but may never send messages.
+export async function telegramControl<T = Record<string, unknown>>(
+  method: "getMe" | "getWebhookInfo" | "setWebhook" | "deleteWebhook", body: Record<string, unknown> = {},
+): Promise<T> {
+  return telegramRequest<T>(method, body);
+}
+
+async function telegramRequest<T>(method: string, body: Record<string, unknown> | FormData): Promise<T> {
   const token = (await readProviderCredentials()).telegramToken;
   if (!token) throw new CommerceError("Telegram token is not configured.", 503);
   try {
@@ -155,19 +167,7 @@ export async function verifyIpn(body: unknown, signature: string): Promise<boole
   return safeEqual(createHmac("sha512", secret).update(JSON.stringify(sortedJson(body))).digest("hex"), signature.toLowerCase());
 }
 export function publicBaseUrl() {
-  const raw = process.env.TELECART_PUBLIC_URL;
-  if (!raw) return "";
-  try {
-    const url = new URL(raw);
-    const workspaceHost = url.hostname.endsWith(".replit.dev");
-    const allowedWorkspace = process.env.NODE_ENV !== "production" &&
-      process.env.TELECART_ALLOW_WORKSPACE_TESTING === "true" &&
-      url.hostname === process.env.REPLIT_DEV_DOMAIN;
-    if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash ||
-      (url.pathname !== "/" && url.pathname !== "") || /localhost|127\.0\.0\.1/i.test(url.hostname) ||
-      (workspaceHost && !allowedWorkspace)) return "";
-    return url.origin;
-  } catch { return ""; }
+  return legacyPublicUrl();
 }
 
 export function moneyCents(value: unknown): number {

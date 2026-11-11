@@ -47,7 +47,8 @@ import type {
   SettingsInput,
   ShopSettings,
   TelegramCredentialInput,
-  TelegramCredentialResult
+  TelegramCredentialResult,
+  TelegramRuntimeInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -1737,6 +1738,88 @@ export function useGetIntegration<TData = Awaited<ReturnType<typeof getIntegrati
 
 
 
+
+export const getUpdateTelegramRuntimeUrl = () => {
+
+
+
+
+  return `/api/shop/integration/runtime`
+}
+
+export const updateTelegramRuntime = async (telegramRuntimeInput: TelegramRuntimeInput, options?: Parameters<typeof customFetch>[1]): Promise<IntegrationStatus> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<IntegrationStatus>(getUpdateTelegramRuntimeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(telegramRuntimeInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateTelegramRuntimeMutationKey = () => ['updateTelegramRuntime'] as const;
+
+export const getUpdateTelegramRuntimeMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTelegramRuntime>>, TError,UpdateTelegramRuntimeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateTelegramRuntime>>, TError,UpdateTelegramRuntimeMutationVariables, TContext> => {
+
+const mutationKey = getUpdateTelegramRuntimeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateTelegramRuntime>>, UpdateTelegramRuntimeMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateTelegramRuntime(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateTelegramRuntimeMutationResult = NonNullable<Awaited<ReturnType<typeof updateTelegramRuntime>>>
+    export type UpdateTelegramRuntimeMutationBody = BodyType<TelegramRuntimeInput>
+    export type UpdateTelegramRuntimeMutationError = ErrorType<unknown>
+    export type UpdateTelegramRuntimeMutationVariables = {data: BodyType<TelegramRuntimeInput>}
+
+    export const useUpdateTelegramRuntime = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTelegramRuntime>>, TError,UpdateTelegramRuntimeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateTelegramRuntime>>,
+        TError,
+        UpdateTelegramRuntimeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateTelegramRuntimeMutationOptions(options), queryClient);
+    }
 
 export const getSaveTelegramCredentialUrl = () => {
 

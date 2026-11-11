@@ -29,7 +29,7 @@ TELECART_PUBLIC_URL = "https://sales-bot-dashboard.replit.app"
 TELECART_ADMIN_EMAIL = "admin@admin.com"
 TELECART_ALLOW_WORKSPACE_TESTING = "true"
 TELECART_PUBLIC_URL = "https://8a5d8513-b2ee-4708-b038-5b489f58c347-00-3niahtrgjz82t.sisko.replit.dev"
-TELECART_TELEGRAM_DISABLED = "true"
+TELECART_TELEGRAM_DISABLED = "false"
 
 [nix]
 channel = "stable-25_05"

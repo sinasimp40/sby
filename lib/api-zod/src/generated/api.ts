@@ -443,6 +443,43 @@ export const GetIntegrationResponse = zod.object({
   "telegramVerified": zod.boolean(),
   "nowpaymentsVerified": zod.boolean(),
   "telegramProcessingEnabled": zod.boolean(),
+  "telegramTransport": zod.enum(['polling', 'webhook']),
+  "telegramRuntimeState": zod.enum(['disabled', 'starting', 'running', 'error', 'webhook']),
+  "telegramRuntimeError": zod.string(),
+  "telegramLastCheckedAt": zod.string().nullable(),
+  "publicUrl": zod.string(),
+  "botUsername": zod.string(),
+  "connected": zod.boolean(),
+  "settlementStatus": zod.enum(['finished'])
+})
+
+
+export const updateTelegramRuntimeBodyPublicUrlMax = 2048;
+
+
+
+export const UpdateTelegramRuntimeBody = zod.object({
+  "enabled": zod.boolean(),
+  "transport": zod.enum(['polling', 'webhook']),
+  "publicUrl": zod.string().max(updateTelegramRuntimeBodyPublicUrlMax),
+  "acknowledgePolicy": zod.boolean()
+})
+
+export const UpdateTelegramRuntimeResponse = zod.object({
+  "signedIn": zod.boolean(),
+  "ownerId": zod.string(),
+  "ownerBound": zod.boolean(),
+  "isOperator": zod.boolean(),
+  "tokenPresent": zod.boolean(),
+  "apiKeyPresent": zod.boolean(),
+  "ipnSecretPresent": zod.boolean(),
+  "telegramVerified": zod.boolean(),
+  "nowpaymentsVerified": zod.boolean(),
+  "telegramProcessingEnabled": zod.boolean(),
+  "telegramTransport": zod.enum(['polling', 'webhook']),
+  "telegramRuntimeState": zod.enum(['disabled', 'starting', 'running', 'error', 'webhook']),
+  "telegramRuntimeError": zod.string(),
+  "telegramLastCheckedAt": zod.string().nullable(),
   "publicUrl": zod.string(),
   "botUsername": zod.string(),
   "connected": zod.boolean(),
@@ -507,6 +544,10 @@ export const ConnectIntegrationResponse = zod.object({
   "telegramVerified": zod.boolean(),
   "nowpaymentsVerified": zod.boolean(),
   "telegramProcessingEnabled": zod.boolean(),
+  "telegramTransport": zod.enum(['polling', 'webhook']),
+  "telegramRuntimeState": zod.enum(['disabled', 'starting', 'running', 'error', 'webhook']),
+  "telegramRuntimeError": zod.string(),
+  "telegramLastCheckedAt": zod.string().nullable(),
   "publicUrl": zod.string(),
   "botUsername": zod.string(),
   "connected": zod.boolean(),
