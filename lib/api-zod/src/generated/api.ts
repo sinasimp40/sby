@@ -440,10 +440,46 @@ export const GetIntegrationResponse = zod.object({
   "tokenPresent": zod.boolean(),
   "apiKeyPresent": zod.boolean(),
   "ipnSecretPresent": zod.boolean(),
+  "telegramVerified": zod.boolean(),
+  "nowpaymentsVerified": zod.boolean(),
+  "telegramProcessingEnabled": zod.boolean(),
   "publicUrl": zod.string(),
   "botUsername": zod.string(),
   "connected": zod.boolean(),
   "settlementStatus": zod.enum(['finished'])
+})
+
+
+export const saveTelegramCredentialBodyTokenMax = 512;
+
+
+
+export const SaveTelegramCredentialBody = zod.object({
+  "token": zod.string().min(1).max(saveTelegramCredentialBodyTokenMax)
+})
+
+export const SaveTelegramCredentialResponse = zod.object({
+  "verified": zod.literal(true),
+  "botUsername": zod.string(),
+  "saved": zod.boolean(),
+  "message": zod.string()
+})
+
+
+export const saveNowpaymentsCredentialsBodyApiKeyMax = 512;
+
+export const saveNowpaymentsCredentialsBodyIpnSecretMax = 512;
+
+
+
+export const SaveNowpaymentsCredentialsBody = zod.object({
+  "apiKey": zod.string().min(1).max(saveNowpaymentsCredentialsBodyApiKeyMax),
+  "ipnSecret": zod.string().min(1).max(saveNowpaymentsCredentialsBodyIpnSecretMax)
+})
+
+export const SaveNowpaymentsCredentialsResponse = zod.object({
+  "verified": zod.literal(true),
+  "ipnSecretSaved": zod.literal(true)
 })
 
 
@@ -468,6 +504,9 @@ export const ConnectIntegrationResponse = zod.object({
   "tokenPresent": zod.boolean(),
   "apiKeyPresent": zod.boolean(),
   "ipnSecretPresent": zod.boolean(),
+  "telegramVerified": zod.boolean(),
+  "nowpaymentsVerified": zod.boolean(),
+  "telegramProcessingEnabled": zod.boolean(),
   "publicUrl": zod.string(),
   "botUsername": zod.string(),
   "connected": zod.boolean(),

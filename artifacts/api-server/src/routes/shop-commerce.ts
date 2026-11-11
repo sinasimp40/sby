@@ -4,10 +4,12 @@ import { desc, eq, and } from "drizzle-orm";
 import { db, botConnections, shopPayments, botCustomers } from "@workspace/db";
 import { GetIntegrationResponse, GetPaymentMinimumsResponse, ConnectIntegrationBody, CheckPaymentAttemptParams, ListPaymentAttemptsResponse, CheckPaymentAttemptResponse } from "@workspace/api-zod";
 import { integrationStatus, requireOperator, activeConnection } from "../lib/commerce-connection";
-import { CommerceError, telegram } from "../lib/commerce-providers";
+import { CommerceError, checkNOWPaymentsKey, checkTelegramToken, telegram } from "../lib/commerce-providers";
 import { connectShop } from "../lib/connect-shop";
 import { checkPayment } from "../lib/commerce-payments";
 import { paymentMinimums } from "../lib/payment-minimums";
+import { saveNowpaymentsCredentials, saveTelegramCredential } from "../lib/provider-credentials";
+import { SaveTelegramCredentialBody, SaveNowpaymentsCredentialsBody } from "@workspace/api-zod";
 
 const router: IRouter = Router();
 export async function paymentAttempts(ownerId: string | null) {
@@ -35,6 +37,35 @@ router.post("/integration/connect", async (req, res): Promise<void> => {
   if (!parsed.success || parsed.data.acknowledgePolicy !== true) throw new CommerceError("Acknowledge the provider and Telegram rules before activation.");
   await connectShop(ownerId!);
   res.json(GetIntegrationResponse.parse(await integrationStatus(ownerId)));
+});
+router.post("/integration/credentials/telegram", async (req, res): Promise<void> => {
+  const ownerId = getAuth(req).userId;
+  requireOperator(ownerId);
+  const parsed = SaveTelegramCredentialBody.safeParse(req.body);
+  if (!parsed.success) throw new CommerceError("Enter a valid Telegram bot token.");
+  const { id: botId, username } = await checkTelegramToken(parsed.data.token);
+  const [existing] = await db.select().from(botConnections).where(eq(botConnections.id, "primary"));
+  if (existing?.ownerId && existing.ownerId !== ownerId) {
+    res.json({ verified: true, botUsername: username, saved: false, message: "Telegram verified this token, but it was not saved because the existing bot is bound to another shop." });
+    return;
+  }
+  if (existing && existing.botId !== String(botId)) {
+    res.json({ verified: true, botUsername: username, saved: false, message: "Telegram verified this token, but it was not saved because changing bot identity requires an explicit migration." });
+    return;
+  }
+  await saveTelegramCredential(ownerId!, parsed.data.token, username);
+  req.log.info("Telegram bot token verified and saved.");
+  res.json({ verified: true, botUsername: username, saved: true, message: "Telegram bot token verified and encrypted for this shop." });
+});
+router.post("/integration/credentials/nowpayments", async (req, res): Promise<void> => {
+  const ownerId = getAuth(req).userId;
+  requireOperator(ownerId);
+  const parsed = SaveNowpaymentsCredentialsBody.safeParse(req.body);
+  if (!parsed.success) throw new CommerceError("Enter a NOWPayments API key and IPN secret.");
+  await checkNOWPaymentsKey(parsed.data.apiKey);
+  await saveNowpaymentsCredentials(ownerId!, parsed.data.apiKey, parsed.data.ipnSecret);
+  req.log.info("NOWPayments API credentials verified and saved.");
+  res.json({ verified: true, ipnSecretSaved: true });
 });
 router.post("/integration/disconnect", async (req, res): Promise<void> => {
   requireOperator(getAuth(req).userId);

@@ -15,6 +15,9 @@ export interface IntegrationStatus {
   tokenPresent: boolean;
   apiKeyPresent: boolean;
   ipnSecretPresent: boolean;
+  telegramVerified: boolean;
+  nowpaymentsVerified: boolean;
+  telegramProcessingEnabled: boolean;
   publicUrl: string;
   botUsername: string;
   connected: boolean;

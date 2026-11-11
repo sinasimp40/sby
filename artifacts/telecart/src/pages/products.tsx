@@ -14,7 +14,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthGate } from "@/components/auth-gate";
 import { money, shortDate, errMsg } from "@/lib/format";
@@ -30,6 +29,7 @@ const schema = z.object({
 });
 type FormValues = z.infer<typeof schema>;
 const blank: FormValues = { name: "", description: "", category: "", price: 0, status: "draft", deliveryFormat: "email:pass" };
+const selectClassName = "h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
 
 function useInvalidate() {
   const qc = useQueryClient();
@@ -84,14 +84,20 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
             <div className="grid grid-cols-2 gap-3">
               <FormField control={form.control} name="status" render={({ field }) => (
                 <FormItem><FormLabel>Status</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}><FormControl><SelectTrigger data-testid="select-product-status"><SelectValue /></SelectTrigger></FormControl>
-                    <SelectContent><SelectItem value="active">Active</SelectItem><SelectItem value="draft">Draft</SelectItem><SelectItem value="archived">Archived</SelectItem></SelectContent></Select>
+                  <FormControl>
+                    <select {...field} disabled={pending} className={selectClassName} data-testid="select-product-status">
+                      <option value="active">Active</option><option value="draft">Draft</option><option value="archived">Archived</option>
+                    </select>
+                  </FormControl>
                   <p className="text-xs text-muted-foreground">Only Active products with available stock appear in Telegram. Drafts stay hidden.</p><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="deliveryFormat" render={({ field }) => (
                 <FormItem><FormLabel>Delivery format</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}><FormControl><SelectTrigger className="font-mono" data-testid="select-product-format"><SelectValue /></SelectTrigger></FormControl>
-                    <SelectContent><SelectItem value="email:pass" className="font-mono">email:pass</SelectItem><SelectItem value="user:pass" className="font-mono">user:pass</SelectItem></SelectContent></Select>
+                  <FormControl>
+                    <select {...field} disabled={pending} className={cn(selectClassName, "font-mono")} data-testid="select-product-format">
+                      <option value="email:pass">email:pass</option><option value="user:pass">user:pass</option>
+                    </select>
+                  </FormControl>
                   <FormMessage /></FormItem>
               )} />
             </div>

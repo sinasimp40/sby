@@ -3,6 +3,7 @@ import { db, botConnections } from "@workspace/db";
 import { requireOperator } from "./commerce-connection";
 import { CommerceError, nowpayments, telegram, publicBaseUrl, webhookSecret } from "./commerce-providers";
 import { workspacePollingEnabled } from "./workspace-polling";
+import { readProviderCredentials } from "./provider-credentials";
 
 // Shared by the authenticated admin action and trusted operator setup scripts.
 export async function connectShop(ownerId: string) {
@@ -12,7 +13,8 @@ export async function connectShop(ownerId: string) {
   }
   const baseUrl = publicBaseUrl();
   if (!baseUrl) throw new CommerceError("Configure an HTTPS callback origin. Workspace testing must use this workspace's own development URL.");
-  if (!process.env.NOWPAYMENTS_IPN_SECRET) throw new CommerceError("NOWPayments IPN secret is missing.");
+  const credentials = await readProviderCredentials(ownerId);
+  if (!credentials.nowpaymentsIpnSecret) throw new CommerceError("NOWPayments IPN secret is missing.");
   const [me] = await Promise.all([
     telegram<{ id: number; username: string }>("getMe"),
     nowpayments<{ currencies: string[] }>("/currencies"),

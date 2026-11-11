@@ -15,7 +15,8 @@ test("finished-only checkout, stock allocation, wallet ledger and Telegram deliv
   if (process.env.NODE_ENV === "production") throw new Error("Never run isolated development tests in production.");
   const owner = `commerce-test-${randomUUID()}`;
   const botId = `test-${randomUUID()}`;
-  const previousOwner = process.env.TELECART_OWNER_ID;
+  const envKeys = ["TELECART_OWNER_ID", "TELEGRAM_BOT_TOKEN", "NOWPAYMENTS_API_KEY", "NOWPAYMENTS_IPN_SECRET"];
+  const savedEnv = Object.fromEntries(envKeys.map(key => [key, process.env[key]]));
   const originalFetch = globalThis.fetch;
   const provider = new Map<string, ProviderPayment>();
   const sent: Array<{ method: string; body: Record<string, unknown> | FormData }> = [];
@@ -25,6 +26,9 @@ test("finished-only checkout, stock allocation, wallet ledger and Telegram deliv
   const [existing] = await db.select().from(botConnections).where(eq(botConnections.id, "primary"));
   assert.equal(existing, undefined, "Run before live activation: this test never replaces an existing bot connection.");
   process.env.TELECART_OWNER_ID = owner;
+  process.env.TELEGRAM_BOT_TOKEN = "TEST_ONLY_TELEGRAM_TOKEN";
+  process.env.NOWPAYMENTS_API_KEY = "TEST_ONLY_NOWPAYMENTS_KEY";
+  process.env.NOWPAYMENTS_IPN_SECRET = "TEST_ONLY_NOWPAYMENTS_IPN_SECRET";
   globalThis.fetch = async (url, init) => {
     const target = String(url);
     if (target.startsWith("https://api.telegram.org/")) {
@@ -81,12 +85,12 @@ test("finished-only checkout, stock allocation, wallet ledger and Telegram deliv
   const ledgerCount = async (paymentId: string) => (await db.select({ n: sql<number>`count(*)::integer` }).from(walletEntries).where(eq(walletEntries.paymentId, paymentId)))[0]!.n;
   try {
     await db.insert(botConnections).values({ id: "primary", ownerId: owner, botId, botUsername: "TEST_ONLY_BOT", publicUrl: "https://test-only.invalid" });
-    await t.test("IPN signature rejects invalid/tampered bodies; decimal and USD parsing are exact", () => {
+    await t.test("IPN signature rejects invalid/tampered bodies; decimal and USD parsing are exact", async () => {
       const body = { b: { z: 3, a: 2 }, payment_id: 1, payment_status: "finished" };
       const signature = createHmac("sha512", process.env.NOWPAYMENTS_IPN_SECRET!).update(JSON.stringify(sortedJson(body))).digest("hex");
-      assert.equal(verifyIpn(body, signature), true);
-      assert.equal(verifyIpn({ ...body, payment_id: 2 }, signature), false);
-      assert.equal(verifyIpn(body, "wrong"), false);
+      assert.equal(await verifyIpn(body, signature), true);
+      assert.equal(await verifyIpn({ ...body, payment_id: 2 }, signature), false);
+      assert.equal(await verifyIpn(body, "wrong"), false);
       assert.equal(decimalAtLeast("1.249999999999999999", "1.25"), false);
       assert.equal(decimalAtLeast(1e-8, "0.00000001"), true);
       assert.equal(decimalAtLeast("1.25", "1.250"), true);
@@ -179,7 +183,7 @@ test("finished-only checkout, stock allocation, wallet ledger and Telegram deliv
     await t.test("simultaneous buyers cannot buy the same last line", async () => {
       const { product } = await makeProduct(1);
       const a = await makeCustomer(); const b = await makeCustomer();
-      const results = await Promise.allSettled([a, b].map(c => createCheckout({ ownerId: owner, customerId: c.id, token: randomUUID(), coin: "ltc", productId: product.id })));
+       const results = await Promise.allSettled([a, b].map(c => createCheckout({ ownerId: owner, customerId: c.id, token: randomUUID(), coin: "ltc", productId: product.id, expectedAmountCents: 1000 })));
       assert.equal(results.filter(r => r.status === "fulfilled").length, 1);
       assert.equal(results.filter(r => r.status === "rejected").length, 1);
     });
@@ -195,7 +199,7 @@ test("finished-only checkout, stock allocation, wallet ledger and Telegram deliv
     });
     await t.test("ambiguous provider timeout holds stock and never recreates the same invoice", async () => {
       const customer = await makeCustomer(); const { product } = await makeProduct(1);
-      const input = { ownerId: owner, customerId: customer.id, token: randomUUID(), coin: "ltc", productId: product.id };
+      const input = { ownerId: owner, customerId: customer.id, token: randomUUID(), coin: "ltc", productId: product.id, expectedAmountCents: 1000 };
       failNextCreate = true;
       const before = apiCreates;
       await assert.rejects(() => createCheckout(input));
@@ -217,7 +221,10 @@ test("finished-only checkout, stock allocation, wallet ledger and Telegram deliv
     });
   } finally {
     globalThis.fetch = originalFetch;
-    if (previousOwner === undefined) delete process.env.TELECART_OWNER_ID; else process.env.TELECART_OWNER_ID = previousOwner;
+      for (const key of envKeys) {
+        if (savedEnv[key] === undefined) delete process.env[key];
+        else process.env[key] = savedEnv[key];
+      }
     const customerIds = db.select({ id: botCustomers.id }).from(botCustomers).where(eq(botCustomers.ownerId, owner));
     await db.delete(walletEntries).where(sql`${walletEntries.customerId} in (${customerIds})`);
     await db.delete(shopPayments).where(eq(shopPayments.ownerId, owner));

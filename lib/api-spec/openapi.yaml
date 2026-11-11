@@ -215,6 +215,36 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/IntegrationStatus" }
+  /shop/integration/credentials/telegram:
+    post:
+      operationId: saveTelegramCredential
+      tags: [shop]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TelegramCredentialInput" }
+      responses:
+        "200":
+          description: Token was verified with Telegram and encrypted for the signed-in shop.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TelegramCredentialResult" }
+  /shop/integration/credentials/nowpayments:
+    post:
+      operationId: saveNowpaymentsCredentials
+      tags: [shop]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NOWPaymentsCredentialInput" }
+      responses:
+        "200":
+          description: API key was verified and both values were encrypted for the signed-in shop.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NOWPaymentsCredentialResult" }
   /shop/payment-minimums:
     get:
       operationId: getPaymentMinimums
@@ -237,7 +267,7 @@ paths:
             schema: { $ref: "#/components/schemas/IntegrationInput" }
       responses:
         "200":
-          description: Telegram webhook configured.
+          description: Verified provider configuration and current Telegram activation state.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/IntegrationStatus" }
@@ -412,9 +442,36 @@ components:
       required: [acknowledgePolicy]
       properties:
         acknowledgePolicy: { type: boolean, const: true }
+    TelegramCredentialInput:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token: { type: string, minLength: 1, maxLength: 512 }
+    TelegramCredentialResult:
+      type: object
+      required: [verified, botUsername, saved, message]
+      properties:
+        verified: { type: boolean, const: true }
+        botUsername: { type: string }
+        saved: { type: boolean }
+        message: { type: string }
+    NOWPaymentsCredentialInput:
+      type: object
+      additionalProperties: false
+      required: [apiKey, ipnSecret]
+      properties:
+        apiKey: { type: string, minLength: 1, maxLength: 512 }
+        ipnSecret: { type: string, minLength: 1, maxLength: 512 }
+    NOWPaymentsCredentialResult:
+      type: object
+      required: [verified, ipnSecretSaved]
+      properties:
+        verified: { type: boolean, const: true }
+        ipnSecretSaved: { type: boolean, const: true }
     IntegrationStatus:
       type: object
-      required: [signedIn, ownerId, ownerBound, isOperator, tokenPresent, apiKeyPresent, ipnSecretPresent, publicUrl, botUsername, connected, settlementStatus]
+      required: [signedIn, ownerId, ownerBound, isOperator, tokenPresent, apiKeyPresent, ipnSecretPresent, telegramVerified, nowpaymentsVerified, telegramProcessingEnabled, publicUrl, botUsername, connected, settlementStatus]
       properties:
         signedIn: { type: boolean }
         ownerId: { type: string }
@@ -423,6 +480,9 @@ components:
         tokenPresent: { type: boolean }
         apiKeyPresent: { type: boolean }
         ipnSecretPresent: { type: boolean }
+        telegramVerified: { type: boolean }
+        nowpaymentsVerified: { type: boolean }
+        telegramProcessingEnabled: { type: boolean }
         publicUrl: { type: string }
         botUsername: { type: string }
         connected: { type: boolean }

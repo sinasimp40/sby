@@ -36,6 +36,8 @@ import type {
   IntegrationStatus,
   InventoryInput,
   InventoryItem,
+  NOWPaymentsCredentialInput,
+  NOWPaymentsCredentialResult,
   Order,
   Overview,
   PaymentAttempt,
@@ -43,7 +45,9 @@ import type {
   Product,
   ProductInput,
   SettingsInput,
-  ShopSettings
+  ShopSettings,
+  TelegramCredentialInput,
+  TelegramCredentialResult
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -1733,6 +1737,170 @@ export function useGetIntegration<TData = Awaited<ReturnType<typeof getIntegrati
 
 
 
+
+export const getSaveTelegramCredentialUrl = () => {
+
+
+
+
+  return `/api/shop/integration/credentials/telegram`
+}
+
+export const saveTelegramCredential = async (telegramCredentialInput: TelegramCredentialInput, options?: Parameters<typeof customFetch>[1]): Promise<TelegramCredentialResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TelegramCredentialResult>(getSaveTelegramCredentialUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(telegramCredentialInput)
+  }
+);}
+
+
+
+
+
+export const getSaveTelegramCredentialMutationKey = () => ['saveTelegramCredential'] as const;
+
+export const getSaveTelegramCredentialMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveTelegramCredential>>, TError,SaveTelegramCredentialMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveTelegramCredential>>, TError,SaveTelegramCredentialMutationVariables, TContext> => {
+
+const mutationKey = getSaveTelegramCredentialMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveTelegramCredential>>, SaveTelegramCredentialMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  saveTelegramCredential(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveTelegramCredentialMutationResult = NonNullable<Awaited<ReturnType<typeof saveTelegramCredential>>>
+    export type SaveTelegramCredentialMutationBody = BodyType<TelegramCredentialInput>
+    export type SaveTelegramCredentialMutationError = ErrorType<unknown>
+    export type SaveTelegramCredentialMutationVariables = {data: BodyType<TelegramCredentialInput>}
+
+    export const useSaveTelegramCredential = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveTelegramCredential>>, TError,SaveTelegramCredentialMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof saveTelegramCredential>>,
+        TError,
+        SaveTelegramCredentialMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSaveTelegramCredentialMutationOptions(options), queryClient);
+    }
+
+export const getSaveNowpaymentsCredentialsUrl = () => {
+
+
+
+
+  return `/api/shop/integration/credentials/nowpayments`
+}
+
+export const saveNowpaymentsCredentials = async (nOWPaymentsCredentialInput: NOWPaymentsCredentialInput, options?: Parameters<typeof customFetch>[1]): Promise<NOWPaymentsCredentialResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<NOWPaymentsCredentialResult>(getSaveNowpaymentsCredentialsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(nOWPaymentsCredentialInput)
+  }
+);}
+
+
+
+
+
+export const getSaveNowpaymentsCredentialsMutationKey = () => ['saveNowpaymentsCredentials'] as const;
+
+export const getSaveNowpaymentsCredentialsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveNowpaymentsCredentials>>, TError,SaveNowpaymentsCredentialsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveNowpaymentsCredentials>>, TError,SaveNowpaymentsCredentialsMutationVariables, TContext> => {
+
+const mutationKey = getSaveNowpaymentsCredentialsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveNowpaymentsCredentials>>, SaveNowpaymentsCredentialsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  saveNowpaymentsCredentials(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveNowpaymentsCredentialsMutationResult = NonNullable<Awaited<ReturnType<typeof saveNowpaymentsCredentials>>>
+    export type SaveNowpaymentsCredentialsMutationBody = BodyType<NOWPaymentsCredentialInput>
+    export type SaveNowpaymentsCredentialsMutationError = ErrorType<unknown>
+    export type SaveNowpaymentsCredentialsMutationVariables = {data: BodyType<NOWPaymentsCredentialInput>}
+
+    export const useSaveNowpaymentsCredentials = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveNowpaymentsCredentials>>, TError,SaveNowpaymentsCredentialsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof saveNowpaymentsCredentials>>,
+        TError,
+        SaveNowpaymentsCredentialsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSaveNowpaymentsCredentialsMutationOptions(options), queryClient);
+    }
 
 export const getGetPaymentMinimumsUrl = () => {
 

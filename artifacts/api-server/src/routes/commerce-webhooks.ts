@@ -14,7 +14,7 @@ router.post("/telegram/webhook", async (req, res): Promise<void> => {
   res.sendStatus(200);
 });
 router.post("/nowpayments/ipn", async (req, res): Promise<void> => {
-  if (!verifyIpn(req.body, req.get("x-nowpayments-sig") ?? "")) {
+  if (!await verifyIpn(req.body, req.get("x-nowpayments-sig") ?? "")) {
     res.status(401).json({ error: "Invalid NOWPayments signature." }); return;
   }
   const id = req.body?.payment_id;

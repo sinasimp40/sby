@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import QRCode from "qrcode";
 import { paymentCaption, type InvoiceMessage } from "./payment-message";
+import { readProviderCredentials } from "./provider-credentials";
 
 export class CommerceError extends Error {
   constructor(message: string, public status = 400) { super(message); }
@@ -17,7 +18,7 @@ export async function telegram<T = Record<string, unknown>>(method: string, body
   if (process.env.TELECART_TELEGRAM_DISABLED === "true") {
     throw new CommerceError("Telegram bot calls are disabled in this workspace.", 503);
   }
-  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const token = (await readProviderCredentials()).telegramToken;
   if (!token) throw new CommerceError("Telegram token is not configured.", 503);
   try {
     const multipart = body instanceof FormData;
@@ -40,6 +41,40 @@ export async function telegram<T = Record<string, unknown>>(method: string, body
   }
 }
 
+export async function checkTelegramToken(token: string): Promise<{ id: number; username: string }> {
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${token}/getMe`, {
+      method: "POST", signal: AbortSignal.timeout(12000),
+    });
+    const result = await response.json() as { ok: boolean; result?: { id?: number; username?: string }; error_code?: number };
+    if (response.status === 401 || result.error_code === 401) throw new CommerceError("Telegram did not accept this bot token. Check it and try again.", 400);
+    if (!response.ok || !result.ok || !Number.isSafeInteger(result.result?.id) || typeof result.result?.username !== "string") {
+      throw new CommerceError("Telegram could not verify this bot token. Try again shortly.", 502);
+    }
+    return { id: result.result.id!, username: result.result.username };
+  } catch (error) {
+    if (error instanceof CommerceError) throw error;
+    throw new CommerceError("Could not reach Telegram to verify this token. Try again shortly.", 502);
+  }
+}
+
+export async function checkNOWPaymentsKey(apiKey: string): Promise<void> {
+  try {
+    const response = await fetch("https://api.nowpayments.io/v1/currencies", {
+      headers: { "x-api-key": apiKey }, signal: AbortSignal.timeout(12000),
+    });
+    if (response.status === 401 || response.status === 403) {
+      throw new CommerceError("NOWPayments did not accept this API key. Check it and try again.", 400);
+    }
+    if (!response.ok) throw new CommerceError("NOWPayments could not verify this API key. Try again shortly.", 502);
+    const result = await response.json() as { currencies?: unknown };
+    if (!Array.isArray(result.currencies)) throw new CommerceError("NOWPayments returned an unexpected verification response.", 502);
+  } catch (error) {
+    if (error instanceof CommerceError) throw error;
+    throw new CommerceError("Could not reach NOWPayments to verify this API key. Try again shortly.", 502);
+  }
+}
+
 export interface ProviderPayment {
   payment_id: string | number;
   payment_status: string;
@@ -55,7 +90,7 @@ export interface ProviderPayment {
   expiration_estimate_date?: string;
 }
 export async function nowpayments<T = ProviderPayment>(path: string, body?: Record<string, unknown>): Promise<T> {
-  const key = process.env.NOWPAYMENTS_API_KEY;
+  const key = (await readProviderCredentials()).nowpaymentsApiKey;
   if (!key) throw new CommerceError("NOWPayments API key is not configured.", 503);
   try {
     const response = await fetch(`https://api.nowpayments.io/v1${path}`, {
@@ -114,8 +149,8 @@ export function sortedJson(value: unknown): unknown {
   );
   return value;
 }
-export function verifyIpn(body: unknown, signature: string): boolean {
-  const secret = process.env.NOWPAYMENTS_IPN_SECRET;
+export async function verifyIpn(body: unknown, signature: string): Promise<boolean> {
+  const secret = (await readProviderCredentials()).nowpaymentsIpnSecret;
   if (!secret || !/^[a-f0-9]{128}$/i.test(signature)) return false;
   return safeEqual(createHmac("sha512", secret).update(JSON.stringify(sortedJson(body))).digest("hex"), signature.toLowerCase());
 }

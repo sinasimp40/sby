@@ -22,3 +22,4 @@ export * from "./shop-settings";
 export * from "./shop-records";
 export * from "./shop-commerce";
 export * from "./admin-sessions";
+export * from "./provider-credentials";

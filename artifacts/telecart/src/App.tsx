@@ -53,7 +53,7 @@ function SignInPage() {
     finally { setBusy(false); }
   }
   return <div className="dotgrid flex min-h-[100dvh] flex-col items-center justify-center gap-6 bg-background px-4 py-10">
-    <Link href="/" className="font-mono text-xs text-muted-foreground" data-testid="link-back-preview">Back to dashboard</Link>
+    <Link href="/" className="font-mono text-xs text-muted-foreground" data-testid="link-admin-home">Telecart admin</Link>
     <section className="w-full max-w-md rounded-2xl border bg-card p-7 shadow-xl">
       <img src={`${basePath}/logo.svg`} alt="" className="mb-5 h-11 w-11" />
       <h1 className="font-display text-2xl font-bold">Admin sign-in</h1>
@@ -89,12 +89,17 @@ function AdminRoutes() {
     <Route component={NotFound} />
   </Switch></RoutedErrorBoundary></AppShell>;
 }
+function ProtectedRoutes() {
+  const { isSignedIn, isLoaded } = useAdminAuth();
+  if (!isLoaded) return <div className="grid min-h-screen place-items-center text-sm">Loading your shop…</div>;
+  return isSignedIn ? <AdminRoutes /> : <SignInPage />;
+}
 export default function App() {
   return <WouterRouter base={basePath}><AdminAuthProvider><AuthScopedQueries><TooltipProvider><AuthGateProvider>
     <Switch>
       <Route path="/sign-in/*?" component={SignInPage} />
       <Route path="/sign-up/*?" component={SignInPage} />
-      <Route component={AdminRoutes} />
+      <Route component={ProtectedRoutes} />
     </Switch>
     <Toaster />
   </AuthGateProvider></TooltipProvider></AuthScopedQueries></AdminAuthProvider></WouterRouter>;

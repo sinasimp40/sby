@@ -17,8 +17,8 @@ A web administration workspace for a Telegram digital-product shop.
 ## Run & Operate
 
 - Imported workspace setup: dependencies are installed with `pnpm install --frozen-lockfile`, the development PostgreSQL schema is initialized with `pnpm --filter @workspace/db run push`, and the existing app services are registered from their artifact manifests. Use Replit's Run workflows below, not a root `pnpm dev` command.
-- Development setup preserves password-only dashboard login. Clerk supplies the existing bootstrap identity behind the scenes, not an OTP screen. Set `TELECART_ADMIN_INITIAL_PASSWORD` securely in Secrets to finish admin setup; the imported `TELECART_ADMIN_EMAIL` is `admin@admin.com` and should be changed to an address you control before live operation.
-- Keep development `TELECART_PUBLIC_URL` equal to the current workspace HTTPS origin for sign-in Origin checks. Telegram is explicitly disabled with `TELECART_TELEGRAM_DISABLED=true`; no live bot or payment credentials have been configured by the import setup.
+- Development setup preserves password-only dashboard login. Clerk supplies the existing bootstrap identity behind the scenes, not an OTP screen. The development admin was securely initialized using `TELECART_ADMIN_INITIAL_PASSWORD`; the imported `TELECART_ADMIN_EMAIL` is `admin@admin.com` and should be changed to an address you control before live operation. A new bootstrap password must also satisfy Clerk's password requirements; use a strong, unique password of at least 12 characters.
+- Keep development `TELECART_PUBLIC_URL` equal to the current workspace HTTPS origin for sign-in Origin checks. This imported workspace keeps `TELECART_TELEGRAM_DISABLED=true`; the dashboard's Telegram token test only calls the read-only `getMe` endpoint and does not start polling or change a webhook. Enable Telegram processing only when intentionally ready to operate the live bot; webhook/polling activation still requires the admin's explicit policy acknowledgement.
 - Managed workflows: `artifacts/api-server: API Server`, `artifacts/telecart: web`.
 - `pnpm run typecheck` — complete workspace type check.
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate client hooks and server validation.
@@ -43,6 +43,7 @@ A web administration workspace for a Telegram digital-product shop.
 ## Security & Operations
 
 - Inventory accepts one `login:password` line per account, at most 500 per request. Records are encrypted with AES-256-GCM, owner/product AAD and a random nonce.
+- Telegram bot tokens and NOWPayments API/IPN credentials entered in the admin dashboard are encrypted at rest using AES-GCM, per-owner associated data and a key derived from `SESSION_SECRET`. They are never returned to the browser. Preserve `SESSION_SECRET`; rotating it makes encrypted credentials unreadable.
 - Encryption and deduplication keys derive from `SESSION_SECRET`. Preserve that secret: rotation without a data re-encryption migration makes existing inventory unreadable. Before production-scale use, design a dedicated versioned inventory-key rotation workflow.
 - Never log credentials, return plaintext inventory to list APIs, store service API keys in ordinary settings, or include credentials in activity events.
 - Product deletion cascades inventory. The frontend must explain and confirm this before deleting.

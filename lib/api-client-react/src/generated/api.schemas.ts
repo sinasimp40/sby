@@ -223,6 +223,40 @@ export const IntegrationInputValue = {
 } as const;
 export type IntegrationInput = typeof IntegrationInputValue;
 
+export interface TelegramCredentialInput {
+  /**
+     * @minLength 1
+     * @maxLength 512
+     */
+  token: string;
+}
+
+export interface TelegramCredentialResult {
+  verified: true;
+  botUsername: string;
+  saved: boolean;
+  message: string;
+}
+
+export interface NOWPaymentsCredentialInput {
+  /**
+     * @minLength 1
+     * @maxLength 512
+     */
+  apiKey: string;
+  /**
+     * @minLength 1
+     * @maxLength 512
+     */
+  ipnSecret: string;
+}
+
+export const NOWPaymentsCredentialResultValue = {
+  verified: true,
+  ipnSecretSaved: true,
+} as const;
+export type NOWPaymentsCredentialResult = typeof NOWPaymentsCredentialResultValue;
+
 export type IntegrationStatusSettlementStatus = typeof IntegrationStatusSettlementStatus[keyof typeof IntegrationStatusSettlementStatus];
 
 
@@ -238,6 +272,9 @@ export interface IntegrationStatus {
   tokenPresent: boolean;
   apiKeyPresent: boolean;
   ipnSecretPresent: boolean;
+  telegramVerified: boolean;
+  nowpaymentsVerified: boolean;
+  telegramProcessingEnabled: boolean;
   publicUrl: string;
   botUsername: string;
   connected: boolean;
