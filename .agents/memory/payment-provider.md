@@ -51,6 +51,12 @@ Telegram Order History must list clickable product and top-up buttons, not text-
 
 **How to apply:** Keep amounts and readable outcomes on the buttons, with detailed metadata behind each button. Reveal stock only for the authenticated Telegram customer's own delivered order; never substitute text inside credentials. Home clears the current history view and returns to the main menu, as the user confirmed. Show successful credit or delivery only after actual fulfillment, and local expiry for unpaid quotes.
 
+Group all Telegram history deposits under one Top-ups button, then status buttons such as Waiting, Cancelled, Expired and Successful. Show at most 10 records per list, with Next in that particular area when more exist.
+
+**Why:** The user explicitly requested this hierarchy and said “remember only 10 list ... add button in that particulary area said next.”
+
+**How to apply:** Paginate purchases and each top-up status independently; preserve the category and page when opening an entry and returning. Never truncate the underlying history to the latest 10 before filtering.
+
 Telegram Cancel buttons delete the clicked prompt or invoice and return to the home menu without stopping payment reconciliation.
 
 **Why:** The user requested Cancel to go home, then clarified that the cancelled message should disappear. A transfer already sent must still be verified and credited.

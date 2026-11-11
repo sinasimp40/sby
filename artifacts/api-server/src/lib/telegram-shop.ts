@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db, pool, botCustomers, botUpdates, shopPayments } from "@workspace/db";
 import { activeConnection } from "./commerce-connection";
 import { CommerceError, moneyCents, telegram, TelegramRequestError } from "./commerce-providers";
@@ -11,7 +11,8 @@ import { customerMessageText, depositCoinPrompt, depositPrompt, walletSummary } 
 import { telegramCustomerName, type TelegramCustomerProfile } from "./telegram-customer-name";
 import { customerPendingPayments, pendingPaymentsMenu, PendingPaymentsError } from "./pending-payments";
 import { paymentCaption } from "./payment-message";
-import { historyMenu, historyOrderView } from "./telegram-history";
+import { historyMenu, historyOrderView, isHistoryScope, topupCategoryMenu, topupListMenu, type HistoryView } from "./telegram-history";
+import { customerHistoryPage, customerHistorySummary } from "./telegram-history-store";
 import { customerDeliveredInventory } from "./order-delivery";
 
 interface TelegramMessage {
@@ -66,7 +67,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
       const menu = pendingPaymentsMenu(await customerPendingPayments(connection.ownerId, customer!.id));
       await send(menu.text, menu.reply_markup, "HTML");
     };
-    const showHistoryView = async (view: ReturnType<typeof historyMenu>) => {
+    const showHistoryView = async (view: HistoryView) => {
       const body = { chat_id: customer!.chatId, text: view.text, parse_mode: "HTML", reply_markup: view.reply_markup };
       if (update.callback_query && Number.isSafeInteger(message.message_id) && !message.photo?.length) {
         await telegram("editMessageText", { ...body, message_id: message.message_id }).catch(error => {
@@ -90,8 +91,22 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         await send(`${settings.welcomeMessage}${message.photo?.length ? "\n\n🏠 Returned to the home menu.\nAny payment already sent will still be checked automatically." : ""}${removed ? "" : "\n\nTelegram no longer allows deleting this older message. Its buttons have been disabled."}`, {
           keyboard: labels.map(row => row.map(label => ({ text: label }))), resize_keyboard: true, is_persistent: true,
         });
-      } else if (data.startsWith("history_order:")) {
-        const [, id, rawPage] = data.split(":");
+      } else if (data.startsWith("hist:") || data === "history" || [settings.ordersLabel, labels[1]![1], "/orders"].includes(text)) {
+        const [, scope = "o", rawPage = "0"] = data.startsWith("hist:") ? data.split(":") : [];
+        const now = new Date();
+        const summary = await customerHistorySummary(connection.ownerId, customer!.id, now);
+        if (scope === "t") {
+          await showHistoryView(topupCategoryMenu(summary.topups));
+        } else {
+          if (!isHistoryScope(scope)) throw new CommerceError("This history selection is no longer available. Open Order History again.");
+          const total = scope === "o" ? summary.orders : summary.topups[scope];
+          const list = await customerHistoryPage(connection.ownerId, customer!.id, scope, Number(rawPage), total, now);
+          await showHistoryView(scope === "o"
+            ? historyMenu(list, Object.values(summary.topups).reduce((sum, count) => sum + count, 0), now.getTime())
+            : topupListMenu(list, scope, now.getTime()));
+        }
+      } else if (data.startsWith("history_order:") || data.startsWith("ho:")) {
+        const [, id, rawPage, rawScope = "o", rawListPage = "0"] = data.split(":");
         const [order] = await db.select().from(shopPayments).where(and(
           eq(shopPayments.id, id ?? ""), eq(shopPayments.ownerId, connection.ownerId),
           eq(shopPayments.customerId, customer!.id),
@@ -99,7 +114,9 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         if (!order) throw new CommerceError("Order not found.");
         const delivered = order.kind !== "deposit" && order.fulfillment === "delivered" && order.deliveredAt;
         const inventory = delivered ? await customerDeliveredInventory(connection.ownerId, customer!.id, order.id) : undefined;
-        await showHistoryView(historyOrderView(order, inventory?.credential, Number(rawPage ?? 0)));
+        const scope = isHistoryScope(rawScope) ? rawScope : "o";
+        const listPage = /^\d{1,6}$/.test(rawListPage) ? Number(rawListPage) : 0;
+        await showHistoryView(historyOrderView(order, inventory?.credential, Number(rawPage ?? 0), Date.now(), scope, listPage));
       } else if (data === "pending" || text === "/pending") {
         await showPending();
       } else if (data.startsWith("pending_view:") || data.startsWith("pending_cancel:")) {
@@ -204,11 +221,6 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
             [{ text: "⏳ Pending payments", callback_data: "pending" }],
           ],
         }, "HTML");
-      } else if (data === "history" || [settings.ordersLabel, labels[1]![1], "/orders"].includes(text)) {
-        const orders = await db.select().from(shopPayments).where(and(
-          eq(shopPayments.ownerId, connection.ownerId), eq(shopPayments.customerId, customer!.id),
-        )).orderBy(desc(shopPayments.createdAt)).limit(10);
-        await showHistoryView(historyMenu(orders));
       } else if (customer!.state.type === "deposit-amount") {
         const amountCents = moneyCents(text);
         if (amountCents < Math.round(settings.minDeposit * 100)) throw new CommerceError(`Minimum deposit is $${settings.minDeposit.toFixed(2)}.`);
