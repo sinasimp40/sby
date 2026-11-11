@@ -7,6 +7,7 @@ import { encryptCredential, decryptCredential, credentialFingerprint } from "../
 async function main() {
   assert.equal(process.argv.includes("--confirm-sample-data"), true, "Explicit confirmation required.");
   assert.notEqual(process.env.NODE_ENV, "production", "Development only.");
+  const activate = process.argv.includes("--activate-samples");
   const domain = process.env.REPLIT_DEV_DOMAIN;
   const origin = process.env.TELECART_ADMIN_ORIGIN || process.env.TELECART_PUBLIC_URL;
   assert.ok(domain && origin && process.env.TELECART_ADMIN_EMAIL && process.env.TELECART_ADMIN_INITIAL_PASSWORD);
@@ -73,6 +74,23 @@ async function main() {
         }
       }
       assert.equal(products.length, 30);
+      if (activate) {
+        assert.equal(addedProducts, 0, "Activation requires the existing 30 sample products.");
+        const ids = products.map(product => product.id);
+        const available = await tx.select({ productId: shopInventory.productId })
+          .from(shopInventory).where(and(eq(shopInventory.ownerId, ownerId),
+            inArray(shopInventory.productId, ids), eq(shopInventory.status, "available")));
+        assert.ok(ids.every(id => available.some(row => row.productId === id)), "Every sample product must have available stock.");
+        const activated = await tx.update(shopProducts).set({ status: "active" })
+          .where(and(eq(shopProducts.ownerId, ownerId), inArray(shopProducts.id, ids)))
+          .returning({ id: shopProducts.id });
+        assert.equal(activated.length, 30);
+        await tx.insert(shopActivity).values({
+          ownerId, title: "Sample catalog activated",
+          description: "All 30 fictional sample products activated at the administrator's explicit request.",
+          type: "product",
+        });
+      }
       if (addedProducts) await tx.insert(shopActivity).values({
         ownerId, title: "Sample catalog added",
         description: `${addedProducts} draft sample products and ${addedStock} fictional stock items added. Existing products and balances were not changed.`,
@@ -82,13 +100,16 @@ async function main() {
     });
     const catalogResponse = await fetch(`${base}/api/shop/products`, { headers });
     assert.equal(catalogResponse.status, 200);
-    const catalog = await catalogResponse.json() as { id: number }[];
+    const catalog = await catalogResponse.json() as { id: number; status: string; stock: number }[];
     assert.ok(result.ids.every(id => catalog.some(product => product.id === id)));
+    if (activate) assert.ok(result.ids.every(id =>
+      catalog.some(product => product.id === id && product.status === "active" && product.stock > 0)));
     const stock = await db.select({ count: sql<number>`count(*)::int` }).from(shopInventory)
       .where(and(eq(shopInventory.ownerId, ownerId), inArray(shopInventory.productId, result.ids)));
     console.log(JSON.stringify({
       addedProducts: result.addedProducts, addedStock: result.addedStock,
       verifiedSampleProducts: result.ids.length, verifiedSampleStock: stock[0].count,
+      activatedProducts: activate ? result.ids.length : 0,
       dashboardVerified: true, existingProductsAndBalancesUnchanged: true,
     }));
   } finally {
