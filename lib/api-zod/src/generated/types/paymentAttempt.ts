@@ -17,6 +17,7 @@ export interface PaymentAttempt {
   fulfillment: string;
   /** @nullable */
   cancelledAt?: string | null;
+  canCancel?: boolean;
   /** @nullable */
   providerPaymentId: string | null;
   /** @nullable */

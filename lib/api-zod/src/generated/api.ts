@@ -272,9 +272,21 @@ export const ListDepositsResponseItem = zod.object({
   "currency": zod.string(),
   "status": zod.enum(['waiting', 'confirming', 'finished', 'failed', 'expired', 'cancelled']),
   "cancelledAt": zod.string().nullish(),
+  "canCancel": zod.boolean().optional(),
   "createdAt": zod.string()
 })
 export const ListDepositsResponse = zod.array(ListDepositsResponseItem)
+
+
+export const CancelDepositParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const CancelDepositResponse = zod.object({
+  "id": zod.string(),
+  "cancelledAt": zod.string(),
+  "telegramUpdatePending": zod.boolean()
+})
 
 
 export const ListActivityResponseItem = zod.object({
@@ -582,6 +594,7 @@ export const ListPaymentAttemptsResponseItem = zod.object({
   "status": zod.string(),
   "fulfillment": zod.string(),
   "cancelledAt": zod.string().nullish(),
+  "canCancel": zod.boolean().optional(),
   "providerPaymentId": zod.string().nullable(),
   "payAmount": zod.string().nullable(),
   "receivedAmount": zod.string().nullable(),
@@ -605,6 +618,7 @@ export const CheckPaymentAttemptResponse = zod.object({
   "status": zod.string(),
   "fulfillment": zod.string(),
   "cancelledAt": zod.string().nullish(),
+  "canCancel": zod.boolean().optional(),
   "providerPaymentId": zod.string().nullable(),
   "payAmount": zod.string().nullable(),
   "receivedAmount": zod.string().nullable(),

@@ -42,6 +42,7 @@ async function telegramRequest<T>(method: string, body: Record<string, unknown> 
     if (!response.ok || !result.ok) {
       const d = result.description?.toLowerCase() ?? "";
       const reason = d.includes("message is not modified") ? "not_modified" :
+        result.error_code === 400 && (d.includes("emoji") || d.includes("premium")) ? "custom_emoji_unavailable" :
         method === "deleteMessage" && d.includes("message to delete not found") ? "message_missing" :
         method === "deleteMessage" && d.includes("message can't be deleted") ? "cannot_delete" :
         d.includes("terminated by other getupdates") ? "other_poller" :

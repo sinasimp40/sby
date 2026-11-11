@@ -3,3 +3,4 @@
 - [Checkout integrity](commerce-integrity.md) — shared bot credentials need explicit owner binding; ambiguous provider/delivery results must not consume new stock.
 - [Dashboard sign-in requirement](admin-access.md) — user explicitly requires admin-and-password dashboard access without OTP.
 - [Dashboard self-hosting controls](self-hosting.md) — user wants routine bot controls in the dashboard before moving to localhost on their computer.
+- [Animated Telegram coin icons](telegram-button-icons.md) — button icons have bot-owner eligibility restrictions; identify coin logos visually, not by ordinary emoji metadata.

@@ -15,5 +15,6 @@ export interface Deposit {
   status: DepositStatus;
   /** @nullable */
   cancelledAt?: string | null;
+  canCancel?: boolean;
   createdAt: string;
 }

@@ -12,6 +12,7 @@ export * from './adminSession';
 export * from './checklistItem';
 export * from './customer';
 export * from './deposit';
+export * from './depositCancellation';
 export * from './depositStatus';
 export * from './healthStatus';
 export * from './importResult';

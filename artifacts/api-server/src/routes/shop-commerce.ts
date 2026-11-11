@@ -12,6 +12,9 @@ import { SaveTelegramCredentialBody, SaveNowpaymentsCredentialsBody } from "@wor
 import { UpdateTelegramRuntimeBody } from "@workspace/api-zod";
 import { updateBotRuntime } from "../lib/bot-runtime-control";
 import { getBotRuntime } from "../lib/bot-runtime";
+import { CancelDepositParams, CancelDepositResponse } from "@workspace/api-zod";
+import { cancelAdminDeposit } from "../lib/admin-deposit-cancellation";
+import { canCancelDeposit } from "../lib/deposit-cancellation-policy";
 
 const router: IRouter = Router();
 export async function paymentAttempts(ownerId: string | null) {
@@ -22,6 +25,7 @@ export async function paymentAttempts(ownerId: string | null) {
     id: p.id, kind: p.kind, customer, productName: p.productName, amount: p.amountCents / 100,
     currency: p.coin.toUpperCase(), status: p.status, fulfillment: p.fulfillment,
     cancelledAt: p.cancelledAt?.toISOString() ?? null,
+    canCancel: canCancelDeposit(p),
     providerPaymentId: p.providerPaymentId, createdAt: p.createdAt.toISOString(),
     payAmount: p.payAmount, receivedAmount: p.receivedAmount, lastCheckedAt: p.lastCheckedAt?.toISOString() ?? null,
   }));
@@ -87,6 +91,11 @@ router.post("/integration/disconnect", async (req, res): Promise<void> => {
 });
 router.get("/payment-attempts", async (req, res): Promise<void> => {
   res.json(ListPaymentAttemptsResponse.parse(await paymentAttempts(getAuth(req).userId)));
+});
+router.post("/deposits/:id/cancel", async (req, res): Promise<void> => {
+  const params = CancelDepositParams.safeParse(req.params);
+  if (!params.success) throw new CommerceError("Invalid deposit reference.");
+  res.json(CancelDepositResponse.parse(await cancelAdminDeposit(getAuth(req).userId, params.data.id)));
 });
 router.post("/payment-attempts/:id/check", async (req, res): Promise<void> => {
   const ownerId = getAuth(req).userId;

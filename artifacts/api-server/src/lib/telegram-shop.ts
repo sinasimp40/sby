@@ -13,6 +13,7 @@ import { customerPendingPayments, pendingPaymentsMenu, PendingPaymentsError } fr
 import { paymentCaption } from "./payment-message";
 import { historyMenu, historyOrderView, isHistoryScope, topupCategoryMenu, topupListMenu, type HistoryView } from "./telegram-history";
 import { customerHistoryPage, customerHistorySummary } from "./telegram-history-store";
+import { sendDepositCoinMenu } from "./deposit-coin-buttons";
 import { customerDeliveredInventory } from "./order-delivery";
 
 interface TelegramMessage {
@@ -226,12 +227,10 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         if (amountCents < Math.round(settings.minDeposit * 100)) throw new CommerceError(`Minimum deposit is $${settings.minDeposit.toFixed(2)}.`);
         const token = randomUUID();
         await db.update(botCustomers).set({ state: { type: "deposit", token, amountCents, expires: Date.now() + 10 * 60000 } }).where(eq(botCustomers.id, customer!.id));
-        await send(depositCoinPrompt(amountCents), {
-          inline_keyboard: [
-            ...settings.acceptedCoins.map(coin => [{ text: coin, callback_data: `pay:${token}:${coin.toLowerCase()}` }]),
-            [{ text: "✖️ Cancel", callback_data: "cancel_home" }],
-          ],
-        }, "HTML");
+        await sendDepositCoinMenu(
+          keyboard => send(depositCoinPrompt(amountCents), keyboard, "HTML"),
+          settings.acceptedCoins, token,
+        );
       } else {
         await send("Use /start to open the menu, or /cancel to cancel a deposit.");
       }

@@ -1,3 +1,4 @@
+import { canCancelDeposit } from "./deposit-cancellation-policy";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db, shopProducts, shopInventory, shopSettings, shopRecords, shopActivity, shopPayments, botCustomers } from "@workspace/db";
 import { GetSettingsResponse, ListProductsResponse } from "@workspace/api-zod";
@@ -66,6 +67,7 @@ export async function recordsForOwner(ownerId: string | null, kind: "order" | "c
       ["confirming", "confirmed", "sending"].includes(p.status) ? "confirming" : "waiting",
     createdAt: p.createdAt.toISOString(),
     cancelledAt: p.cancelledAt?.toISOString() ?? null,
+    canCancel: canCancelDeposit(p),
   }));
   return [...live, ...rows.map((row) => row.payload)];
 }

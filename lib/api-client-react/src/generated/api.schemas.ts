@@ -222,7 +222,14 @@ export interface Deposit {
   status: DepositStatus;
   /** @nullable */
   cancelledAt?: string | null;
+  canCancel?: boolean;
   createdAt: string;
+}
+
+export interface DepositCancellation {
+  id: string;
+  cancelledAt: string;
+  telegramUpdatePending: boolean;
 }
 
 export interface Activity {
@@ -347,6 +354,7 @@ export interface PaymentAttempt {
   fulfillment: string;
   /** @nullable */
   cancelledAt?: string | null;
+  canCancel?: boolean;
   /** @nullable */
   providerPaymentId: string | null;
   /** @nullable */

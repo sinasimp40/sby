@@ -9,6 +9,8 @@ import { reconcilePaymentBatch } from "../src/lib/payment-reconciliation";
 import { recordsForOwner } from "../src/lib/shop-store";
 import { dismissCustomerMessage } from "../src/lib/telegram-navigation";
 import { assertPendingPaymentLimit, customerPendingPayments } from "../src/lib/pending-payments";
+import { cancelAdminDeposit } from "../src/lib/admin-deposit-cancellation";
+import { canCancelDeposit } from "../src/lib/deposit-cancellation-policy";
 
 test("provider minimums, QR and automatic amount-verified deposits", async t => {
   if (process.env.NODE_ENV === "production") throw new Error("Development tests only.");
@@ -22,6 +24,7 @@ test("provider minimums, QR and automatic amount-verified deposits", async t => 
   let timeoutCreate = false;
   let provider: ProviderPayment;
   let deletionError = "";
+  let rejectCaption = false;
   globalThis.fetch = async (url, init) => {
     const target = String(url);
     if (target.startsWith("https://api.nowpayments.io/v1/min-amount?")) {
@@ -36,6 +39,9 @@ test("provider minimums, QR and automatic amount-verified deposits", async t => 
     if (/https:\/\/api\.nowpayments\.io\/v1\/payment\/99999999[12]$/.test(target)) return new Response(JSON.stringify(provider));
     if (target.startsWith("https://api.telegram.org/")) {
       sent.push({ method: target.slice(target.lastIndexOf("/") + 1), body: init?.body instanceof FormData ? init.body : JSON.parse(String(init?.body ?? "{}")) });
+      if (target.endsWith("/editMessageCaption") && rejectCaption) {
+        return new Response(JSON.stringify({ ok: false, error_code: 503, description: "Synthetic Telegram outage" }), { status: 503 });
+      }
       if (target.endsWith("/deleteMessage") && deletionError) {
         return new Response(JSON.stringify({ ok: false, error_code: 400, description: deletionError }), { status: 400 });
       }
@@ -92,6 +98,31 @@ test("provider minimums, QR and automatic amount-verified deposits", async t => 
       assert.equal((await recordsForOwner(owner, "deposit"))[0]!.status, "cancelled");
       assert.equal(await cancelCustomerInvoice(owner, customerId, 111), undefined, "repeated cancellation is idempotent");
       assert.equal((await getPayment(paymentId))!.cancelledAt!.getTime(), cancelled.cancelledAt!.getTime());
+      sent.length = 0;
+    });
+    await t.test("dashboard cancellation is authenticated, shop-scoped, idempotent and survives Telegram failure", async () => {
+      await assert.rejects(cancelAdminDeposit(null, paymentId), e => (e as { status: number }).status === 401);
+      await assert.rejects(cancelAdminDeposit("OTHER_OWNER", paymentId), e => (e as { status: number }).status === 404);
+      await db.update(shopPayments).set({ cancelledAt: null, kind: "wallet" }).where(eq(shopPayments.id, paymentId));
+      await assert.rejects(cancelAdminDeposit(owner, paymentId), e => (e as { status: number }).status === 404);
+      await db.update(shopPayments).set({ kind: "deposit", fulfillment: "credited", status: "finished" }).where(eq(shopPayments.id, paymentId));
+      await assert.rejects(cancelAdminDeposit(owner, paymentId), e => (e as { status: number }).status === 409);
+      await db.update(shopPayments).set({ fulfillment: "pending", status: "waiting", invoiceCaptionHash: null }).where(eq(shopPayments.id, paymentId));
+      rejectCaption = true;
+      const result = await cancelAdminDeposit(owner, paymentId);
+      assert.equal(result.telegramUpdatePending, true);
+      const p = (await getPayment(paymentId))!;
+      assert.ok(p.cancelledAt);
+      assert.equal(p.status, "waiting");
+      assert.equal(p.providerPaymentId, "999999991");
+      assert.equal(canCancelDeposit(p), false);
+      rejectCaption = false;
+      const repeated = await cancelAdminDeposit(owner, paymentId);
+      assert.equal(repeated.cancelledAt, result.cancelledAt);
+      assert.equal(repeated.telegramUpdatePending, false);
+      const audits = await db.select().from(shopActivity).where(eq(shopActivity.ownerId, owner));
+      assert.equal(audits.filter(a => a.title === "Top-up cancelled by admin").length, 1);
+      assert.equal((await recordsForOwner(owner, "deposit"))[0]!.canCancel, false);
       sent.length = 0;
     });
     await t.test("automatic reconciliation fetches status and actual amount without incoming IPN", async () => {

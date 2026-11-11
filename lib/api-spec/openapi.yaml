@@ -191,6 +191,21 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/Deposit" } }
+  /shop/deposits/{id}/cancel:
+    post:
+      operationId: cancelDeposit
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Cancelled the deposit flow without stopping verification of late transfers.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DepositCancellation" }
+        "400": { description: Invalid deposit reference }
+        "401": { description: Sign in required }
+        "404": { description: Deposit not found in this shop }
+        "409": { description: Deposit is already settled or closed }
   /shop/activity:
     get:
       operationId: listActivity
@@ -470,7 +485,15 @@ components:
         currency: { type: string }
         status: { type: string, enum: [waiting, confirming, finished, failed, expired, cancelled] }
         cancelledAt: { type: ["string", "null"] }
+        canCancel: { type: boolean }
         createdAt: { type: string }
+    DepositCancellation:
+      type: object
+      required: [id, cancelledAt, telegramUpdatePending]
+      properties:
+        id: { type: string }
+        cancelledAt: { type: string }
+        telegramUpdatePending: { type: boolean }
     Activity:
       type: object
       required: [id, title, description, type, createdAt]
@@ -557,6 +580,7 @@ components:
         status: { type: string }
         fulfillment: { type: string }
         cancelledAt: { type: ["string", "null"] }
+        canCancel: { type: boolean }
         providerPaymentId: { type: ["string", "null"] }
         payAmount: { type: ["string", "null"] }
         receivedAmount: { type: ["string", "null"] }

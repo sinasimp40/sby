@@ -30,6 +30,7 @@ import type {
   AdminSession,
   Customer,
   Deposit,
+  DepositCancellation,
   HealthStatus,
   ImportResult,
   IntegrationInput,
@@ -1440,6 +1441,74 @@ export function useListDeposits<TData = Awaited<ReturnType<typeof listDeposits>>
 
 
 
+
+export const getCancelDepositUrl = (id: string,) => {
+
+
+
+
+  return `/api/shop/deposits/${id}/cancel`
+}
+
+export const cancelDeposit = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<DepositCancellation> => {
+
+  return customFetch<DepositCancellation>(getCancelDepositUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCancelDepositMutationKey = () => ['cancelDeposit'] as const;
+
+export const getCancelDepositMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelDeposit>>, TError,CancelDepositMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cancelDeposit>>, TError,CancelDepositMutationVariables, TContext> => {
+
+const mutationKey = getCancelDepositMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelDeposit>>, CancelDepositMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  cancelDeposit(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CancelDepositMutationResult = NonNullable<Awaited<ReturnType<typeof cancelDeposit>>>
+
+    export type CancelDepositMutationError = ErrorType<void>
+    export type CancelDepositMutationVariables = {id: string}
+
+    export const useCancelDeposit = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelDeposit>>, TError,CancelDepositMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof cancelDeposit>>,
+        TError,
+        CancelDepositMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCancelDepositMutationOptions(options), queryClient);
+    }
 
 export const getListActivityUrl = () => {
 
