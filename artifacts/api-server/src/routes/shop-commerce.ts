@@ -21,6 +21,7 @@ export async function paymentAttempts(ownerId: string | null) {
   return rows.map(({ payment: p, customer }) => ({
     id: p.id, kind: p.kind, customer, productName: p.productName, amount: p.amountCents / 100,
     currency: p.coin.toUpperCase(), status: p.status, fulfillment: p.fulfillment,
+    cancelledAt: p.cancelledAt?.toISOString() ?? null,
     providerPaymentId: p.providerPaymentId, createdAt: p.createdAt.toISOString(),
     payAmount: p.payAmount, receivedAmount: p.receivedAmount, lastCheckedAt: p.lastCheckedAt?.toISOString() ?? null,
   }));

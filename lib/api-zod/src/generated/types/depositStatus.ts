@@ -15,4 +15,5 @@ export const DepositStatus = {
   finished: 'finished',
   failed: 'failed',
   expired: 'expired',
+  cancelled: 'cancelled',
 } as const;

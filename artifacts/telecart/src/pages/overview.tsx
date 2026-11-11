@@ -8,7 +8,7 @@ import { money, ago } from "@/lib/format";
 import { useAuthGate } from "@/components/auth-gate";
 
 export default function OverviewPage() {
-  const { data, isLoading, isError, error, refetch } = useGetOverview();
+  const { data, isLoading, isError, error, refetch } = useGetOverview({ query: { refetchInterval: 5000, refetchOnWindowFocus: true } });
   const activity = useListActivity();
   const { isSignedIn } = useAuthGate();
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });

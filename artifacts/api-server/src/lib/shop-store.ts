@@ -62,9 +62,10 @@ export async function recordsForOwner(ownerId: string | null, kind: "order" | "c
   }));
   else live = payments.filter(p => p.kind === "deposit").map(p => ({
     id: p.id, customer: username(p.customerId), amount: p.amountCents / 100, currency: "USD",
-    status: p.fulfillment === "credited" ? "finished" : ["failed", "expired", "refunded"].includes(p.status) ? (p.status === "expired" ? "expired" : "failed") :
+    status: p.fulfillment === "credited" ? "finished" : p.cancelledAt && ["creating", "waiting", "expired", "failed", "rejected"].includes(p.status) ? "cancelled" : ["failed", "expired", "refunded"].includes(p.status) ? (p.status === "expired" ? "expired" : "failed") :
       ["confirming", "confirmed", "sending"].includes(p.status) ? "confirming" : "waiting",
     createdAt: p.createdAt.toISOString(),
+    cancelledAt: p.cancelledAt?.toISOString() ?? null,
   }));
   return [...live, ...rows.map((row) => row.payload)];
 }

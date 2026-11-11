@@ -11,12 +11,13 @@ export interface InvoiceMessage {
   status?: string;
   receivedAmount?: string | null;
   fulfillment?: string;
+  cancelledAt?: Date | null;
 }
 export const escapeHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 export function paymentKeyboard(p: InvoiceMessage) {
   const complete = ["delivered", "credited"].includes(p.fulfillment ?? "");
   return { inline_keyboard: [[{
-    text: complete ? "🏠 Home" : "✖️ Cancel",
+    text: complete || p.cancelledAt ? "🏠 Home" : "✖️ Cancel",
     callback_data: "cancel_home",
   }]] };
 }
@@ -33,6 +34,9 @@ export function paymentStatusLabel(p: InvoiceMessage, now = Date.now()) {
   const status = p.status ?? "waiting";
   const fulfilled = ["delivered", "credited"].includes(p.fulfillment ?? "");
   const quoteExpired = p.expiresAt.getTime() <= now;
+  if (p.cancelledAt && !fulfilled && ["waiting", "creating", "expired", "rejected", "failed"].includes(status)) {
+    return "Cancelled · do not send funds";
+  }
   const labels: Record<string, string> = {
     creating: "Preparing payment",
     waiting: quoteExpired ? "Quote expired — do not send funds" : "Awaiting payment",
@@ -52,10 +56,10 @@ export function paymentCaption(p: InvoiceMessage, now = Date.now()) {
   const fulfilled = ["delivered", "credited"].includes(p.fulfillment ?? "");
   const closed = ["failed", "expired", "refunded", "rejected"].includes(status);
   const quoteExpired = p.expiresAt.getTime() <= now;
-  const canPay = !closed && !fulfilled && p.fulfillment !== "review" && !quoteExpired && status === "waiting";
+  const canPay = !p.cancelledAt && !closed && !fulfilled && p.fulfillment !== "review" && !quoteExpired && status === "waiting";
   const statusIcon = fulfilled ? "✅" :
     p.fulfillment === "review" || status === "partially_paid" ? "⚠️" :
-    closed ? (status === "refunded" ? "↩️" : "❌") :
+    closed || p.cancelledAt ? (status === "refunded" ? "↩️" : "❌") :
     quoteExpired && status === "waiting" ? "⌛" :
     status === "waiting" ? "⏳" : "🔄";
   const stamp = p.expiresAt.toISOString().replace("T", " ").slice(0, 16) + " UTC";
@@ -75,6 +79,7 @@ export function paymentCaption(p: InvoiceMessage, now = Date.now()) {
     ...(canPay ? [`🕒 Pay before: <b>${stamp}</b>`] : []),
     "",
     fulfilled ? "🎉 Complete. Do not send another payment." :
+      p.cancelledAt ? "⚠️ Do not send funds to this invoice.\nAlready paid? Automatic checking continues." :
       closed || quoteExpired && ["waiting", "partially_paid"].includes(status) ? "⚠️ Do not send funds to this invoice.\nAlready paid? Automatic checking continues." :
       p.fulfillment === "review" ? "💬 Contact support with your reference.\nDo not pay again." :
       status === "partially_paid" ? "💬 Contact support before sending more." :

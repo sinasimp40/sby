@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db, pool, botCustomers, shopPayments, shopInventory, shopProducts, walletEntries, shopActivity } from "@workspace/db";
 import { CommerceError, TelegramRequestError, ProviderRejectedError, checkProviderMinimum, decimalAtLeast, nowpayments, type ProviderPayment, sendPaymentQr, telegram } from "./commerce-providers";
 import { decryptCredential } from "./inventory-encryption";
@@ -14,6 +14,20 @@ const terminal = ["failed", "expired", "refunded"];
 
 export async function getPayment(id: string) {
   const [payment] = await db.select().from(shopPayments).where(eq(shopPayments.id, id));
+  return payment;
+}
+
+export async function cancelCustomerInvoice(ownerId: string, customerId: string, messageId: number) {
+  // Mark the customer's intent separately from the authoritative provider status.
+  // Reconciliation and late-payment crediting must never stop on navigation.
+  const [payment] = await db.update(shopPayments).set({
+    cancelledAt: new Date(), invoiceNeedsUpdate: true, updatedAt: new Date(),
+  }).where(and(
+    eq(shopPayments.ownerId, ownerId), eq(shopPayments.customerId, customerId),
+    eq(shopPayments.invoiceMessageId, messageId), eq(shopPayments.kind, "deposit"),
+    isNull(shopPayments.cancelledAt), isNull(shopPayments.deliveredAt),
+  )).returning();
+  if (payment) await refreshPaymentMessage(payment.id);
   return payment;
 }
 
@@ -302,6 +316,7 @@ export function invoiceDetails(payment: Payment): InvoiceMessage {
     title: payment.kind === "deposit" ? "Wallet deposit" : payment.productName,
     amountUSD: (payment.amountCents / 100).toFixed(2), status: payment.status,
     receivedAmount: payment.receivedAmount, fulfillment: payment.fulfillment,
+    cancelledAt: payment.cancelledAt,
   };
 }
 const captionHash = (caption: string, keyboard: ReturnType<typeof paymentKeyboard>) =>

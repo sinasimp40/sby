@@ -13,5 +13,7 @@ export interface Deposit {
   amount: number;
   currency: string;
   status: DepositStatus;
+  /** @nullable */
+  cancelledAt?: string | null;
   createdAt: string;
 }

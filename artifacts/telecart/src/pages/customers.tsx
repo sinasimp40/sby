@@ -8,7 +8,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { money, shortDate } from "@/lib/format";
 
 export default function CustomersPage() {
-  const { data, isLoading, isError, error, refetch } = useListCustomers();
+  const { data, isLoading, isError, error, refetch } = useListCustomers({ query: { refetchInterval: 5000, refetchOnWindowFocus: true } });
   const orders = useListOrders();
   const [q, setQ] = useState("");
   const [sel, setSel] = useState<Customer | null>(null);

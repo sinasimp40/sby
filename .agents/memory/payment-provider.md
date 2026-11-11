@@ -45,8 +45,8 @@ Use helpful emojis, bold headings, clear spacing, and copyable payment details i
 
 **How to apply:** Keep the formatting compatible with Telegram HTML and caption limits; preserve exact amounts, addresses, and safety warnings.
 
-Telegram invoice Cancel buttons return the customer to the home menu without stopping payment reconciliation.
+Telegram invoice Cancel buttons mark the customer's cancellation, hide payment instructions and return to the home menu without stopping payment reconciliation.
 
 **Why:** The user requested Cancel to go home; a transfer already sent must still be verified and credited rather than lost when the customer navigates away.
 
-**How to apply:** Clear conversational selections only. Never describe navigation as cancelling an on-chain transfer or deleting the financial record.
+**How to apply:** Track customer cancellation separately from provider status, including in dashboard history. Clear conversational selections and stop inviting payment. Never describe cancellation as stopping an on-chain transfer or deleting the financial record; credit verified late payments normally.

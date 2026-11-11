@@ -440,7 +440,8 @@ components:
         customer: { type: string }
         amount: { type: number }
         currency: { type: string }
-        status: { type: string, enum: [waiting, confirming, finished, failed, expired] }
+        status: { type: string, enum: [waiting, confirming, finished, failed, expired, cancelled] }
+        cancelledAt: { type: ["string", "null"] }
         createdAt: { type: string }
     Activity:
       type: object
@@ -527,6 +528,7 @@ components:
         currency: { type: string }
         status: { type: string }
         fulfillment: { type: string }
+        cancelledAt: { type: ["string", "null"] }
         providerPaymentId: { type: ["string", "null"] }
         payAmount: { type: ["string", "null"] }
         receivedAmount: { type: ["string", "null"] }

@@ -86,6 +86,17 @@ test("expired and review invoices cannot invite another payment", () => {
   }
 });
 
+test("cancelled invoices hide payment instructions but still show real settlement progress", () => {
+  const cancelled = { ...invoice, cancelledAt: new Date(now) };
+  const caption = paymentCaption(cancelled, now);
+  assert.match(caption, /Cancelled · do not send funds/);
+  assert.doesNotMatch(caption, /TEST_ONLY_LTC_ADDRESS|Send exactly/);
+  assert.match(caption, /Automatic checking continues/);
+  assert.match(paymentCaption({ ...cancelled, status: "confirming" }, now), /Payment detected/);
+  assert.match(paymentCaption({ ...cancelled, status: "finished", fulfillment: "credited" }, now), /wallet credited/);
+  assert.equal(paymentKeyboard(cancelled).inline_keyboard[0]![0]!.text, "🏠 Home");
+});
+
 test("HTML is escaped and required memo remains exact", () => {
   const caption = paymentCaption({ ...invoice, title: "<unsafe> & NOWPayments", extraId: "memo<&123" }, now);
   assert.match(caption, /&lt;unsafe&gt; &amp;/);

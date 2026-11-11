@@ -4,8 +4,9 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db, pool, botCustomers, shopPayments, walletEntries, shopActivity } from "@workspace/db";
 import { checkProviderMinimum, moneyCents, nowpayments, ProviderRejectedError, sendPaymentQr, type ProviderPayment } from "../src/lib/commerce-providers";
-import { checkPayment, getPayment } from "../src/lib/commerce-payments";
+import { cancelCustomerInvoice, checkPayment, getPayment } from "../src/lib/commerce-payments";
 import { reconcilePaymentBatch } from "../src/lib/payment-reconciliation";
+import { recordsForOwner } from "../src/lib/shop-store";
 
 test("provider minimums, QR and automatic amount-verified deposits", async t => {
   if (process.env.NODE_ENV === "production") throw new Error("Development tests only.");
@@ -69,6 +70,24 @@ test("provider minimums, QR and automatic amount-verified deposits", async t => 
       price_amount: 10, price_currency: "usd", pay_currency: "ltc",
       pay_address: "TEST_ONLY_ADDRESS", pay_amount: "1.25", actually_paid: "0.5",
     };
+    await t.test("cancel is owner-scoped, persistent and hides payment instructions without losing the invoice", async () => {
+      assert.equal(await cancelCustomerInvoice("OTHER_OWNER", customerId, 111), undefined);
+      assert.equal(await cancelCustomerInvoice(owner, "OTHER_CUSTOMER", 111), undefined);
+      await cancelCustomerInvoice(owner, customerId, 111);
+      const cancelled = (await getPayment(paymentId))!;
+      assert.ok(cancelled.cancelledAt);
+      assert.equal(cancelled.status, "waiting", "provider status is not overwritten");
+      assert.equal(cancelled.providerPaymentId, "999999991");
+      assert.equal(cancelled.fulfillment, "pending");
+      const edit = sent.filter(s => s.method === "editMessageCaption").at(-1)!;
+      assert.match(edit.body.caption, /Cancelled/);
+      assert.doesNotMatch(edit.body.caption, /TEST_ONLY_ADDRESS|Send exactly/);
+      assert.deepEqual(edit.body.reply_markup, { inline_keyboard: [[{ text: "🏠 Home", callback_data: "cancel_home" }]] });
+      assert.equal((await recordsForOwner(owner, "deposit"))[0]!.status, "cancelled");
+      assert.equal(await cancelCustomerInvoice(owner, customerId, 111), undefined, "repeated cancellation is idempotent");
+      assert.equal((await getPayment(paymentId))!.cancelledAt!.getTime(), cancelled.cancelledAt!.getTime());
+      sent.length = 0;
+    });
     await t.test("automatic reconciliation fetches status and actual amount without incoming IPN", async () => {
       await reconcilePaymentBatch();
       const p = await getPayment(paymentId);
@@ -95,6 +114,7 @@ test("provider minimums, QR and automatic amount-verified deposits", async t => 
       assert.equal((await getPayment(paymentId))!.payAmount, "1.4");
       assert.equal((await db.select().from(botCustomers).where(eq(botCustomers.id, customerId)))[0]!.balanceCents, 1000);
       assert.equal((await db.select().from(walletEntries).where(eq(walletEntries.paymentId, paymentId))).length, 1);
+      assert.equal((await recordsForOwner(owner, "deposit"))[0]!.status, "finished", "late payment after cancel is credited and visible");
       assert.equal(sent.filter(s => s.method === "sendMessage").length, 1);
       await checkPayment(paymentId);
       const lastEdit = sent.filter(s => s.method === "editMessageCaption").at(-1)!;

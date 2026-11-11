@@ -199,6 +199,7 @@ export const DepositStatus = {
   finished: 'finished',
   failed: 'failed',
   expired: 'expired',
+  cancelled: 'cancelled',
 } as const;
 
 export interface Deposit {
@@ -207,6 +208,8 @@ export interface Deposit {
   amount: number;
   currency: string;
   status: DepositStatus;
+  /** @nullable */
+  cancelledAt?: string | null;
   createdAt: string;
 }
 
@@ -330,6 +333,8 @@ export interface PaymentAttempt {
   currency: string;
   status: string;
   fulfillment: string;
+  /** @nullable */
+  cancelledAt?: string | null;
   /** @nullable */
   providerPaymentId: string | null;
   /** @nullable */

@@ -257,7 +257,8 @@ export const ListDepositsResponseItem = zod.object({
   "customer": zod.string(),
   "amount": zod.number(),
   "currency": zod.string(),
-  "status": zod.enum(['waiting', 'confirming', 'finished', 'failed', 'expired']),
+  "status": zod.enum(['waiting', 'confirming', 'finished', 'failed', 'expired', 'cancelled']),
+  "cancelledAt": zod.string().nullish(),
   "createdAt": zod.string()
 })
 export const ListDepositsResponse = zod.array(ListDepositsResponseItem)
@@ -567,6 +568,7 @@ export const ListPaymentAttemptsResponseItem = zod.object({
   "currency": zod.string(),
   "status": zod.string(),
   "fulfillment": zod.string(),
+  "cancelledAt": zod.string().nullish(),
   "providerPaymentId": zod.string().nullable(),
   "payAmount": zod.string().nullable(),
   "receivedAmount": zod.string().nullable(),
@@ -589,6 +591,7 @@ export const CheckPaymentAttemptResponse = zod.object({
   "currency": zod.string(),
   "status": zod.string(),
   "fulfillment": zod.string(),
+  "cancelledAt": zod.string().nullish(),
   "providerPaymentId": zod.string().nullable(),
   "payAmount": zod.string().nullable(),
   "receivedAmount": zod.string().nullable(),

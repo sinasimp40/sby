@@ -3,7 +3,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { db, pool, botCustomers, botUpdates, shopPayments } from "@workspace/db";
 import { activeConnection } from "./commerce-connection";
 import { CommerceError, moneyCents, telegram } from "./commerce-providers";
-import { createCheckout, checkPayment, sendCheckout } from "./commerce-payments";
+import { cancelCustomerInvoice, createCheckout, checkPayment, sendCheckout } from "./commerce-payments";
 import { productsForOwner, settingsForOwner } from "./shop-store";
 import { getBotRuntime } from "./bot-runtime";
 import { customerMessageText, depositCoinPrompt, depositPrompt, walletSummary } from "./telegram-copy";
@@ -64,9 +64,11 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         await telegram("answerCallbackQuery", { callback_query_id: update.callback_query.id }).catch(() => undefined);
       }
       if (data === "cancel_home") {
-        // Navigation only: never cancel provider settlement or discard a paid invoice.
+        if (message.photo?.length && Number.isSafeInteger(message.message_id)) {
+          await cancelCustomerInvoice(connection.ownerId, customer!.id, message.message_id!);
+        }
         await db.update(botCustomers).set({ state: {} }).where(eq(botCustomers.id, customer!.id));
-        await send(`${settings.welcomeMessage}${message.photo?.length ? "\n\n🏠 Returned to the home menu.\nAny payment already sent will still be checked automatically." : ""}`, {
+        await send(`${settings.welcomeMessage}${message.photo?.length ? "\n\n🏠 Returned to the home menu.\nDo not send funds to a cancelled invoice. Any payment already sent will still be checked automatically." : ""}`, {
           keyboard: labels.map(row => row.map(label => ({ text: label }))), resize_keyboard: true, is_persistent: true,
         });
       } else if (data.startsWith("check:")) {
@@ -137,7 +139,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         }, "HTML");
       } else if ([settings.ordersLabel, labels[1]![1], "/orders"].includes(text)) {
         const orders = await db.select().from(shopPayments).where(eq(shopPayments.customerId, customer!.id)).orderBy(desc(shopPayments.createdAt)).limit(10);
-        await send(orders.length ? orders.map(p => `${p.productName} · $${(p.amountCents / 100).toFixed(2)}\n${p.id}\n${p.status} · ${p.fulfillment}`).join("\n\n") : "You have no orders or deposits yet.", orders.length ? {
+        await send(orders.length ? orders.map(p => `${p.productName} · $${(p.amountCents / 100).toFixed(2)}\n${p.id}\n${p.cancelledAt && p.fulfillment !== "credited" && p.status === "waiting" ? "Cancelled" : p.status} · ${p.fulfillment}`).join("\n\n") : "You have no orders or deposits yet.", orders.length ? {
           inline_keyboard: [],
         } : undefined);
       } else if (customer!.state.type === "deposit-amount") {

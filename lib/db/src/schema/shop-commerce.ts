@@ -45,6 +45,7 @@ export const shopPayments = pgTable("shop_payments", {
   invoiceMessageId: integer("invoice_message_id"),
   invoiceCaptionHash: text("invoice_caption_hash"),
   invoiceNeedsUpdate: boolean("invoice_needs_update").notNull().default(false),
+  cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
   extraId: text("extra_id"),
   network: text("network"),
   expiresAt: timestamp("expires_at", { withTimezone: true }),

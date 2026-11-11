@@ -16,6 +16,8 @@ export interface PaymentAttempt {
   status: string;
   fulfillment: string;
   /** @nullable */
+  cancelledAt?: string | null;
+  /** @nullable */
   providerPaymentId: string | null;
   /** @nullable */
   payAmount: string | null;
