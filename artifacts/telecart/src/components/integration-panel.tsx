@@ -19,7 +19,7 @@ export function IntegrationPanel() {
   const success = () => { qc.invalidateQueries(); toast({ title: "Connection updated" }); };
   const error = (e: unknown) => toast({ title: "Connection failed", description: errMsg(e), variant: "destructive" });
   return (
-    <Panel title="Live bot connection" meta={s?.connected ? "webhook configured" : "activation required"}>
+    <Panel title="Live bot connection" meta={s?.connected ? (s.publicUrl.includes(".replit.dev") ? "workspace polling" : "webhook configured") : "activation required"}>
       {query.isError ? <ErrorState message="Could not load connection status" onRetry={() => query.refetch()} /> :
         !s ? <p className="text-sm text-muted-foreground">Checking configuration…</p> :
         !s.signedIn ? <p className="text-sm text-muted-foreground">Sign in to see your private shop connection and setup instructions.</p> : (
@@ -41,7 +41,7 @@ export function IntegrationPanel() {
               </dl>
               {!s.publicUrl && <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">Set TELECART_PUBLIC_URL to the public HTTPS origin. For workspace testing, also enable TELECART_ALLOW_WORKSPACE_TESTING. Providers must be able to reach the URL without signing in.</p>}
               <p className="text-xs text-muted-foreground">Keys stay in Replit Secrets: TELEGRAM_BOT_TOKEN, NOWPAYMENTS_API_KEY and NOWPAYMENTS_IPN_SECRET. After changing them, restart the API server and reconnect. The IPN URL is supplied automatically for each invoice. Configure your receiving wallet in NOWPayments.</p>
-              {s.publicUrl.includes(".replit.dev") && <p className="rounded-lg bg-muted p-3 text-xs">Workspace testing is enabled. Telegram messages and invoices are real. Keep this workspace running; callbacks stop when it sleeps or its URL changes. Telegram allows only one webhook per bot, so this connection replaces any other receiver.</p>}
+              {s.publicUrl.includes(".replit.dev") && <p className="rounded-lg bg-muted p-3 text-xs">Workspace testing uses outbound Telegram polling, so private workspace protection cannot block bot messages. Keep the workspace running. Messages and invoices are real. Incoming payment notifications may be blocked by workspace protection; use the invoice's Check payment button to fetch the verified NOWPayments status. Connecting replaces this bot's other receiver.</p>}
               {!s.connected && <label className="flex items-start gap-2 text-xs">
                 <input type="checkbox" checked={accepted} onChange={e => setAccepted(e.target.checked)} className="mt-0.5" data-testid="checkbox-activate-policy" />
                 <span>I understand Telegram requires Stars for digital goods inside bots, and I am responsible for meeting Telegram and NOWPayments requirements. This setup does not override their rules.</span>
@@ -49,7 +49,7 @@ export function IntegrationPanel() {
               <div className="flex flex-wrap gap-2">
                 <Button disabled={busy || !accepted || !s.publicUrl || !s.tokenPresent || !s.apiKeyPresent || !s.ipnSecretPresent || s.connected}
                   onClick={() => connect.mutate({ data: { acknowledgePolicy: true } }, { onSuccess: success, onError: error })}
-                  data-testid="button-connect-telegram">{connect.isPending ? "Connecting…" : "Connect Telegram webhook"}</Button>
+                  data-testid="button-connect-telegram">{connect.isPending ? "Connecting…" : "Connect Telegram bot"}</Button>
                 {s.connected && <Button variant="outline" disabled={busy} onClick={() => disconnect.mutate(undefined, { onSuccess: success, onError: error })} data-testid="button-disconnect-telegram">Disconnect bot</Button>}
               </div>
               <p className="text-xs text-muted-foreground">Disconnecting stops new Telegram messages. Existing payment notifications can still settle and deliver orders.</p>

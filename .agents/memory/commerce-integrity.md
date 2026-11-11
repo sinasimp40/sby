@@ -7,7 +7,7 @@ Shared service credentials must be bound deliberately to the intended shop owner
 
 **Why:** The admin app has private per-owner shops, but the deployment holds one merchant API key and one bot token. First-signup claiming would let an unrelated visitor control them, and Clerk preview identities differ from production.
 
-**How to apply:** Preserve explicit operator binding. Allow workspace activation only with deliberate testing opt-in and the exact current workspace HTTPS host; verify external reachability. Explain that workspace availability limits callbacks and the bot has only one webhook. Changing bot identity or merchant ownership requires a migration, not silently replacing the connection.
+**How to apply:** Preserve explicit operator binding. Workspace testing uses outbound Telegram polling with deliberate opt-in, not incoming webhooks: a workspace-local health check can pass while Telegram receives Replit's access-protection 307 redirect. Check Telegram's own delivery diagnostics before claiming inbound connectivity. Private workspace IPNs may also be blocked; buyer/admin Check payment fetches authoritative provider status. Production retains webhooks. Changing bot identity or merchant ownership requires a migration.
 
 An owner-configured first-admin bootstrap must resolve identities independently inside development and production, without importing live Clerk credentials into the workspace.
 

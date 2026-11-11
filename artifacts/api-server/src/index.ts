@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { initializeAdminBootstrap } from "./lib/admin-bootstrap";
+import { runWorkspacePolling } from "./lib/workspace-polling";
 
 const rawPort = process.env["PORT"];
 
@@ -32,4 +33,5 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+  void runWorkspacePolling().catch(() => logger.error("Workspace Telegram poller stopped."));
 });

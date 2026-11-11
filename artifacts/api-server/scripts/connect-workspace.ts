@@ -15,7 +15,8 @@ try {
   const currencies = await nowpayments<{ currencies: string[] }>("/currencies");
   console.info(JSON.stringify({
     bot: `@${result.botUsername}`,
-    webhookMatches: hook.url === `${publicBaseUrl()}/api/telegram/webhook`,
+    transport: "workspace polling",
+    webhookRemoved: hook.url === "",
     pendingUpdates: hook.pending_update_count,
     nowpaymentsAuthenticated: Array.isArray(currencies.currencies) && currencies.currencies.length > 0,
     settlement: "finished",
