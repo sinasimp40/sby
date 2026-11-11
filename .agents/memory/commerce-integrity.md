@@ -3,11 +3,11 @@ name: Checkout integrity decisions
 description: Owner binding and conservative recovery requirements for a single shared Telegram/NOWPayments deployment.
 ---
 
-Shared service credentials must be bound deliberately to the intended shop owner, never claimed automatically by the first account that signs up. Live activation belongs on the published admin site.
+Shared service credentials must be bound deliberately to the intended shop owner, never claimed automatically by the first account that signs up. The user explicitly wants real Telegram testing from the running workspace without requiring publication.
 
 **Why:** The admin app has private per-owner shops, but the deployment holds one merchant API key and one bot token. First-signup claiming would let an unrelated visitor control them, and Clerk preview identities differ from production.
 
-**How to apply:** Preserve explicit operator binding and production-only webhook activation. Changing the bot identity or merchant ownership requires a migration, not silently replacing the connection.
+**How to apply:** Preserve explicit operator binding. Allow workspace activation only with deliberate testing opt-in and the exact current workspace HTTPS host; verify external reachability. Explain that workspace availability limits callbacks and the bot has only one webhook. Changing bot identity or merchant ownership requires a migration, not silently replacing the connection.
 
 An owner-configured first-admin bootstrap must resolve identities independently inside development and production, without importing live Clerk credentials into the workspace.
 

@@ -74,8 +74,13 @@ export function publicBaseUrl() {
   if (!raw) return "";
   try {
     const url = new URL(raw);
+    const workspaceHost = url.hostname.endsWith(".replit.dev");
+    const allowedWorkspace = process.env.NODE_ENV !== "production" &&
+      process.env.TELECART_ALLOW_WORKSPACE_TESTING === "true" &&
+      url.hostname === process.env.REPLIT_DEV_DOMAIN;
     if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash ||
-      (url.pathname !== "/" && url.pathname !== "") || /localhost|127\.0\.0\.1|\.replit\.dev$/i.test(url.hostname)) return "";
+      (url.pathname !== "/" && url.pathname !== "") || /localhost|127\.0\.0\.1/i.test(url.hostname) ||
+      (workspaceHost && !allowedWorkspace)) return "";
     return url.origin;
   } catch { return ""; }
 }

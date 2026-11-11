@@ -27,7 +27,7 @@ export function IntegrationPanel() {
             <p>Settlement rule: <strong>finished only</strong>. Confirming, confirmed, sending and partial payments do not deliver stock or credit wallets.</p>
             {!s.ownerBound && <div className="rounded-lg bg-muted p-3">
               <p className="font-medium">Bind the shared bot to your admin account first.</p>
-              <p className="mt-1 text-xs text-muted-foreground">For live use, sign in on the published site and set the non-secret environment variable TELECART_OWNER_ID to that account ID. Preview and production sign-ins have separate IDs. This binding prevents another signup from taking control of your bot.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Sign in to your configured admin account. A secure first-admin setup binds it automatically; otherwise set TELECART_OWNER_ID to this account ID. Workspace and published sign-ins have separate IDs. This binding prevents another signup from taking control of your bot.</p>
               <Input readOnly value={s.ownerId} aria-label="Your shop owner ID" className="mt-2 font-mono text-xs" data-testid="input-owner-binding" />
             </div>}
             {s.ownerBound && !s.isOperator && <p className="text-muted-foreground">This account is not the configured bot operator. Sign in to the bound admin account to connect the shared bot.</p>}
@@ -39,8 +39,9 @@ export function IntegrationPanel() {
                 <dt>Bot</dt><dd>{s.botUsername ? `@${s.botUsername}` : "Not activated"}</dd>
                 <dt>Public callback origin</dt><dd className="max-w-56 break-all">{s.publicUrl || "Not configured"}</dd>
               </dl>
-              {!s.publicUrl && <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">Publish the app publicly, then set TELECART_PUBLIC_URL to its verified HTTPS production origin. Private/password-protected deployments block provider webhooks unless external access is configured. A workspace preview URL is not used for live callbacks.</p>}
-              <p className="text-xs text-muted-foreground">Activate from the published admin panel, not this development preview. Keys stay in server secrets. The IPN URL is supplied automatically when a payment is created. Your receiving wallet must be configured in NOWPayments.</p>
+              {!s.publicUrl && <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">Set TELECART_PUBLIC_URL to the public HTTPS origin. For workspace testing, also enable TELECART_ALLOW_WORKSPACE_TESTING. Providers must be able to reach the URL without signing in.</p>}
+              <p className="text-xs text-muted-foreground">Keys stay in Replit Secrets: TELEGRAM_BOT_TOKEN, NOWPAYMENTS_API_KEY and NOWPAYMENTS_IPN_SECRET. After changing them, restart the API server and reconnect. The IPN URL is supplied automatically for each invoice. Configure your receiving wallet in NOWPayments.</p>
+              {s.publicUrl.includes(".replit.dev") && <p className="rounded-lg bg-muted p-3 text-xs">Workspace testing is enabled. Telegram messages and invoices are real. Keep this workspace running; callbacks stop when it sleeps or its URL changes. Telegram allows only one webhook per bot, so this connection replaces any other receiver.</p>}
               {!s.connected && <label className="flex items-start gap-2 text-xs">
                 <input type="checkbox" checked={accepted} onChange={e => setAccepted(e.target.checked)} className="mt-0.5" data-testid="checkbox-activate-policy" />
                 <span>I understand Telegram requires Stars for digital goods inside bots, and I am responsible for meeting Telegram and NOWPayments requirements. This setup does not override their rules.</span>
