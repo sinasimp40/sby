@@ -16,6 +16,9 @@ A web administration workspace for a Telegram digital-product shop.
 
 ## Run & Operate
 
+- Imported workspace setup: dependencies are installed with `pnpm install --frozen-lockfile`, the development PostgreSQL schema is initialized with `pnpm --filter @workspace/db run push`, and the existing app services are registered from their artifact manifests. Use Replit's Run workflows below, not a root `pnpm dev` command.
+- Development setup preserves password-only dashboard login. Clerk supplies the existing bootstrap identity behind the scenes, not an OTP screen. Set `TELECART_ADMIN_INITIAL_PASSWORD` securely in Secrets to finish admin setup; the imported `TELECART_ADMIN_EMAIL` is `admin@admin.com` and should be changed to an address you control before live operation.
+- Keep development `TELECART_PUBLIC_URL` equal to the current workspace HTTPS origin for sign-in Origin checks. Telegram is explicitly disabled with `TELECART_TELEGRAM_DISABLED=true`; no live bot or payment credentials have been configured by the import setup.
 - Managed workflows: `artifacts/api-server: API Server`, `artifacts/telecart: web`.
 - `pnpm run typecheck` — complete workspace type check.
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate client hooks and server validation.
