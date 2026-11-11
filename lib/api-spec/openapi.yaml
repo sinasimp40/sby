@@ -152,6 +152,25 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/Order" } }
+  /shop/orders/{id}/delivery:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      operationId: revealOrderDelivery
+      tags: [shop]
+      responses:
+        "200":
+          description: Exact delivered inventory, visible only to the owning admin.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrderDelivery" }
+        "400": { description: Invalid order reference }
+        "401": { description: Sign-in required }
+        "403": { description: Cross-origin access denied }
+        "404": { description: Delivered inventory unavailable }
   /shop/customers:
     get:
       operationId: listCustomers
@@ -422,6 +441,14 @@ components:
         status: { type: string, enum: [pending, paid, delivered, cancelled, refunded] }
         paymentMethod: { type: string }
         createdAt: { type: string }
+    OrderDelivery:
+      type: object
+      required: [orderId, inventoryId, credential, deliveredAt]
+      properties:
+        orderId: { type: string }
+        inventoryId: { type: integer }
+        credential: { type: string }
+        deliveredAt: { type: string }
     Customer:
       type: object
       required: [id, username, orderCount, spent, walletBalance, joinedAt]

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
 import { db, pool, botCustomers, botUpdates, shopPayments } from "@workspace/db";
 import { activeConnection } from "./commerce-connection";
-import { CommerceError, moneyCents, telegram } from "./commerce-providers";
+import { CommerceError, moneyCents, telegram, TelegramRequestError } from "./commerce-providers";
 import { cancelCustomerPayment, createCheckout, checkPayment, invoiceDetails, sendCheckout } from "./commerce-payments";
 import { dismissCustomerMessage } from "./telegram-navigation";
 import { productsForOwner, settingsForOwner } from "./shop-store";
@@ -11,6 +11,8 @@ import { customerMessageText, depositCoinPrompt, depositPrompt, walletSummary } 
 import { telegramCustomerName, type TelegramCustomerProfile } from "./telegram-customer-name";
 import { customerPendingPayments, pendingPaymentsMenu, PendingPaymentsError } from "./pending-payments";
 import { paymentCaption } from "./payment-message";
+import { historyMenu, historyOrderView } from "./telegram-history";
+import { customerDeliveredInventory } from "./order-delivery";
 
 interface TelegramMessage {
   message_id?: number;
@@ -64,6 +66,16 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
       const menu = pendingPaymentsMenu(await customerPendingPayments(connection.ownerId, customer!.id));
       await send(menu.text, menu.reply_markup, "HTML");
     };
+    const showHistoryView = async (view: ReturnType<typeof historyMenu>) => {
+      const body = { chat_id: customer!.chatId, text: view.text, parse_mode: "HTML", reply_markup: view.reply_markup };
+      if (update.callback_query && Number.isSafeInteger(message.message_id) && !message.photo?.length) {
+        await telegram("editMessageText", { ...body, message_id: message.message_id }).catch(error => {
+          if (!(error instanceof TelegramRequestError && error.reason === "not_modified")) throw error;
+        });
+      } else {
+        await telegram("sendMessage", { ...body, protect_content: true });
+      }
+    };
     try {
       if (update.callback_query) {
         // Acknowledge promptly; this has no financial side effects.
@@ -71,13 +83,23 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         // Its failure must not block idempotent checkout/delivery recovery.
         await telegram("answerCallbackQuery", { callback_query_id: update.callback_query.id }).catch(() => undefined);
       }
-      if (data === "cancel_home") {
+      if (data === "cancel_home" || data === "history_home") {
         const removed = Number.isSafeInteger(message.message_id)
           ? await dismissCustomerMessage(connection.ownerId, customer!.id, message.message_id!) : true;
         await db.update(botCustomers).set({ state: {} }).where(eq(botCustomers.id, customer!.id));
         await send(`${settings.welcomeMessage}${message.photo?.length ? "\n\n🏠 Returned to the home menu.\nAny payment already sent will still be checked automatically." : ""}${removed ? "" : "\n\nTelegram no longer allows deleting this older message. Its buttons have been disabled."}`, {
           keyboard: labels.map(row => row.map(label => ({ text: label }))), resize_keyboard: true, is_persistent: true,
         });
+      } else if (data.startsWith("history_order:")) {
+        const [, id, rawPage] = data.split(":");
+        const [order] = await db.select().from(shopPayments).where(and(
+          eq(shopPayments.id, id ?? ""), eq(shopPayments.ownerId, connection.ownerId),
+          eq(shopPayments.customerId, customer!.id),
+        ));
+        if (!order) throw new CommerceError("Order not found.");
+        const delivered = order.kind !== "deposit" && order.fulfillment === "delivered" && order.deliveredAt;
+        const inventory = delivered ? await customerDeliveredInventory(connection.ownerId, customer!.id, order.id) : undefined;
+        await showHistoryView(historyOrderView(order, inventory?.credential, Number(rawPage ?? 0)));
       } else if (data === "pending" || text === "/pending") {
         await showPending();
       } else if (data.startsWith("pending_view:") || data.startsWith("pending_cancel:")) {
@@ -182,11 +204,11 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
             [{ text: "⏳ Pending payments", callback_data: "pending" }],
           ],
         }, "HTML");
-      } else if ([settings.ordersLabel, labels[1]![1], "/orders"].includes(text)) {
-        const orders = await db.select().from(shopPayments).where(eq(shopPayments.customerId, customer!.id)).orderBy(desc(shopPayments.createdAt)).limit(10);
-        await send(orders.length ? orders.map(p => `${p.productName} · $${(p.amountCents / 100).toFixed(2)}\n${p.id}\n${p.cancelledAt && p.fulfillment !== "credited" && p.status === "waiting" ? "Cancelled" : p.status} · ${p.fulfillment}`).join("\n\n") : "You have no orders or deposits yet.", orders.length ? {
-          inline_keyboard: [],
-        } : undefined);
+      } else if (data === "history" || [settings.ordersLabel, labels[1]![1], "/orders"].includes(text)) {
+        const orders = await db.select().from(shopPayments).where(and(
+          eq(shopPayments.ownerId, connection.ownerId), eq(shopPayments.customerId, customer!.id),
+        )).orderBy(desc(shopPayments.createdAt)).limit(10);
+        await showHistoryView(historyMenu(orders));
       } else if (customer!.state.type === "deposit-amount") {
         const amountCents = moneyCents(text);
         if (amountCents < Math.round(settings.minDeposit * 100)) throw new CommerceError(`Minimum deposit is $${settings.minDeposit.toFixed(2)}.`);

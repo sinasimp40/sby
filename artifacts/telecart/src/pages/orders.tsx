@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { customerName, money, dateTime } from "@/lib/format";
+import { OrderDelivery } from "@/components/order-delivery";
 
 function exportCsv(rows: Order[]) {
   const head = ["id", "customer", "product", "amount_usd", "status", "payment_method", "created_at"];
@@ -23,10 +24,11 @@ function exportCsv(rows: Order[]) {
 }
 
 export default function OrdersPage() {
-  const { data, isLoading, isError, error, refetch } = useListOrders();
+  const { data, isLoading, isError, error, refetch } = useListOrders({ query: { refetchInterval: 5000, refetchOnWindowFocus: true } });
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
-  const [selected, setSelected] = useState<Order | null>(null);
+  const [chosen, setSelected] = useState<Order | null>(null);
+  const selected = data?.find(order => order.id === chosen?.id) ?? chosen;
   const rows = useMemo(() => (data ?? []).filter((o) => (status === "all" || o.status === status) && `${o.id} ${o.customer} ${o.productName}`.toLowerCase().includes(q.toLowerCase())), [data, q, status]);
 
   return (
@@ -62,7 +64,7 @@ export default function OrdersPage() {
         )}
       </Panel>
       <Sheet open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <SheetContent className="w-full sm:max-w-md">
+        <SheetContent className="w-full overflow-y-auto sm:max-w-md">
           {selected && (
             <>
               <SheetHeader><SheetTitle className="font-display text-xl">Order {selected.id}</SheetTitle><SheetDescription>{dateTime(selected.createdAt)}</SheetDescription></SheetHeader>
@@ -71,6 +73,7 @@ export default function OrdersPage() {
                   <div key={String(k)} className="flex items-center justify-between px-3 py-2.5"><dt className="text-muted-foreground">{k}</dt><dd className="font-medium">{v}</dd></div>
                 ))}
               </dl>
+              <OrderDelivery key={selected.id} orderId={selected.id} delivered={selected.status === "delivered"} />
             </>
           )}
         </SheetContent>

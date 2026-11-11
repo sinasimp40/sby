@@ -5,10 +5,12 @@ import { db, shopSettings, shopActivity } from "@workspace/db";
 import {
   GetOverviewResponse, ListOrdersResponse, ListCustomersResponse, ListDepositsResponse,
   ListActivityResponse, SaveSettingsBody, SaveSettingsResponse,
+  RevealOrderDeliveryParams, RevealOrderDeliveryResponse,
 } from "@workspace/api-zod";
 import { productsForOwner, recordsForOwner, settingsForOwner, recordActivity } from "../lib/shop-store";
 import productRouter from "./shop-products";
 import commerceRouter from "./shop-commerce";
+import { revealDeliveredInventory } from "../lib/order-delivery";
 
 const router: IRouter = Router();
 const writes = new Map<string, { count: number; expires: number }>();
@@ -87,6 +89,12 @@ router.put("/settings", async (req, res): Promise<void> => {
 
 router.get("/orders", async (req, res): Promise<void> => {
   res.json(ListOrdersResponse.parse(await recordsForOwner(getAuth(req).userId, "order")));
+});
+router.post("/orders/:id/delivery", async (req, res): Promise<void> => {
+  const params = RevealOrderDeliveryParams.safeParse(req.params);
+  if (!params.success) { res.status(400).json({ error: "Invalid order reference." }); return; }
+  const delivery = await revealDeliveredInventory(getAuth(req).userId, params.data.id);
+  res.json(RevealOrderDeliveryResponse.parse(delivery));
 });
 router.get("/customers", async (req, res): Promise<void> => {
   res.json(ListCustomersResponse.parse(await recordsForOwner(getAuth(req).userId, "customer")));

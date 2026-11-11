@@ -26,6 +26,7 @@ export * from './inventoryItemStatus';
 export * from './nOWPaymentsCredentialInput';
 export * from './nOWPaymentsCredentialResult';
 export * from './order';
+export * from './orderDelivery';
 export * from './orderStatus';
 export * from './overview';
 export * from './paymentAttempt';

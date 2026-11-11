@@ -181,6 +181,13 @@ export interface ImportResult {
   skipped: number;
 }
 
+export interface OrderDelivery {
+  orderId: string;
+  inventoryId: number;
+  credential: string;
+  deliveredAt: string;
+}
+
 export interface Customer {
   id: string;
   username: string;

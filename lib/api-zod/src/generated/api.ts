@@ -241,6 +241,18 @@ export const ListOrdersResponseItem = zod.object({
 export const ListOrdersResponse = zod.array(ListOrdersResponseItem)
 
 
+export const RevealOrderDeliveryParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const RevealOrderDeliveryResponse = zod.object({
+  "orderId": zod.string(),
+  "inventoryId": zod.number().int(),
+  "credential": zod.string(),
+  "deliveredAt": zod.string()
+})
+
+
 export const ListCustomersResponseItem = zod.object({
   "id": zod.string(),
   "username": zod.string(),

@@ -45,6 +45,12 @@ Use helpful emojis, bold headings, clear spacing, and copyable payment details i
 
 **How to apply:** Keep the formatting compatible with Telegram HTML and caption limits; preserve exact amounts, addresses, and safety warnings.
 
+Telegram Order History must list clickable product and top-up buttons, not text-only category cards. Tapping a delivered product shows the exact inventory received for that customer's order.
+
+**Why:** The user explicitly corrected the interpretation: “not by text category ... i want button!!” They meant the customer-facing Telegram history, not only the dashboard.
+
+**How to apply:** Keep amounts and readable outcomes on the buttons, with detailed metadata behind each button. Reveal stock only for the authenticated Telegram customer's own delivered order; never substitute text inside credentials. Home clears the current history view and returns to the main menu, as the user confirmed. Show successful credit or delivery only after actual fulfillment, and local expiry for unpaid quotes.
+
 Telegram Cancel buttons delete the clicked prompt or invoice and return to the home menu without stopping payment reconciliation.
 
 **Why:** The user requested Cancel to go home, then clarified that the cancelled message should disappear. A transfer already sent must still be verified and credited.

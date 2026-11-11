@@ -39,6 +39,7 @@ import type {
   NOWPaymentsCredentialInput,
   NOWPaymentsCredentialResult,
   Order,
+  OrderDelivery,
   Overview,
   PaymentAttempt,
   PaymentMinimum,
@@ -1181,6 +1182,74 @@ export function useListOrders<TData = Awaited<ReturnType<typeof listOrders>>, TE
 
 
 
+
+export const getRevealOrderDeliveryUrl = (id: string,) => {
+
+
+
+
+  return `/api/shop/orders/${id}/delivery`
+}
+
+export const revealOrderDelivery = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<OrderDelivery> => {
+
+  return customFetch<OrderDelivery>(getRevealOrderDeliveryUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRevealOrderDeliveryMutationKey = () => ['revealOrderDelivery'] as const;
+
+export const getRevealOrderDeliveryMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revealOrderDelivery>>, TError,RevealOrderDeliveryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof revealOrderDelivery>>, TError,RevealOrderDeliveryMutationVariables, TContext> => {
+
+const mutationKey = getRevealOrderDeliveryMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof revealOrderDelivery>>, RevealOrderDeliveryMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  revealOrderDelivery(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RevealOrderDeliveryMutationResult = NonNullable<Awaited<ReturnType<typeof revealOrderDelivery>>>
+
+    export type RevealOrderDeliveryMutationError = ErrorType<void>
+    export type RevealOrderDeliveryMutationVariables = {id: string}
+
+    export const useRevealOrderDelivery = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revealOrderDelivery>>, TError,RevealOrderDeliveryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof revealOrderDelivery>>,
+        TError,
+        RevealOrderDeliveryMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRevealOrderDeliveryMutationOptions(options), queryClient);
+    }
 
 export const getListCustomersUrl = () => {
 
