@@ -11,15 +11,17 @@ import { useShopSettings } from "@/hooks/use-shop-settings";
 import { cn } from "@/lib/utils";
 import { IntegrationPanel } from "@/components/integration-panel";
 import { PaymentAttemptsPanel } from "@/components/payment-attempts";
+import { PaymentMinimumsPanel } from "@/components/payment-minimums";
 
 const COINS = [
   { id: "BTC", name: "Bitcoin" }, { id: "ETH", name: "Ethereum" }, { id: "LTC", name: "Litecoin" },
-  { id: "USDTTRC20", name: "USDT · TRON" }, { id: "USDTERC20", name: "USDT · Ethereum" }, { id: "SOL", name: "Solana" },
+  { id: "USDTTRC20", name: "USDT · TRON" }, { id: "USDTERC20", name: "USDT · Ethereum" }, { id: "BNBBSC", name: "BNB · Smart Chain" }, { id: "SOL", name: "Solana" },
 ] as const;
 const schema = z.object({
-  minDeposit: z.coerce.number().min(1, "At least $1").max(100000),
+  minDeposit: z.coerce.number().min(0.1, "At least $0.10").max(100000),
+  rateMode: z.enum(["fixed", "floating"]),
   invoiceExpiryMinutes: z.coerce.number().int("Whole minutes").min(10, "Minimum 10 minutes").max(120, "Maximum 120 minutes"),
-  acceptedCoins: z.array(z.enum(["BTC", "ETH", "LTC", "USDTTRC20", "USDTERC20", "SOL"])).min(1, "Select at least one coin"),
+  acceptedCoins: z.array(z.enum(["BTC", "ETH", "LTC", "USDTTRC20", "USDTERC20", "BNBBSC", "SOL"])).min(1, "Select at least one coin"),
 });
 type V = z.infer<typeof schema>;
 
@@ -32,11 +34,11 @@ const steps = [
 
 export default function PaymentsPage() {
   const { settings, savePartial, saving } = useShopSettings();
-  const form = useForm<V>({ resolver: zodResolver(schema), defaultValues: { minDeposit: 5, invoiceExpiryMinutes: 30, acceptedCoins: ["BTC"] } });
+  const form = useForm<V>({ resolver: zodResolver(schema), defaultValues: { minDeposit: 5, invoiceExpiryMinutes: 30, rateMode: "fixed", acceptedCoins: ["BTC"] } });
   const inited = useRef(false);
   useEffect(() => {
     const s = settings.data;
-    if (s && !inited.current) { inited.current = true; form.reset({ minDeposit: s.minDeposit, invoiceExpiryMinutes: s.invoiceExpiryMinutes, acceptedCoins: s.acceptedCoins }); }
+    if (s && !inited.current) { inited.current = true; form.reset({ minDeposit: s.minDeposit, invoiceExpiryMinutes: s.invoiceExpiryMinutes, rateMode: s.rateMode, acceptedCoins: s.acceptedCoins }); }
   }, [settings.data, form]);
 
   return (
@@ -73,11 +75,20 @@ export default function PaymentsPage() {
                 )} />
               </Panel>
               <Panel title="Deposit rules">
+                <FormField control={form.control} name="rateMode" render={({ field }) => (
+                  <FormItem className="mb-4"><FormLabel>Exchange rate mode</FormLabel><FormControl>
+                    <select {...field} data-testid="select-rate-mode" className="flex h-10 w-full rounded-md border bg-background px-3 text-sm">
+                      <option value="fixed">Fixed rate — predictable quote, higher minimums</option>
+                      <option value="floating">Floating rate — variable exchange rate, lower minimums</option>
+                    </select>
+                  </FormControl><FormDescription>Applies to new invoices only. Floating rates can change during payment processing; it does not bypass network fees or provider minimums.</FormDescription><FormMessage /></FormItem>
+                )} />
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <FormField control={form.control} name="minDeposit" render={({ field }) => (<FormItem><FormLabel>Minimum deposit (USD)</FormLabel><FormControl><Input type="number" step="0.01" {...field} data-testid="input-min-deposit" /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="minDeposit" render={({ field }) => (<FormItem><FormLabel>Minimum deposit (USD)</FormLabel><FormControl><Input type="number" min="0.1" step="0.01" {...field} data-testid="input-min-deposit" /></FormControl><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="invoiceExpiryMinutes" render={({ field }) => (<FormItem><FormLabel>Invoice expiry (minutes)</FormLabel><FormControl><Input type="number" {...field} data-testid="input-invoice-expiry" /></FormControl><FormDescription>10–120 minutes</FormDescription><FormMessage /></FormItem>)} />
                 </div>
               </Panel>
+              <PaymentMinimumsPanel />
               <div className="flex justify-end"><Button type="submit" disabled={saving} data-testid="button-save-payments">{saving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}Save preferences</Button></div>
             </form>
           </Form>

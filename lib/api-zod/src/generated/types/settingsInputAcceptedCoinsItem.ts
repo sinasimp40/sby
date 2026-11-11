@@ -15,5 +15,6 @@ export const SettingsInputAcceptedCoinsItem = {
   LTC: 'LTC',
   USDTTRC20: 'USDTTRC20',
   USDTERC20: 'USDTERC20',
+  BNBBSC: 'BNBBSC',
   SOL: 'SOL',
 } as const;

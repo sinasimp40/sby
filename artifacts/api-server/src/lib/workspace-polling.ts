@@ -58,6 +58,7 @@ export async function runWorkspacePolling() {
           logger.warn({
             stage: error instanceof TelegramRequestError ? error.operation : "update_handler",
             providerStatus: error instanceof TelegramRequestError ? error.providerStatus : undefined,
+            reason: error instanceof TelegramRequestError ? error.reason : undefined,
           }, "Workspace Telegram processing failed; unacknowledged messages will retry.");
           await delay(3000);
         }

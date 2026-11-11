@@ -86,7 +86,7 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
                 <FormItem><FormLabel>Status</FormLabel>
                   <Select value={field.value} onValueChange={field.onChange}><FormControl><SelectTrigger data-testid="select-product-status"><SelectValue /></SelectTrigger></FormControl>
                     <SelectContent><SelectItem value="active">Active</SelectItem><SelectItem value="draft">Draft</SelectItem><SelectItem value="archived">Archived</SelectItem></SelectContent></Select>
-                  <FormMessage /></FormItem>
+                  <p className="text-xs text-muted-foreground">Only Active products with available stock appear in Telegram. Drafts stay hidden.</p><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="deliveryFormat" render={({ field }) => (
                 <FormItem><FormLabel>Delivery format</FormLabel>

@@ -7,6 +7,7 @@
  */
 import type { SettingsInputAcceptedCoinsItem } from './settingsInputAcceptedCoinsItem';
 import type { SettingsInputCurrency } from './settingsInputCurrency';
+import type { SettingsInputRateMode } from './settingsInputRateMode';
 
 export interface SettingsInput {
   /**
@@ -33,12 +34,13 @@ export interface SettingsInput {
   supportMessage: string;
   currency: SettingsInputCurrency;
   /**
-     * @minimum 1
+     * @minimum 0.1
      * @maximum 100000
      */
   minDeposit: number;
   /** @minItems 1 */
   acceptedCoins: SettingsInputAcceptedCoinsItem[];
+  rateMode: SettingsInputRateMode;
   /**
      * @minimum 10
      * @maximum 120

@@ -117,11 +117,11 @@ test("finished-only checkout, stock allocation, wallet ledger and Telegram deliv
       const form = photo.body as FormData;
       const png = new Uint8Array(await (form.get("photo") as Blob).arrayBuffer());
       assert.deepEqual([...png.slice(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
-      assert.match(String(form.get("caption")), /Send exactly: 1.25 LTC/);
-      assert.match(String(form.get("caption")), /Network: LTC/);
+      assert.match(String(form.get("caption")), /1.25 LTC/);
+      assert.match(String(form.get("caption")), /Litecoin/);
       assert.match(String(form.get("caption")), /TEST_ONLY_ADDRESS_/);
-      assert.match(String(form.get("caption")), /Quote valid until:/);
-      assert.ok(String(form.get("reply_markup")).includes(`check:${payment.id}`));
+      assert.match(String(form.get("caption")), /Quote expires:/);
+      assert.equal(form.get("reply_markup"), null);
     });
     await t.test("all pre-finished statuses withhold credentials; finished consumes only its reserved line once", async () => {
       const { payment, product } = await makePurchase();

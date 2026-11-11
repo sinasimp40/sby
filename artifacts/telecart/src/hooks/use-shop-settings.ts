@@ -20,6 +20,7 @@ export function toInput(s: ShopSettings): SettingsInput {
     supportMessage: s.supportMessage,
     currency: s.currency,
     minDeposit: s.minDeposit,
+    rateMode: s.rateMode,
     acceptedCoins: s.acceptedCoins,
     invoiceExpiryMinutes: s.invoiceExpiryMinutes,
     maintenanceMode: s.maintenanceMode,

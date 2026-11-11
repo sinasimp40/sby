@@ -287,6 +287,7 @@ export const getSettingsResponseOneSupportUsernameMax = 32;
 export const getSettingsResponseOneSupportUsernameRegExp = new RegExp('^@?[A-Za-z0-9_]*$');
 export const getSettingsResponseOneSupportMessageMax = 2000;
 
+export const getSettingsResponseOneMinDepositMin = 0.1;
 export const getSettingsResponseOneMinDepositMax = 100000;
 
 
@@ -310,8 +311,9 @@ export const GetSettingsResponse = zod.object({
   "supportUsername": zod.string().max(getSettingsResponseOneSupportUsernameMax).regex(getSettingsResponseOneSupportUsernameRegExp),
   "supportMessage": zod.string().max(getSettingsResponseOneSupportMessageMax),
   "currency": zod.enum(['USD']),
-  "minDeposit": zod.number().min(1).max(getSettingsResponseOneMinDepositMax),
-  "acceptedCoins": zod.array(zod.enum(['BTC', 'ETH', 'LTC', 'USDTTRC20', 'USDTERC20', 'SOL'])).min(1),
+  "minDeposit": zod.number().min(getSettingsResponseOneMinDepositMin).max(getSettingsResponseOneMinDepositMax),
+  "acceptedCoins": zod.array(zod.enum(['BTC', 'ETH', 'LTC', 'USDTTRC20', 'USDTERC20', 'BNBBSC', 'SOL'])).min(1),
+  "rateMode": zod.enum(['fixed', 'floating']),
   "invoiceExpiryMinutes": zod.number().int().min(getSettingsResponseOneInvoiceExpiryMinutesMin).max(getSettingsResponseOneInvoiceExpiryMinutesMax),
   "maintenanceMode": zod.boolean(),
   "productsLabel": zod.string().min(1).max(getSettingsResponseOneProductsLabelMax),
@@ -340,6 +342,7 @@ export const saveSettingsBodySupportUsernameMax = 32;
 export const saveSettingsBodySupportUsernameRegExp = new RegExp('^@?[A-Za-z0-9_]*$');
 export const saveSettingsBodySupportMessageMax = 2000;
 
+export const saveSettingsBodyMinDepositMin = 0.1;
 export const saveSettingsBodyMinDepositMax = 100000;
 
 
@@ -363,8 +366,9 @@ export const SaveSettingsBody = zod.object({
   "supportUsername": zod.string().max(saveSettingsBodySupportUsernameMax).regex(saveSettingsBodySupportUsernameRegExp),
   "supportMessage": zod.string().max(saveSettingsBodySupportMessageMax),
   "currency": zod.enum(['USD']),
-  "minDeposit": zod.number().min(1).max(saveSettingsBodyMinDepositMax),
-  "acceptedCoins": zod.array(zod.enum(['BTC', 'ETH', 'LTC', 'USDTTRC20', 'USDTERC20', 'SOL'])).min(1),
+  "minDeposit": zod.number().min(saveSettingsBodyMinDepositMin).max(saveSettingsBodyMinDepositMax),
+  "acceptedCoins": zod.array(zod.enum(['BTC', 'ETH', 'LTC', 'USDTTRC20', 'USDTERC20', 'BNBBSC', 'SOL'])).min(1),
+  "rateMode": zod.enum(['fixed', 'floating']),
   "invoiceExpiryMinutes": zod.number().int().min(saveSettingsBodyInvoiceExpiryMinutesMin).max(saveSettingsBodyInvoiceExpiryMinutesMax),
   "maintenanceMode": zod.boolean(),
   "productsLabel": zod.string().min(1).max(saveSettingsBodyProductsLabelMax),
@@ -387,6 +391,7 @@ export const saveSettingsResponseOneSupportUsernameMax = 32;
 export const saveSettingsResponseOneSupportUsernameRegExp = new RegExp('^@?[A-Za-z0-9_]*$');
 export const saveSettingsResponseOneSupportMessageMax = 2000;
 
+export const saveSettingsResponseOneMinDepositMin = 0.1;
 export const saveSettingsResponseOneMinDepositMax = 100000;
 
 
@@ -410,8 +415,9 @@ export const SaveSettingsResponse = zod.object({
   "supportUsername": zod.string().max(saveSettingsResponseOneSupportUsernameMax).regex(saveSettingsResponseOneSupportUsernameRegExp),
   "supportMessage": zod.string().max(saveSettingsResponseOneSupportMessageMax),
   "currency": zod.enum(['USD']),
-  "minDeposit": zod.number().min(1).max(saveSettingsResponseOneMinDepositMax),
-  "acceptedCoins": zod.array(zod.enum(['BTC', 'ETH', 'LTC', 'USDTTRC20', 'USDTERC20', 'SOL'])).min(1),
+  "minDeposit": zod.number().min(saveSettingsResponseOneMinDepositMin).max(saveSettingsResponseOneMinDepositMax),
+  "acceptedCoins": zod.array(zod.enum(['BTC', 'ETH', 'LTC', 'USDTTRC20', 'USDTERC20', 'BNBBSC', 'SOL'])).min(1),
+  "rateMode": zod.enum(['fixed', 'floating']),
   "invoiceExpiryMinutes": zod.number().int().min(saveSettingsResponseOneInvoiceExpiryMinutesMin).max(saveSettingsResponseOneInvoiceExpiryMinutesMax),
   "maintenanceMode": zod.boolean(),
   "productsLabel": zod.string().min(1).max(saveSettingsResponseOneProductsLabelMax),
@@ -439,6 +445,15 @@ export const GetIntegrationResponse = zod.object({
   "connected": zod.boolean(),
   "settlementStatus": zod.enum(['finished'])
 })
+
+
+export const GetPaymentMinimumsResponseItem = zod.object({
+  "coin": zod.string(),
+  "fixedUSD": zod.number().nullable(),
+  "floatingUSD": zod.number().nullable(),
+  "checkedAt": zod.string()
+})
+export const GetPaymentMinimumsResponse = zod.array(GetPaymentMinimumsResponseItem)
 
 
 export const ConnectIntegrationBody = zod.object({

@@ -215,6 +215,18 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/IntegrationStatus" }
+  /shop/payment-minimums:
+    get:
+      operationId: getPaymentMinimums
+      tags: [shop]
+      responses:
+        "200":
+          description: Current provider minimums for this merchant route
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PaymentMinimum" }
   /shop/integration/connect:
     post:
       operationId: connectIntegration
@@ -258,6 +270,14 @@ paths:
               schema: { $ref: "#/components/schemas/PaymentAttempt" }
 components:
   schemas:
+    PaymentMinimum:
+      type: object
+      required: [coin, fixedUSD, floatingUSD, checkedAt]
+      properties:
+        coin: { type: string }
+        fixedUSD: { type: ["number", "null"] }
+        floatingUSD: { type: ["number", "null"] }
+        checkedAt: { type: string }
     AdminCredentials:
       type: object
       additionalProperties: false
@@ -427,7 +447,7 @@ components:
     SettingsInput:
       type: object
       additionalProperties: false
-      required: [shopName, botUsername, welcomeMessage, supportUsername, supportMessage, currency, minDeposit, acceptedCoins, invoiceExpiryMinutes, maintenanceMode, productsLabel, supportLabel, walletLabel, ordersLabel]
+      required: [shopName, botUsername, welcomeMessage, supportUsername, supportMessage, currency, minDeposit, acceptedCoins, invoiceExpiryMinutes, rateMode, maintenanceMode, productsLabel, supportLabel, walletLabel, ordersLabel]
       properties:
         shopName: { type: string, minLength: 1, maxLength: 100 }
         botUsername: { type: string, maxLength: 32, pattern: "^@?[A-Za-z0-9_]*$" }
@@ -435,8 +455,9 @@ components:
         supportUsername: { type: string, maxLength: 32, pattern: "^@?[A-Za-z0-9_]*$" }
         supportMessage: { type: string, maxLength: 2000 }
         currency: { type: string, enum: [USD] }
-        minDeposit: { type: number, minimum: 1, maximum: 100000 }
-        acceptedCoins: { type: array, minItems: 1, uniqueItems: true, items: { type: string, enum: [BTC, ETH, LTC, USDTTRC20, USDTERC20, SOL] } }
+        minDeposit: { type: number, minimum: 0.1, maximum: 100000 }
+        acceptedCoins: { type: array, minItems: 1, uniqueItems: true, items: { type: string, enum: [BTC, ETH, LTC, USDTTRC20, USDTERC20, BNBBSC, SOL] } }
+        rateMode: { type: string, enum: [fixed, floating] }
         invoiceExpiryMinutes: { type: integer, minimum: 10, maximum: 120 }
         maintenanceMode: { type: boolean }
         productsLabel: { type: string, minLength: 1, maxLength: 30 }

@@ -7,6 +7,8 @@ import { createCheckout, checkPayment, sendCheckout } from "./commerce-payments"
 import { productsForOwner, settingsForOwner } from "./shop-store";
 
 interface TelegramMessage {
+  message_id?: number;
+  photo?: Array<{ file_id?: string }>;
   chat: { id: number; type: string };
   from?: { id: number; username?: string; first_name?: string; is_bot?: boolean };
   text?: string;
@@ -62,8 +64,12 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         const id = data.slice(6);
         const [payment] = await db.select().from(shopPayments).where(and(eq(shopPayments.id, id), eq(shopPayments.customerId, customer!.id)));
         if (!payment) throw new CommerceError("Payment not found.");
+        if (!payment.invoiceMessageId && message.photo?.length && Number.isSafeInteger(message.message_id)) {
+          await db.update(shopPayments).set({ invoiceMessageId: message.message_id!, invoiceNeedsUpdate: true }).where(eq(shopPayments.id, payment.id));
+        }
         const checked = await checkPayment(payment.id);
-        await send(`Payment status: ${checked.status}\nExpected: ${checked.payAmount ?? "—"} ${checked.coin.toUpperCase()}\nReceived: ${checked.receivedAmount ?? "0"} ${checked.coin.toUpperCase()}\nDelivery / wallet credit: ${checked.fulfillment}${checked.fulfillment === "review" ? "\nPlease contact support for review." : ""}`);
+        // Backward compatibility for old invoices: the first callback registers
+        // their message reference, refreshes the caption and removes the button.
       } else if (/^buy:\d+$/.test(data)) {
         const products = await productsForOwner(connection.ownerId);
         const product = products.find(p => p.id === Number(data.slice(4)) && p.status === "active" && p.stock > 0);
@@ -120,7 +126,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
       } else if ([settings.ordersLabel, labels[1]![1], "/orders"].includes(text)) {
         const orders = await db.select().from(shopPayments).where(eq(shopPayments.customerId, customer!.id)).orderBy(desc(shopPayments.createdAt)).limit(10);
         await send(orders.length ? orders.map(p => `${p.productName} · $${(p.amountCents / 100).toFixed(2)}\n${p.id}\n${p.status} · ${p.fulfillment}`).join("\n\n") : "You have no orders or deposits yet.", orders.length ? {
-          inline_keyboard: orders.map(p => [{ text: `Check ${p.id.slice(0, 8)}`, callback_data: `check:${p.id}` }]),
+          inline_keyboard: [],
         } : undefined);
       } else if (customer!.state.type === "deposit-amount") {
         const amountCents = moneyCents(text);

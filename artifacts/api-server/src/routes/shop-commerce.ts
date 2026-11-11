@@ -2,11 +2,12 @@ import { Router, type IRouter } from "express";
 import { getShopAuth as getAuth } from "../lib/admin-auth";
 import { desc, eq, and } from "drizzle-orm";
 import { db, botConnections, shopPayments, botCustomers } from "@workspace/db";
-import { GetIntegrationResponse, ConnectIntegrationBody, CheckPaymentAttemptParams, ListPaymentAttemptsResponse, CheckPaymentAttemptResponse } from "@workspace/api-zod";
+import { GetIntegrationResponse, GetPaymentMinimumsResponse, ConnectIntegrationBody, CheckPaymentAttemptParams, ListPaymentAttemptsResponse, CheckPaymentAttemptResponse } from "@workspace/api-zod";
 import { integrationStatus, requireOperator, activeConnection } from "../lib/commerce-connection";
 import { CommerceError, telegram } from "../lib/commerce-providers";
 import { connectShop } from "../lib/connect-shop";
 import { checkPayment } from "../lib/commerce-payments";
+import { paymentMinimums } from "../lib/payment-minimums";
 
 const router: IRouter = Router();
 export async function paymentAttempts(ownerId: string | null) {
@@ -22,6 +23,10 @@ export async function paymentAttempts(ownerId: string | null) {
 }
 router.get("/integration", async (req, res): Promise<void> => {
   res.json(GetIntegrationResponse.parse(await integrationStatus(getAuth(req).userId)));
+});
+router.get("/payment-minimums", async (req, res): Promise<void> => {
+  requireOperator(getAuth(req).userId);
+  res.json(GetPaymentMinimumsResponse.parse(await paymentMinimums()));
 });
 router.post("/integration/connect", async (req, res): Promise<void> => {
   const ownerId = getAuth(req).userId;

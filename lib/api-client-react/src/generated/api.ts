@@ -39,6 +39,7 @@ import type {
   Order,
   Overview,
   PaymentAttempt,
+  PaymentMinimum,
   Product,
   ProductInput,
   SettingsInput,
@@ -1721,6 +1722,101 @@ export function useGetIntegration<TData = Awaited<ReturnType<typeof getIntegrati
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetIntegrationQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetPaymentMinimumsUrl = () => {
+
+
+
+
+  return `/api/shop/payment-minimums`
+}
+
+export const getPaymentMinimums = async ( options?: Parameters<typeof customFetch>[1]): Promise<PaymentMinimum[]> => {
+
+  return customFetch<PaymentMinimum[]>(getGetPaymentMinimumsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPaymentMinimumsQueryKey = () => {
+    return [
+    `/api/shop/payment-minimums`
+    ] as const;
+    }
+
+
+export const getGetPaymentMinimumsQueryOptions = <TData = Awaited<ReturnType<typeof getPaymentMinimums>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPaymentMinimums>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPaymentMinimumsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPaymentMinimums>>> = ({ signal }) => getPaymentMinimums({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPaymentMinimums>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetPaymentMinimumsQueryResult = NonNullable<Awaited<ReturnType<typeof getPaymentMinimums>>>
+export type GetPaymentMinimumsQueryError = ErrorType<unknown>
+
+
+export function useGetPaymentMinimums<TData = Awaited<ReturnType<typeof getPaymentMinimums>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPaymentMinimums>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPaymentMinimums>>,
+          TError,
+          Awaited<ReturnType<typeof getPaymentMinimums>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetPaymentMinimums<TData = Awaited<ReturnType<typeof getPaymentMinimums>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPaymentMinimums>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPaymentMinimums>>,
+          TError,
+          Awaited<ReturnType<typeof getPaymentMinimums>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetPaymentMinimums<TData = Awaited<ReturnType<typeof getPaymentMinimums>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPaymentMinimums>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetPaymentMinimums<TData = Awaited<ReturnType<typeof getPaymentMinimums>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPaymentMinimums>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetPaymentMinimumsQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

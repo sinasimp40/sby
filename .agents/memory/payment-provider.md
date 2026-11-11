@@ -3,6 +3,12 @@ name: Payment provider requirement
 description: The user's explicit NOWPayments requirement and handling of unresolved Telegram payment restrictions.
 ---
 
+The user requires automatic payment-status and amount detection, with the existing Telegram invoice text edited when it changes, rather than requiring a Check payment button.
+
+**Why:** The user explicitly asked to remove manual checks and improve the Telegram payment presentation.
+
+**How to apply:** New invoices should not depend on callback-button processing for settlement. Preserve message references for automatic caption updates and never fabricate provider states to demonstrate a transition.
+
 The user requires NOWPayments, not Telegram Stars. Their requested payment flow sends an embedded QR code and payment information when a customer purchases or deposits into their wallet.
 
 **Why:** The user repeated and corrected this requirement after Stars was suggested.

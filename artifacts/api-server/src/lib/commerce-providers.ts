@@ -1,12 +1,13 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import QRCode from "qrcode";
+import { paymentCaption, type InvoiceMessage } from "./payment-message";
 
 export class CommerceError extends Error {
   constructor(message: string, public status = 400) { super(message); }
 }
 export class ProviderRejectedError extends CommerceError {}
 export class TelegramRequestError extends CommerceError {
-  constructor(public operation: string, public providerStatus: number) {
+  constructor(public operation: string, public providerStatus: number, public reason = "provider_error") {
     super("Telegram could not complete the request. Try again.", 502);
   }
 }
@@ -21,8 +22,14 @@ export async function telegram<T = Record<string, unknown>>(method: string, body
       method: "POST", headers: multipart ? undefined : { "content-type": "application/json" },
       body: multipart ? body : JSON.stringify(body), signal: AbortSignal.timeout(12000),
     });
-    const result = await response.json() as { ok: boolean; result: T; error_code?: number };
-    if (!response.ok || !result.ok) throw new TelegramRequestError(method, result.error_code ?? response.status);
+    const result = await response.json() as { ok: boolean; result: T; error_code?: number; description?: string };
+    if (!response.ok || !result.ok) {
+      const d = result.description?.toLowerCase() ?? "";
+      const reason = d.includes("message is not modified") ? "not_modified" :
+        d.includes("terminated by other getupdates") ? "other_poller" :
+        d.includes("webhook is active") ? "webhook_active" : "provider_error";
+      throw new TelegramRequestError(method, result.error_code ?? response.status, reason);
+    }
     return result.result;
   } catch (error) {
     if (error instanceof TelegramRequestError) throw error;
@@ -74,16 +81,19 @@ export async function nowpayments<T = ProviderPayment>(path: string, body?: Reco
   }
 }
 
-export async function checkProviderMinimum(coin: string, amountCents: number) {
+export async function checkProviderMinimum(coin: string, amountCents: number, rateMode: "fixed" | "floating" = "fixed") {
+  const cents = await providerMinimumCents(coin, rateMode);
+  if (amountCents < cents) {
+    throw new CommerceError(`NOWPayments currently requires at least $${(cents / 100).toFixed(2)} for ${coin.toUpperCase()} (${rateMode} rate). No invoice was created. Use Wallet → Deposit to enter a higher amount, or choose another coin.`);
+  }
+}
+export async function providerMinimumCents(coin: string, rateMode: "fixed" | "floating") {
   const minimum = await nowpayments<{ fiat_equivalent: number | string }>(
-    `/min-amount?currency_from=${encodeURIComponent(coin)}&fiat_equivalent=usd&is_fixed_rate=true&is_fee_paid_by_user=false`,
+    `/min-amount?currency_from=${encodeURIComponent(coin)}&fiat_equivalent=usd&is_fixed_rate=${rateMode === "fixed"}&is_fee_paid_by_user=false`,
   );
   const usd = Number(minimum.fiat_equivalent);
   if (!Number.isFinite(usd) || usd <= 0) throw new CommerceError("NOWPayments did not return a usable minimum. Please try another coin.", 502);
-  const cents = Math.ceil(usd * 100);
-  if (amountCents < cents) {
-    throw new CommerceError(`NOWPayments currently requires at least $${(cents / 100).toFixed(2)} for ${coin.toUpperCase()}. No invoice was created. Use Wallet → Deposit to enter a higher amount, or choose another coin.`);
-  }
+  return Math.ceil(usd * 100);
 }
 
 export function webhookSecret() {
@@ -126,7 +136,7 @@ export function moneyCents(value: unknown): number {
   if (typeof value !== "string" || !/^\d{1,6}(\.\d{1,2})?$/.test(value)) throw new CommerceError("Enter a USD amount with at most two decimal places.");
   const [whole, fraction = ""] = value.split(".");
   const cents = Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
-  if (cents < 100 || cents > 10000000) throw new CommerceError("Enter an amount between $1 and $100,000.");
+  if (cents < 10 || cents > 10000000) throw new CommerceError("Enter an amount between $0.10 and $100,000. The selected coin may require a higher provider minimum.");
   return cents;
 }
 
@@ -154,24 +164,15 @@ export function decimalAtLeast(actual: unknown, required: unknown): boolean {
   return BigInt(a.whole + a.fraction.padEnd(scale, "0")) >= BigInt(b.whole + b.fraction.padEnd(scale, "0"));
 }
 
-export async function sendPaymentQr(chatId: string, payment: {
-  id: string; address: string; payAmount: string; coin: string; network: string; extraId: string | null; expiresAt: Date;
-}) {
+export async function sendPaymentQr(chatId: string, payment: InvoiceMessage) {
   // Encode the provider address itself, not an invented chain-specific URI.
   // Exact amount, coin/network and memo are always written beside it.
-  const png = await QRCode.toBuffer(payment.address, { width: 700, margin: 4, errorCorrectionLevel: "M" });
-  const caption = [
-    `NOWPayments · ${payment.id}`, `Send exactly: ${payment.payAmount} ${payment.coin.toUpperCase()}`,
-    `Network: ${payment.network}`, `Address: ${payment.address}`,
-    ...(payment.extraId ? [`Required memo/tag: ${payment.extraId}`] : []),
-    `Quote valid until: ${payment.expiresAt.toISOString()}`,
-    "QR contains the address only. Enter the exact amount and verify the network.",
-    "Do not pay an expired quote. Stock or wallet credit is released only after status: finished.",
-  ].join("\n");
+  const png = await QRCode.toBuffer(payment.address, { width: 420, margin: 3, errorCorrectionLevel: "M" });
+  const caption = paymentCaption(payment);
   const form = new FormData();
   form.set("chat_id", chatId);
   form.set("photo", new Blob([new Uint8Array(png)], { type: "image/png" }), "payment.png");
   form.set("caption", caption);
-  form.set("reply_markup", JSON.stringify({ inline_keyboard: [[{ text: "Check payment", callback_data: `check:${payment.id}` }]] }));
-  await telegram("sendPhoto", form);
+  form.set("parse_mode", "HTML");
+  return telegram<{ message_id: number }>("sendPhoto", form);
 }

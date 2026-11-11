@@ -1,10 +1,12 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db, pool, botCustomers, shopPayments, shopInventory, shopProducts, walletEntries, shopActivity } from "@workspace/db";
-import { CommerceError, ProviderRejectedError, checkProviderMinimum, decimalAtLeast, nowpayments, type ProviderPayment, sendPaymentQr, telegram } from "./commerce-providers";
+import { CommerceError, TelegramRequestError, ProviderRejectedError, checkProviderMinimum, decimalAtLeast, nowpayments, type ProviderPayment, sendPaymentQr, telegram } from "./commerce-providers";
 import { decryptCredential } from "./inventory-encryption";
 import { settingsForOwner } from "./shop-store";
 import { activeConnection } from "./commerce-connection";
+import { paymentCaption, type InvoiceMessage } from "./payment-message";
+import { logger } from "./logger";
 
 export type Payment = typeof shopPayments.$inferSelect;
 const terminal = ["failed", "expired", "refunded"];
@@ -29,7 +31,7 @@ export async function createCheckout(input: {
   if (!input.wallet) {
     const cents = input.expectedAmountCents ?? input.depositCents;
     if (!cents || !Number.isSafeInteger(cents)) throw new CommerceError("Invalid payment amount.");
-    await checkProviderMinimum(input.coin, cents);
+    await checkProviderMinimum(input.coin, cents, settings.rateMode);
   }
   const result = await db.transaction(async tx => {
     // Serialize ALL balance changes/invoice creation for this customer.
@@ -65,6 +67,7 @@ export async function createCheckout(input: {
       kind: input.wallet ? "wallet" : product ? "purchase" : "deposit",
       productId: product?.id, inventoryId: stock?.id, productName: product?.name ?? "Wallet deposit",
       amountCents: cents, coin: input.wallet ? "usd" : input.coin,
+      rateMode: settings.rateMode,
       status: input.wallet ? "finished" : "creating", fulfillment: input.wallet ? "allocated" : "pending",
     }).returning();
     if (stock) await tx.update(shopInventory).set({ status: input.wallet ? "delivered" : "reserved" }).where(eq(shopInventory.id, stock.id));
@@ -80,7 +83,7 @@ export async function createCheckout(input: {
       price_amount: result.payment.amountCents / 100, price_currency: "usd", pay_currency: input.coin,
       order_id: result.payment.id, order_description: result.payment.productName,
       ipn_callback_url: `${connection.publicUrl}/api/nowpayments/ipn`,
-      is_fixed_rate: true, is_fee_paid_by_user: false,
+      is_fixed_rate: settings.rateMode === "fixed", is_fee_paid_by_user: false,
     });
     if (!p.payment_id || !/^\d+$/.test(String(p.payment_id)) || !p.pay_address ||
       p.order_id !== result.payment.id || p.pay_currency?.toLowerCase() !== input.coin ||
@@ -143,7 +146,8 @@ export function matchesInvoice(payment: Payment, provider: ProviderPayment) {
     Math.abs(Number(provider.price_amount) * 100 - payment.amountCents) < 0.00001 &&
     provider.pay_currency?.toLowerCase() === payment.coin &&
     provider.pay_address === payment.address && (provider.payin_extra_id || null) === payment.extraId &&
-    decimalAtLeast(provider.pay_amount, payment.payAmount) && decimalAtLeast(payment.payAmount, provider.pay_amount);
+    decimalAtLeast(provider.pay_amount, "0.000000000000000001") &&
+    (payment.rateMode === "floating" || decimalAtLeast(provider.pay_amount, payment.payAmount) && decimalAtLeast(payment.payAmount, provider.pay_amount));
 }
 
 export async function checkPayment(id: string) {
@@ -151,6 +155,7 @@ export async function checkPayment(id: string) {
   if (!payment) throw new CommerceError("Payment not found.", 404);
   if (payment.kind === "wallet" || ["allocated", "delivered", "credited"].includes(payment.fulfillment)) {
     await deliverPayment(payment.id);
+    await refreshPaymentMessage(payment.id);
     return (await getPayment(id))!;
   }
   if (!payment.providerPaymentId) throw new CommerceError("Invoice creation needs manual review; check the order ID in NOWPayments before retrying.", 409);
@@ -162,6 +167,7 @@ export async function checkPayment(id: string) {
   if (!decimalAtLeast(provider.actually_paid ?? "0", "0")) throw new CommerceError("Provider returned an invalid received amount.", 502);
   await applyVerifiedPayment(payment.id, provider);
   await deliverPayment(payment.id);
+  await refreshPaymentMessage(payment.id);
   return (await getPayment(id))!;
 }
 
@@ -172,12 +178,15 @@ export async function applyVerifiedPayment(id: string, provider: ProviderPayment
     if (!p || !matchesInvoice(p, provider)) throw new CommerceError("Payment mismatch.", 409);
     if (["allocated", "delivered", "credited"].includes(p.fulfillment)) return;
     if (!decimalAtLeast(provider.actually_paid ?? "0", "0")) throw new CommerceError("Provider returned an invalid received amount.", 502);
+    const requiredAmount = p.rateMode === "floating" ? String(provider.pay_amount) : p.payAmount;
     await tx.update(shopPayments).set({
+      payAmount: requiredAmount,
       receivedAmount: String(provider.actually_paid ?? "0"), lastCheckedAt: new Date(), updatedAt: new Date(),
+      invoiceNeedsUpdate: Boolean(p.invoiceMessageId),
     }).where(eq(shopPayments.id, p.id));
     if (provider.payment_status === "finished") {
       // Be conservative about partial, wrong-asset and additional/child deposits.
-      if (!decimalAtLeast(provider.actually_paid, p.payAmount)) {
+      if (!decimalAtLeast(provider.actually_paid, requiredAmount)) {
         await tx.update(shopPayments).set({ status: "finished", fulfillment: "review", updatedAt: new Date() }).where(eq(shopPayments.id, p.id));
         return;
       }
@@ -244,7 +253,14 @@ export async function deliverPayment(id: string) {
   }
 }
 
-export async function sendCheckout(payment: Payment) {
+export async function sendCheckout(initial: Payment) {
+  const client = await pool.connect();
+  let locked = false;
+  try {
+  const lock = await client.query("SELECT pg_try_advisory_lock(hashtextextended($1, 6)) AS locked", [initial.id]);
+  locked = lock.rows[0]?.locked === true;
+  if (!locked) return;
+  const payment = (await getPayment(initial.id)) ?? initial;
   if (payment.kind === "wallet") { await deliverPayment(payment.id); return; }
   const [customer] = await db.select().from(botCustomers).where(eq(botCustomers.id, payment.customerId));
   if (!customer) throw new CommerceError("Customer not found.");
@@ -255,8 +271,59 @@ export async function sendCheckout(payment: Payment) {
     await telegram("sendMessage", { chat_id: customer.chatId, text: `Payment status: ${payment.status}. Use Check payment for updates.` });
     return;
   }
-  await sendPaymentQr(customer.chatId, {
+  if (payment.invoiceMessageId) { await refreshPaymentMessage(payment.id); return; }
+  const message = await sendPaymentQr(customer.chatId, invoiceDetails(payment));
+  if (!Number.isSafeInteger(message.message_id)) throw new CommerceError("Telegram did not return the invoice message reference.", 502);
+  await db.update(shopPayments).set({
+    invoiceMessageId: message.message_id,
+    invoiceCaptionHash: captionHash(paymentCaption(invoiceDetails(payment))),
+    invoiceNeedsUpdate: false,
+  }).where(eq(shopPayments.id, payment.id));
+  } finally {
+    if (locked) await client.query("SELECT pg_advisory_unlock(hashtextextended($1, 6))", [initial.id]).catch(() => undefined);
+    client.release();
+  }
+}
+
+export function invoiceDetails(payment: Payment): InvoiceMessage {
+  if (!payment.address || !payment.payAmount || !payment.expiresAt) throw new CommerceError("Invoice details unavailable.");
+  return {
     id: payment.id, address: payment.address, payAmount: payment.payAmount, coin: payment.coin,
     network: payment.network || payment.coin.toUpperCase(), extraId: payment.extraId, expiresAt: payment.expiresAt,
-  });
+    title: payment.kind === "deposit" ? "Wallet deposit" : payment.productName,
+    amountUSD: (payment.amountCents / 100).toFixed(2), status: payment.status,
+    receivedAmount: payment.receivedAmount, fulfillment: payment.fulfillment,
+  };
+}
+const captionHash = (caption: string) => createHash("sha256").update(caption).digest("hex");
+
+export async function refreshPaymentMessage(id: string) {
+  const client = await pool.connect();
+  let locked = false;
+  try {
+    const result = await client.query("SELECT pg_try_advisory_lock(hashtextextended($1, 5)) AS locked", [id]);
+    locked = result.rows[0]?.locked === true;
+    if (!locked) return;
+    const p = await getPayment(id);
+    if (!p?.invoiceMessageId || !p.address || !p.payAmount || !p.expiresAt) return;
+    const caption = paymentCaption(invoiceDetails(p));
+    const hash = captionHash(caption);
+    if (hash !== p.invoiceCaptionHash) {
+      const [customer] = await db.select().from(botCustomers).where(eq(botCustomers.id, p.customerId));
+      if (!customer) return;
+      await telegram("editMessageCaption", {
+        chat_id: customer.chatId, message_id: p.invoiceMessageId, caption, parse_mode: "HTML",
+        reply_markup: { inline_keyboard: [] },
+      }).catch(error => { if (!(error instanceof TelegramRequestError && error.reason === "not_modified")) throw error; });
+    }
+    // Only clear the notification flag if settlement hasn't changed this row
+    // during the network request. Otherwise the next pass renders the new state.
+    await db.update(shopPayments).set({ invoiceCaptionHash: hash, invoiceNeedsUpdate: false })
+      .where(and(eq(shopPayments.id, id), eq(shopPayments.updatedAt, p.updatedAt)));
+  } catch {
+    logger.warn("Invoice message update failed; automatic reconciliation will retry.");
+  } finally {
+    if (locked) await client.query("SELECT pg_advisory_unlock(hashtextextended($1, 5))", [id]).catch(() => undefined);
+    client.release();
+  }
 }

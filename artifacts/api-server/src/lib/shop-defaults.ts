@@ -8,6 +8,7 @@ export const defaultSettings: SettingsInput = {
   supportMessage: "Need a hand? Contact our support team for help with your orders.",
   currency: "USD",
   minDeposit: 5,
+  rateMode: "fixed",
   acceptedCoins: ["BTC", "ETH", "USDTTRC20", "LTC"],
   invoiceExpiryMinutes: 30,
   maintenanceMode: false,

@@ -1,4 +1,4 @@
-import { pgTable, text, integer, timestamp, jsonb, uniqueIndex, index, check } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, timestamp, jsonb, boolean, uniqueIndex, index, check } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { shopProducts, shopInventory } from "./shop-products";
@@ -36,11 +36,15 @@ export const shopPayments = pgTable("shop_payments", {
   productName: text("product_name").notNull().default("Wallet deposit"),
   amountCents: integer("amount_cents").notNull(),
   coin: text("coin").notNull(),
+  rateMode: text("rate_mode").notNull().default("fixed"),
   providerPaymentId: text("provider_payment_id").unique(),
   address: text("address"),
   payAmount: text("pay_amount"),
   receivedAmount: text("received_amount"),
   lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
+  invoiceMessageId: integer("invoice_message_id"),
+  invoiceCaptionHash: text("invoice_caption_hash"),
+  invoiceNeedsUpdate: boolean("invoice_needs_update").notNull().default(false),
   extraId: text("extra_id"),
   network: text("network"),
   expiresAt: timestamp("expires_at", { withTimezone: true }),

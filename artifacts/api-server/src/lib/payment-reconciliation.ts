@@ -18,10 +18,11 @@ export async function reconcilePaymentBatch() {
     const rows = await db.select({ id: shopPayments.id }).from(shopPayments).where(and(
       eq(shopPayments.ownerId, owner),
       isNotNull(shopPayments.providerPaymentId),
-      isNull(shopPayments.deliveredAt),
+      or(isNull(shopPayments.deliveredAt), eq(shopPayments.invoiceNeedsUpdate, true)),
       // Keep late terminal payments observable, without polling historical orders forever.
       or(lt(shopPayments.lastCheckedAt, new Date(Date.now() - 5 * 60000)), isNull(shopPayments.lastCheckedAt),
-        and(eq(shopPayments.fulfillment, "pending"), lt(shopPayments.lastCheckedAt, new Date(Date.now() - 30000)))),
+        and(eq(shopPayments.fulfillment, "pending"), lt(shopPayments.lastCheckedAt, new Date(Date.now() - 30000))),
+        and(eq(shopPayments.invoiceNeedsUpdate, true), lt(shopPayments.updatedAt, new Date(Date.now() - 30000)))),
       // Seven-day window plus allocated delivery retries regardless of age.
       or(gt(shopPayments.createdAt, new Date(Date.now() - 7 * 86400000)), eq(shopPayments.fulfillment, "allocated"), eq(shopPayments.fulfillment, "credited")),
     )).orderBy(asc(shopPayments.updatedAt)).limit(20);

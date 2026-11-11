@@ -5,6 +5,15 @@
  * Telecart shop administration. Live Telegram and payments are not connected.
  * OpenAPI spec version: 0.1.0
  */
+export interface PaymentMinimum {
+  coin: string;
+  /** @nullable */
+  fixedUSD: number | null;
+  /** @nullable */
+  floatingUSD: number | null;
+  checkedAt: string;
+}
+
 export interface AdminCredentials {
   /**
      * @minLength 3
@@ -271,7 +280,16 @@ export const SettingsInputAcceptedCoinsItem = {
   LTC: 'LTC',
   USDTTRC20: 'USDTTRC20',
   USDTERC20: 'USDTERC20',
+  BNBBSC: 'BNBBSC',
   SOL: 'SOL',
+} as const;
+
+export type SettingsInputRateMode = typeof SettingsInputRateMode[keyof typeof SettingsInputRateMode];
+
+
+export const SettingsInputRateMode = {
+  fixed: 'fixed',
+  floating: 'floating',
 } as const;
 
 export interface SettingsInput {
@@ -299,12 +317,13 @@ export interface SettingsInput {
   supportMessage: string;
   currency: SettingsInputCurrency;
   /**
-     * @minimum 1
+     * @minimum 0.1
      * @maximum 100000
      */
   minDeposit: number;
   /** @minItems 1 */
   acceptedCoins: SettingsInputAcceptedCoinsItem[];
+  rateMode: SettingsInputRateMode;
   /**
      * @minimum 10
      * @maximum 120
