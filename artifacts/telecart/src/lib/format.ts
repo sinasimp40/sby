@@ -3,6 +3,9 @@ import { format, formatDistanceToNow } from "date-fns";
 export const money = (n: number | null | undefined) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n ?? 0);
 
+export const customerName = (name: string) =>
+  /^@?(?:Telegram \d+|\d+)$/.test(name.trim()) ? "Telegram customer" : name.trim() || "Telegram customer";
+
 export const shortDate = (s: string) => {
   try {
     return format(new Date(s), "MMM d, yyyy");

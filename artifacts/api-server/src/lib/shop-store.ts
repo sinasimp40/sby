@@ -53,7 +53,7 @@ export async function recordsForOwner(ownerId: string | null, kind: "order" | "c
   let live: Record<string, unknown>[];
   if (kind === "customer") live = customers.map(c => {
     const bought = payments.filter(p => p.customerId === c.id && p.kind !== "deposit" && ["allocated", "delivered"].includes(p.fulfillment));
-    return { id: c.id, username: c.username, orderCount: bought.length, spent: bought.reduce((sum, p) => sum + p.amountCents, 0) / 100, walletBalance: c.balanceCents / 100, joinedAt: c.createdAt.toISOString() };
+    return { id: c.id, username: c.username, telegramId: c.telegramId, orderCount: bought.length, spent: bought.reduce((sum, p) => sum + p.amountCents, 0) / 100, walletBalance: c.balanceCents / 100, joinedAt: c.createdAt.toISOString() };
   });
   else if (kind === "order") live = payments.filter(p => p.kind !== "deposit").map(p => ({
     id: p.id, customer: username(p.customerId), productName: p.productName, amount: p.amountCents / 100,

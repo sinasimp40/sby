@@ -4,7 +4,7 @@ import { useListDeposits, useListCustomers } from "@workspace/api-client-react";
 import { Wallet } from "lucide-react";
 import { PageHeader, Panel, EmptyState, ErrorState, RowsSkeleton, StatusPill, Stat } from "@/components/shared";
 import { Button } from "@/components/ui/button";
-import { money, dateTime } from "@/lib/format";
+import { customerName, money, dateTime } from "@/lib/format";
 
 export default function WalletsPage() {
   const deposits = useListDeposits({ query: { refetchInterval: 5000, refetchOnWindowFocus: true } });
@@ -35,7 +35,7 @@ export default function WalletsPage() {
           <div className="overflow-x-auto"><table className="w-full text-sm">
             <thead><tr className="border-b border-border/70 text-left font-mono text-[10.5px] uppercase tracking-wider text-muted-foreground"><th className="px-4 py-2.5 font-medium">Deposit</th><th className="px-3 py-2.5 font-medium">Customer</th><th className="px-3 py-2.5 font-medium">Coin</th><th className="px-3 py-2.5 font-medium">Status</th><th className="px-4 py-2.5 text-right font-medium">Amount</th></tr></thead>
             <tbody className="divide-y divide-border/60">{deposits.data.map((d) => (
-              <tr key={d.id} data-testid={`row-deposit-${d.id}`}><td className="px-4 py-3"><div className="font-mono text-xs">{d.id}</div><div className="text-xs text-muted-foreground">{dateTime(d.createdAt)}</div></td><td className="px-3 py-3">{d.customer.startsWith("@") ? d.customer : `@${d.customer}`}</td><td className="px-3 py-3 font-mono text-xs">{d.currency}</td><td className="px-3 py-3"><StatusPill status={d.status} />{d.cancelledAt && <div className="mt-1 text-xs text-muted-foreground">Cancelled by customer · payment checking continues</div>}</td><td className="tabular px-4 py-3 text-right font-mono">{money(d.amount)}</td></tr>
+              <tr key={d.id} data-testid={`row-deposit-${d.id}`}><td className="px-4 py-3"><div className="font-mono text-xs">{d.id}</div><div className="text-xs text-muted-foreground">{dateTime(d.createdAt)}</div></td><td className="px-3 py-3">{customerName(d.customer)}</td><td className="px-3 py-3 font-mono text-xs">{d.currency}</td><td className="px-3 py-3"><StatusPill status={d.status} />{d.cancelledAt && <div className="mt-1 text-xs text-muted-foreground">Cancelled by customer · payment checking continues</div>}</td><td className="tabular px-4 py-3 text-right font-mono">{money(d.amount)}</td></tr>
             ))}</tbody>
           </table></div>
         )}

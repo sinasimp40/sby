@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { money, dateTime } from "@/lib/format";
+import { customerName, money, dateTime } from "@/lib/format";
 
 function exportCsv(rows: Order[]) {
   const head = ["id", "customer", "product", "amount_usd", "status", "payment_method", "created_at"];
@@ -51,7 +51,7 @@ export default function OrdersPage() {
                 {rows.map((o) => (
                   <tr key={o.id} onClick={() => setSelected(o)} className="cursor-pointer hover:bg-muted/40" data-testid={`row-order-${o.id}`}>
                     <td className="px-4 py-3"><div className="font-mono text-xs">{o.id}</div><div className="text-xs text-muted-foreground">{dateTime(o.createdAt)}</div></td>
-                    <td className="px-3 py-3">@{o.customer}</td><td className="px-3 py-3">{o.productName}</td>
+                    <td className="px-3 py-3">{customerName(o.customer)}</td><td className="px-3 py-3">{o.productName}</td>
                     <td className="px-3 py-3"><StatusPill status={o.status} /></td>
                     <td className="tabular px-4 py-3 text-right font-mono">{money(o.amount)}</td>
                   </tr>
@@ -67,7 +67,7 @@ export default function OrdersPage() {
             <>
               <SheetHeader><SheetTitle className="font-display text-xl">Order {selected.id}</SheetTitle><SheetDescription>{dateTime(selected.createdAt)}</SheetDescription></SheetHeader>
               <dl className="mt-6 divide-y divide-border rounded-lg border border-border text-sm">
-                {[["Status", <StatusPill key="s" status={selected.status} />], ["Customer", `@${selected.customer}`], ["Product", selected.productName], ["Payment", selected.paymentMethod], ["Amount", <span key="a" className="font-mono">{money(selected.amount)}</span>]].map(([k, v]) => (
+                {[["Status", <StatusPill key="s" status={selected.status} />], ["Customer", customerName(selected.customer)], ["Product", selected.productName], ["Payment", selected.paymentMethod], ["Amount", <span key="a" className="font-mono">{money(selected.amount)}</span>]].map(([k, v]) => (
                   <div key={String(k)} className="flex items-center justify-between px-3 py-2.5"><dt className="text-muted-foreground">{k}</dt><dd className="font-medium">{v}</dd></div>
                 ))}
               </dl>

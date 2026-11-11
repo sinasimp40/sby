@@ -184,6 +184,11 @@ export interface ImportResult {
 export interface Customer {
   id: string;
   username: string;
+  /**
+     * Telegram user ID, separate from their public username or display name.
+     * @nullable
+     */
+  telegramId?: string | null;
   orderCount: number;
   spent: number;
   walletBalance: number;

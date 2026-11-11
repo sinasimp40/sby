@@ -428,6 +428,7 @@ components:
       properties:
         id: { type: string }
         username: { type: string }
+        telegramId: { type: ["string", "null"], description: "Telegram user ID, separate from their public username or display name." }
         orderCount: { type: integer }
         spent: { type: number }
         walletBalance: { type: number }

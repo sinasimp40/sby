@@ -8,18 +8,19 @@ import { dismissCustomerMessage } from "./telegram-navigation";
 import { productsForOwner, settingsForOwner } from "./shop-store";
 import { getBotRuntime } from "./bot-runtime";
 import { customerMessageText, depositCoinPrompt, depositPrompt, walletSummary } from "./telegram-copy";
+import { telegramCustomerName, type TelegramCustomerProfile } from "./telegram-customer-name";
 
 interface TelegramMessage {
   message_id?: number;
   photo?: Array<{ file_id?: string }>;
   chat: { id: number; type: string };
-  from?: { id: number; username?: string; first_name?: string; is_bot?: boolean };
+  from?: TelegramCustomerProfile & { id: number; is_bot?: boolean };
   text?: string;
 }
 export interface TelegramUpdate {
   update_id: number;
   message?: TelegramMessage;
-  callback_query?: { id: string; from: { id: number; username?: string }; message?: TelegramMessage; data?: string };
+  callback_query?: { id: string; from: TelegramCustomerProfile & { id: number }; message?: TelegramMessage; data?: string };
 }
 
 export async function handleTelegramUpdate(update: TelegramUpdate) {
@@ -39,7 +40,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
     if (!locked) throw new CommerceError("Update is being processed. Retry shortly.", 503);
     const [seen] = await db.select().from(botUpdates).where(eq(botUpdates.id, eventId));
     if (seen) return;
-    const username = "username" in from && from.username ? `@${from.username}` : `Telegram ${from.id}`;
+    const username = telegramCustomerName(from);
     const [customer] = await db.insert(botCustomers).values({
       id: randomUUID(), ownerId: connection.ownerId, telegramId: String(from.id),
       chatId: String(message.chat.id), username,

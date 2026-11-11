@@ -244,6 +244,7 @@ export const ListOrdersResponse = zod.array(ListOrdersResponseItem)
 export const ListCustomersResponseItem = zod.object({
   "id": zod.string(),
   "username": zod.string(),
+  "telegramId": zod.string().nullish().describe('Telegram user ID, separate from their public username or display name.'),
   "orderCount": zod.number().int(),
   "spent": zod.number(),
   "walletBalance": zod.number(),

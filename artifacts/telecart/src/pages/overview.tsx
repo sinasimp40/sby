@@ -4,7 +4,7 @@ import { CheckCircle2, Circle, ArrowUpRight, Receipt, Package, Activity as Activ
 import { PageHeader, Panel, Stat, EmptyState, ErrorState, RowsSkeleton, StatusPill, SetupRequired } from "@/components/shared";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { money, ago } from "@/lib/format";
+import { customerName, money, ago } from "@/lib/format";
 import { useAuthGate } from "@/components/auth-gate";
 
 export default function OverviewPage() {
@@ -41,7 +41,7 @@ export default function OverviewPage() {
                   <ul className="divide-y divide-border/70">
                     {data.recentOrders.map((o) => (
                       <li key={o.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm" data-testid={`row-recent-order-${o.id}`}>
-                        <div className="min-w-0"><div className="truncate font-medium">{o.productName}</div><div className="text-xs text-muted-foreground">@{o.customer} · {ago(o.createdAt)}</div></div>
+                        <div className="min-w-0"><div className="truncate font-medium">{o.productName}</div><div className="text-xs text-muted-foreground">{customerName(o.customer)} · {ago(o.createdAt)}</div></div>
                         <div className="flex items-center gap-3"><StatusPill status={o.status} /><span className="tabular font-mono text-sm">{money(o.amount)}</span></div>
                       </li>
                     ))}
