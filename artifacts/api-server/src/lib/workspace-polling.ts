@@ -5,7 +5,8 @@ import { handleTelegramUpdate, type TelegramUpdate } from "./telegram-shop";
 import { logger } from "./logger";
 
 export function workspacePollingEnabled() {
-  return process.env.NODE_ENV !== "production" && process.env.TELECART_ALLOW_WORKSPACE_TESTING === "true";
+  return process.env.TELECART_TELEGRAM_DISABLED !== "true" &&
+    process.env.NODE_ENV !== "production" && process.env.TELECART_ALLOW_WORKSPACE_TESTING === "true";
 }
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));

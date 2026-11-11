@@ -14,6 +14,9 @@ export class TelegramRequestError extends CommerceError {
 
 // Never propagate provider response bodies/errors: they can contain tokens or payment details.
 export async function telegram<T = Record<string, unknown>>(method: string, body: Record<string, unknown> | FormData = {}): Promise<T> {
+  if (process.env.TELECART_TELEGRAM_DISABLED === "true") {
+    throw new CommerceError("Telegram bot calls are disabled in this workspace.", 503);
+  }
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) throw new CommerceError("Telegram token is not configured.", 503);
   try {
