@@ -16,6 +16,8 @@ test("USD parsing, five-dollar deposits and wallet-only product checkout", async
     }
     assert.equal(defaultSettings.minDeposit, 5);
     assert.equal(defaultSettings.rateMode, "floating");
+    assert.equal(defaultSettings.acceptedCoins.includes("SOL"), true);
+    assert.equal(defaultSettings.acceptedCoins.includes("USDTTRC20"), false);
     assert.equal(SaveSettingsBody.safeParse({ ...defaultSettings, minDeposit: 5 }).success, true);
     assert.equal(SaveSettingsBody.safeParse({ ...defaultSettings, minDeposit: 10 }).success, true);
     assert.equal(SaveSettingsBody.safeParse({ ...defaultSettings, minDeposit: 4.99 }).success, false);
