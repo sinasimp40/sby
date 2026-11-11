@@ -87,7 +87,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         });
       } else if (data === "deposit") {
         await db.update(botCustomers).set({ state: { type: "deposit-amount" } }).where(eq(botCustomers.id, customer!.id));
-        await send(`Enter your deposit amount in USD, for example 10.00.\nMinimum: $${settings.minDeposit.toFixed(2)}. Type /cancel to cancel.`);
+        await send(`Enter your deposit amount in USD, for example 10.00.\n${settings.minDeposit > 0 ? `Shop minimum: $${settings.minDeposit.toFixed(2)}. ` : ""}NOWPayments coin minimums still apply. Type /cancel to cancel.`);
       } else if (data.startsWith("pay:") || data.startsWith("wal:")) {
         const parts = data.split(":");
         const state = customer!.state;

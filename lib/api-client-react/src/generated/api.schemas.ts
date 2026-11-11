@@ -394,7 +394,8 @@ export interface SettingsInput {
   supportMessage: string;
   currency: SettingsInputCurrency;
   /**
-     * @minimum 0.1
+     * Optional shop deposit minimum in USD. Zero adds no shop minimum; provider minimums still apply.
+     * @minimum 0
      * @maximum 100000
      */
   minDeposit: number;

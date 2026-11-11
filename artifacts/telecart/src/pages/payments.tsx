@@ -18,7 +18,7 @@ const COINS = [
   { id: "USDTTRC20", name: "USDT · TRON" }, { id: "USDTERC20", name: "USDT · Ethereum" }, { id: "BNBBSC", name: "BNB · Smart Chain" }, { id: "SOL", name: "Solana" },
 ] as const;
 const schema = z.object({
-  minDeposit: z.coerce.number().min(0.1, "At least $0.10").max(100000),
+  minDeposit: z.coerce.number().min(0, "Use 0 for no shop minimum").max(100000),
   rateMode: z.enum(["fixed", "floating"]),
   invoiceExpiryMinutes: z.coerce.number().int("Whole minutes").min(10, "Minimum 10 minutes").max(120, "Maximum 120 minutes"),
   acceptedCoins: z.array(z.enum(["BTC", "ETH", "LTC", "USDTTRC20", "USDTERC20", "BNBBSC", "SOL"])).min(1, "Select at least one coin"),
@@ -34,7 +34,7 @@ const steps = [
 
 export default function PaymentsPage() {
   const { settings, savePartial, saving } = useShopSettings();
-  const form = useForm<V>({ resolver: zodResolver(schema), defaultValues: { minDeposit: 5, invoiceExpiryMinutes: 30, rateMode: "fixed", acceptedCoins: ["BTC"] } });
+  const form = useForm<V>({ resolver: zodResolver(schema), defaultValues: { minDeposit: 0, invoiceExpiryMinutes: 30, rateMode: "fixed", acceptedCoins: ["BTC"] } });
   const inited = useRef(false);
   useEffect(() => {
     const s = settings.data;
@@ -84,7 +84,7 @@ export default function PaymentsPage() {
                   </FormControl><FormDescription>Applies to new invoices only. Floating rates can change during payment processing; it does not bypass network fees or provider minimums.</FormDescription><FormMessage /></FormItem>
                 )} />
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <FormField control={form.control} name="minDeposit" render={({ field }) => (<FormItem><FormLabel>Minimum deposit (USD)</FormLabel><FormControl><Input type="number" min="0.1" step="0.01" {...field} data-testid="input-min-deposit" /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="minDeposit" render={({ field }) => (<FormItem><FormLabel>Optional shop deposit minimum (USD)</FormLabel><FormControl><Input type="number" min="0" step="0.01" {...field} data-testid="input-min-deposit" /></FormControl><p className="text-xs text-muted-foreground">Set 0 for no extra shop minimum. NOWPayments coin minimums still apply.</p><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="invoiceExpiryMinutes" render={({ field }) => (<FormItem><FormLabel>Invoice expiry (minutes)</FormLabel><FormControl><Input type="number" {...field} data-testid="input-invoice-expiry" /></FormControl><FormDescription>10–120 minutes</FormDescription><FormMessage /></FormItem>)} />
                 </div>
               </Panel>

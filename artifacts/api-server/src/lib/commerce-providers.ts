@@ -174,7 +174,7 @@ export function moneyCents(value: unknown): number {
   if (typeof value !== "string" || !/^\d{1,6}(\.\d{1,2})?$/.test(value)) throw new CommerceError("Enter a USD amount with at most two decimal places.");
   const [whole, fraction = ""] = value.split(".");
   const cents = Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
-  if (cents < 10 || cents > 10000000) throw new CommerceError("Enter an amount between $0.10 and $100,000. The selected coin may require a higher provider minimum.");
+  if (cents < 1 || cents > 10000000) throw new CommerceError("Enter a positive USD amount, up to $100,000, with at most two decimal places. The selected coin may require a higher provider minimum.");
   return cents;
 }
 

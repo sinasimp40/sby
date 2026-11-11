@@ -45,7 +45,10 @@ test("provider minimums, QR and automatic amount-verified deposits", async t => 
       assert.equal(invoiceCreates, 0);
       await checkProviderMinimum("ltc", 10, "floating");
       assert.equal(moneyCents("0.10"), 10);
-      assert.throws(() => moneyCents("0.09"));
+      assert.equal(moneyCents("0.09"), 9);
+      assert.equal(moneyCents("0.01"), 1);
+      assert.throws(() => moneyCents("0.00"));
+      assert.throws(() => moneyCents("0.001"));
     });
     await t.test("known rejection differs from ambiguous timeout and never exposes raw errors", async () => {
       rejectCreate = true;

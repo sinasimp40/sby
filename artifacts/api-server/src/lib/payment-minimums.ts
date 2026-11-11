@@ -1,7 +1,7 @@
 import { providerMinimumCents } from "./commerce-providers";
 import type { PaymentMinimum } from "@workspace/api-zod";
 
-const coins = ["LTC", "BTC", "USDTERC20", "USDTTRC20", "BNBBSC", "SOL"];
+const coins = ["LTC", "BTC", "ETH", "USDTERC20", "USDTTRC20", "USDTBSC", "BNBBSC", "SOL"];
 let cache: PaymentMinimum[] | null = null;
 let checked = 0;
 let inflight: Promise<PaymentMinimum[]> | null = null;

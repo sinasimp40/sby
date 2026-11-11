@@ -20,3 +20,9 @@ The user chose to wait for NOWPayments API status `finished` before delivering e
 **Why:** After the risk of early delivery was explained, the user explicitly selected “Wait for finished status.”
 
 **How to apply:** Never fulfill at `confirming`, `confirmed`, or `sending`. Verify payment identity, amount, and currency server-side, and prevent repeated notifications from consuming or delivering additional stock.
+
+The user asked to remove the app-imposed payment minimum, rather than treating $0.10 as a NOWPayments requirement.
+
+**Why:** The user wants small deposits and product payments where the selected provider route supports them.
+
+**How to apply:** Do not reintroduce an arbitrary app floor. Keep positive USD-cent precision, optional merchant limits, and live provider minimum checks distinct. Do not automatically switch rate mode to make quotes cheaper.
