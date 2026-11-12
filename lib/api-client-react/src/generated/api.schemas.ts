@@ -85,6 +85,7 @@ export interface Product {
   price: number;
   status: ProductStatus;
   deliveryFormat: ProductDeliveryFormat;
+  buttonEmoji?: string;
   stock: number;
   sold: number;
   createdAt: string;
@@ -149,6 +150,12 @@ export interface ProductInput {
   price: number;
   status: ProductInputStatus;
   deliveryFormat: ProductInputDeliveryFormat;
+  /**
+     * One ordinary Unicode emoji for the Telegram product button.
+     * @minLength 1
+     * @maxLength 32
+     */
+  buttonEmoji?: string;
 }
 
 export interface InventoryInput {

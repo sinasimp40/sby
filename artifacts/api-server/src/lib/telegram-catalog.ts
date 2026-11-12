@@ -1,4 +1,5 @@
 import { customerMessageText } from "./telegram-copy";
+import { isProductEmoji } from "./product-emoji";
 
 interface CatalogProduct {
   id: number;
@@ -6,6 +7,7 @@ interface CatalogProduct {
   price: number;
   stock: number;
   status: string;
+  buttonEmoji?: string;
 }
 
 export const CATALOG_PAGE_SIZE = 10;
@@ -18,10 +20,12 @@ export function productCatalogMenu(input: CatalogProduct[], requestedPage = 0) {
     ? Math.max(0, Math.min(requestedPage, pages - 1)) : 0;
   const start = page * CATALOG_PAGE_SIZE;
   const entries = products.slice(start, start + CATALOG_PAGE_SIZE);
-  const inline_keyboard = entries.map(product => [{
-    text: `🛍 ${Array.from(customerMessageText(product.name)).slice(0, 30).join("")} · $${product.price.toFixed(2)} · 📦 ${product.stock}`,
+  const buttons = entries.map(product => ({
+    text: `${isProductEmoji(product.buttonEmoji) ? product.buttonEmoji : "🛍"} ${Array.from(customerMessageText(product.name)).slice(0, 30).join("")} · $${product.price.toFixed(2)} · 📦 ${product.stock}`,
     callback_data: `buy:${product.id}`,
-  }]);
+  }));
+  const inline_keyboard = Array.from({ length: Math.ceil(buttons.length / 2) },
+    (_, index) => buttons.slice(index * 2, index * 2 + 2));
   const navigation = [
     ...(page > 0 ? [{ text: "⬅️ Previous", callback_data: `products:${page - 1}` }] : []),
     ...(page < pages - 1 ? [{ text: "Next ➡️", callback_data: `products:${page + 1}` }] : []),

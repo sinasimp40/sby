@@ -10,6 +10,7 @@ export const shopProducts = pgTable("shop_products", {
   priceCents: integer("price_cents").notNull(),
   status: text("status").$type<"active" | "draft" | "archived">().notNull().default("draft"),
   deliveryFormat: text("delivery_format").$type<"email:pass" | "user:pass">().notNull(),
+  buttonEmoji: text("button_emoji").notNull().default("🛍"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [index("shop_products_owner_idx").on(table.ownerId)]);
 

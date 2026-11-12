@@ -26,9 +26,11 @@ const schema = z.object({
   price: z.coerce.number({ invalid_type_error: "Enter a price" }).min(0.01, "Minimum $0.01").max(100000, "Maximum $100,000"),
   status: z.enum(["active", "draft", "archived"]),
   deliveryFormat: z.enum(["email:pass", "user:pass"]),
+  buttonEmoji: z.string().min(1, "Choose an emoji").max(32).emoji("Enter an emoji, not text or an image URL")
+    .refine(value => Array.from(new Intl.Segmenter("en", { granularity: "grapheme" }).segment(value)).length === 1, "Choose just one emoji"),
 });
 type FormValues = z.infer<typeof schema>;
-const blank: FormValues = { name: "", description: "", category: "", price: 0, status: "draft", deliveryFormat: "email:pass" };
+const blank: FormValues = { name: "", description: "", category: "", price: 0, status: "draft", deliveryFormat: "email:pass", buttonEmoji: "🛍" };
 const selectClassName = "h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
 
 function useInvalidate() {
@@ -47,7 +49,7 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
   const { toast } = useToast();
   const form = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: blank });
   useEffect(() => {
-    if (open) form.reset(product ? { name: product.name, description: product.description, category: product.category, price: product.price, status: product.status, deliveryFormat: product.deliveryFormat } : blank);
+    if (open) form.reset(product ? { name: product.name, description: product.description, category: product.category, price: product.price, status: product.status, deliveryFormat: product.deliveryFormat, buttonEmoji: product.buttonEmoji ?? "🛍" } : blank);
   }, [open, product, form]);
   const pending = create.isPending || update.isPending;
   const onSubmit = (v: FormValues) => {
@@ -69,6 +71,26 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField control={form.control} name="name" render={({ field }) => (
               <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="Streaming Premium — 1 month" {...field} data-testid="input-product-name" /></FormControl><FormMessage /></FormItem>
+            )} />
+            <FormField control={form.control} name="buttonEmoji" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Telegram button emoji</FormLabel>
+                <div className="flex flex-wrap gap-1.5" role="group" aria-label="Suggested product emojis">
+                  {["🛍", "🎮", "🔑", "🎬", "🎵", "📚", "💎", "⚡", "🚀", "🎨"].map(emoji => (
+                    <Button key={emoji} type="button" variant={field.value === emoji ? "default" : "outline"}
+                      size="icon" disabled={pending} aria-label={`Use ${emoji}`} aria-pressed={field.value === emoji}
+                      onClick={() => form.setValue("buttonEmoji", emoji, { shouldDirty: true, shouldValidate: true })}>
+                      {emoji}
+                    </Button>
+                  ))}
+                </div>
+                <FormControl><Input {...field} disabled={pending} maxLength={32} placeholder="Paste your own emoji" aria-label="Custom product emoji" data-testid="input-product-emoji" /></FormControl>
+                <p className="text-xs text-muted-foreground">Choose a preset or paste one emoji. No Premium needed. Photos cannot appear inside Telegram buttons.</p>
+                <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm" data-testid="product-button-preview">
+                  {field.value || "🛍"} {form.watch("name") || "Product name"} · ${Number(form.watch("price") || 0).toFixed(2)}
+                </div>
+                <FormMessage />
+              </FormItem>
             )} />
             <div className="grid grid-cols-2 gap-3">
               <FormField control={form.control} name="category" render={({ field }) => (
@@ -153,7 +175,7 @@ export default function ProductsPage() {
               <tbody className="divide-y divide-border/60">
                 {rows.map((p) => (
                   <tr key={p.id} className="group transition-colors hover:bg-muted/40" data-testid={`row-product-${p.id}`}>
-                    <td className="max-w-[320px] px-4 py-3"><div className="truncate font-medium">{p.name}</div><div className="truncate text-xs text-muted-foreground">{p.category} · added {shortDate(p.createdAt)}</div></td>
+                    <td className="max-w-[320px] px-4 py-3"><div className="truncate font-medium">{p.buttonEmoji ?? "🛍"} {p.name}</div><div className="truncate text-xs text-muted-foreground">{p.category} · added {shortDate(p.createdAt)}</div></td>
                     <td className="px-3 py-3"><StatusPill status={p.status} /></td>
                     <td className="px-3 py-3 font-mono text-xs text-muted-foreground">{p.deliveryFormat}</td>
                     <td className={cn("tabular px-3 py-3 text-right font-mono", p.stock === 0 && "text-signal")}>{p.stock}</td>

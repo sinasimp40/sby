@@ -3,6 +3,7 @@ import { decryptCredential, credentialFingerprint } from "./inventory-encryption
 import { decryptProviderSecret } from "./provider-credentials";
 import { tableKeys, type TransferData, type TransferRow } from "./shop-transfer-tables";
 import { assignedInventoryIds } from "./payment-inventory";
+import { isProductEmoji } from "./product-emoji";
 
 export function validateShopRelationships(data: TransferData, ownerId: string) {
   let area = "ownership";
@@ -33,7 +34,7 @@ export function validateShopRelationships(data: TransferData, ownerId: string) {
     area = "product values";
     for (const p of data.products) {
       if (!Number.isSafeInteger(p.id) || Number(p.id) <= 0 || Number(p.priceCents) < 0 ||
-        !["active", "draft", "archived"].includes(String(p.status))) throw new Error();
+        !["active", "draft", "archived"].includes(String(p.status)) || !isProductEmoji(p.buttonEmoji)) throw new Error();
     }
     area = "inventory links and encryption";
     for (const stock of data.inventory) {

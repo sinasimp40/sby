@@ -70,6 +70,7 @@ export const GetOverviewResponse = zod.object({
   "price": zod.number(),
   "status": zod.enum(['active', 'draft', 'archived']),
   "deliveryFormat": zod.enum(['email:pass', 'user:pass']),
+  "buttonEmoji": zod.string().optional(),
   "stock": zod.number().int(),
   "sold": zod.number().int(),
   "createdAt": zod.string()
@@ -90,6 +91,7 @@ export const ListProductsResponseItem = zod.object({
   "price": zod.number(),
   "status": zod.enum(['active', 'draft', 'archived']),
   "deliveryFormat": zod.enum(['email:pass', 'user:pass']),
+  "buttonEmoji": zod.string().optional(),
   "stock": zod.number().int(),
   "sold": zod.number().int(),
   "createdAt": zod.string()
@@ -106,6 +108,8 @@ export const createProductBodyCategoryMax = 80;
 export const createProductBodyPriceMin = 0.01;
 export const createProductBodyPriceMax = 100000;
 
+export const createProductBodyButtonEmojiMax = 32;
+
 
 
 export const CreateProductBody = zod.object({
@@ -114,7 +118,8 @@ export const CreateProductBody = zod.object({
   "category": zod.string().min(1).max(createProductBodyCategoryMax),
   "price": zod.number().min(createProductBodyPriceMin).max(createProductBodyPriceMax),
   "status": zod.enum(['active', 'draft', 'archived']),
-  "deliveryFormat": zod.enum(['email:pass', 'user:pass'])
+  "deliveryFormat": zod.enum(['email:pass', 'user:pass']),
+  "buttonEmoji": zod.string().min(1).max(createProductBodyButtonEmojiMax).optional().describe('One ordinary Unicode emoji for the Telegram product button.')
 })
 
 export const CreateProductResponse = zod.object({
@@ -125,6 +130,7 @@ export const CreateProductResponse = zod.object({
   "price": zod.number(),
   "status": zod.enum(['active', 'draft', 'archived']),
   "deliveryFormat": zod.enum(['email:pass', 'user:pass']),
+  "buttonEmoji": zod.string().optional(),
   "stock": zod.number().int(),
   "sold": zod.number().int(),
   "createdAt": zod.string()
@@ -147,6 +153,8 @@ export const updateProductBodyCategoryMax = 80;
 export const updateProductBodyPriceMin = 0.01;
 export const updateProductBodyPriceMax = 100000;
 
+export const updateProductBodyButtonEmojiMax = 32;
+
 
 
 export const UpdateProductBody = zod.object({
@@ -155,7 +163,8 @@ export const UpdateProductBody = zod.object({
   "category": zod.string().min(1).max(updateProductBodyCategoryMax),
   "price": zod.number().min(updateProductBodyPriceMin).max(updateProductBodyPriceMax),
   "status": zod.enum(['active', 'draft', 'archived']),
-  "deliveryFormat": zod.enum(['email:pass', 'user:pass'])
+  "deliveryFormat": zod.enum(['email:pass', 'user:pass']),
+  "buttonEmoji": zod.string().min(1).max(updateProductBodyButtonEmojiMax).optional().describe('One ordinary Unicode emoji for the Telegram product button.')
 })
 
 export const UpdateProductResponse = zod.object({
@@ -166,6 +175,7 @@ export const UpdateProductResponse = zod.object({
   "price": zod.number(),
   "status": zod.enum(['active', 'draft', 'archived']),
   "deliveryFormat": zod.enum(['email:pass', 'user:pass']),
+  "buttonEmoji": zod.string().optional(),
   "stock": zod.number().int(),
   "sold": zod.number().int(),
   "createdAt": zod.string()

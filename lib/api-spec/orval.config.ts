@@ -1,6 +1,25 @@
 import { defineConfig, InputTransformerFn } from "orval";
 import path from "path";
 
+// Orval's Zod generator uses Map.groupBy, absent in the project's Node 20.
+// Keep this compatibility shim scoped to the code-generation process.
+if (!("groupBy" in Map)) {
+  Object.defineProperty(Map, "groupBy", {
+    configurable: true, writable: true,
+    value(items: Iterable<unknown>, keyFor: (item: unknown, index: number) => unknown) {
+      const groups = new Map<unknown, unknown[]>();
+      let index = 0;
+      for (const item of items) {
+        const key = keyFor(item, index++);
+        const group = groups.get(key);
+        if (group) group.push(item);
+        else groups.set(key, [item]);
+      }
+      return groups;
+    },
+  });
+}
+
 const root = path.resolve(__dirname, "..", "..");
 const apiClientReactSrc = path.resolve(root, "lib", "api-client-react", "src");
 const apiZodSrc = path.resolve(root, "lib", "api-zod", "src");

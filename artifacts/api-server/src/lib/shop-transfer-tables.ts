@@ -27,14 +27,16 @@ export function tableInfo(key: TransferTable) {
   const table: PgTable = transferTables[key];
   return { name: getTableConfig(table).name, columns: Object.entries(getTableColumns(table)) };
 }
-function schemaHash(singleItem = false) { return createHash("sha256").update(JSON.stringify(tableKeys.map(key => ({
+function schemaHash() { return createHash("sha256").update(JSON.stringify(tableKeys.map(key => ({
   key, table: tableInfo(key).name,
-  columns: tableInfo(key).columns.filter(([name]) => !singleItem || key !== "payments" || !["quantity", "inventoryIds"].includes(name)).map(([name, column]) => ({
+  columns: tableInfo(key).columns.map(([name, column]) => ({
     name, sqlName: column.name, type: column.getSQLType(), nullable: !column.notNull,
   })),
 })))).digest("hex"); }
 export const transferSchemaHash = schemaHash();
-export const singleItemTransferSchemaHash = schemaHash(true);
+// Immutable fingerprints of previous signed formats, not recomputed from the live schema.
+export const singleItemTransferSchemaHash = "c2df18244024c0f53fbaa510fc9e817791f4c396471322e28f6b460728d78aa2";
+export const quantityTransferSchemaHash = "dc5b747920c146462b82548aaeebf8c014a686dca0999d80b81d55a93292ec31";
 
 const schemas = Object.fromEntries(tableKeys.map(key => {
   const overrides: Record<string, z.ZodType> = {};

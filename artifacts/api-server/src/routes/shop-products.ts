@@ -9,6 +9,7 @@ import {
 } from "@workspace/api-zod";
 import { productsForOwner, ownedProduct, recordActivity } from "../lib/shop-store";
 import { encryptCredential, credentialFingerprint } from "../lib/inventory-encryption";
+import { isProductEmoji } from "../lib/product-emoji";
 
 const router: IRouter = Router();
 
@@ -24,6 +25,9 @@ router.post("/products", async (req, res): Promise<void> => {
   }
   const ownerId = getAuth(req).userId!;
   const { price, ...input } = parsed.data;
+  if (input.buttonEmoji !== undefined && !isProductEmoji(input.buttonEmoji)) {
+    res.status(400).json({ error: "Choose or paste one ordinary emoji for the product button." }); return;
+  }
   const [product] = await db.insert(shopProducts).values({
     ...input, name: input.name.trim(), category: input.category.trim(), priceCents: Math.round(price * 100), ownerId,
   }).returning();
@@ -41,6 +45,9 @@ router.patch("/products/:id", async (req, res): Promise<void> => {
   }
   const ownerId = getAuth(req).userId!;
   const { price, ...input } = body.data;
+  if (input.buttonEmoji !== undefined && !isProductEmoji(input.buttonEmoji)) {
+    res.status(400).json({ error: "Choose or paste one ordinary emoji for the product button." }); return;
+  }
   const [product] = await db.update(shopProducts).set({
     ...input, name: input.name.trim(), category: input.category.trim(), priceCents: Math.round(price * 100),
   }).where(and(eq(shopProducts.ownerId, ownerId), eq(shopProducts.id, params.data.id))).returning();

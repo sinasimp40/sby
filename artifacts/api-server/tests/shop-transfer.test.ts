@@ -8,7 +8,7 @@ import { is } from "drizzle-orm";
 import { PgTable, getTableConfig } from "drizzle-orm/pg-core";
 import { exportShopTransfer, importShopTransfer, previewShopTransfer, shopTransferStatus, reviewShopTransfer } from "../src/lib/shop-transfer";
 import { decodeShopArchive, encodeShopArchive, previewToken, verifyPreviewToken } from "../src/lib/shop-transfer-archive";
-import { tableKeys, transferTables, singleItemTransferSchemaHash } from "../src/lib/shop-transfer-tables";
+import { tableKeys, transferTables, singleItemTransferSchemaHash, quantityTransferSchemaHash } from "../src/lib/shop-transfer-tables";
 import { assignedInventoryIds } from "../src/lib/payment-inventory";
 import { validateShopRelationships } from "../src/lib/shop-transfer-validation";
 import { decryptCredential } from "../src/lib/inventory-encryption";
@@ -30,6 +30,7 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
   globalThis.fetch = async () => { networkCalls++; throw new Error("External calls are blocked for portable transfer tests."); };
   try {
     const fixture = await seedTransferFixture(source);
+    await pool.query("UPDATE shop_products SET button_emoji=$1 WHERE owner_id=$2", ["🔑", source]);
     const exported = await exportShopTransfer(source);
     const decoded = decodeShopArchive(exported.zip);
     await t.test("ZIP is actual complete shop data, with no credentials key or sessions included", async () => {
@@ -44,6 +45,7 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
       assert.equal(decoded.data.inventory.length, 5);
       assert.equal(decoded.data.payments.length, 6);
       assert.equal(decoded.data.walletEntries.length, 3);
+      assert.ok(decoded.data.products.every(product => product.buttonEmoji === "🔑"));
       const raw = strFromU8(unzipSync(exported.zip)["shop-data.json"]!);
       assert.doesNotMatch(raw, /TEST_ONLY_TELEGRAM|TEST_ONLY_API|TEST_ONLY_IPN|TEST_ONLY:delivered|admin_sessions/);
       const allTables = structuredClone(decoded.data);
@@ -64,6 +66,9 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
     });
     await t.test("authenticated ZIPs from before quantity support upgrade single-item orders safely",()=>{
       const legacyData = structuredClone(decoded.data);
+      legacyData.products = legacyData.products.map(product => {
+        const row = { ...product }; delete row.buttonEmoji; return row;
+      });
       legacyData.payments = legacyData.payments.filter(p=>p.quantity===1).map(p=>{
         const row = {...p}; delete row.quantity; delete row.inventoryIds; return row;
       });
@@ -79,7 +84,26 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
       files["manifest.json"] = strToU8(JSON.stringify({...core,signature}));
       const upgraded = decodeShopArchive(Buffer.from(zipSync(files)));
       assert.ok(upgraded.data.payments.every(p=>p.quantity===1 && p.inventoryIds===null));
+      assert.ok(upgraded.data.products.every(product => product.buttonEmoji === "🛍"));
       validateShopRelationships(upgraded.data,source);
+    });
+    await t.test("authenticated quantity-order ZIPs from before product emojis retain all orders", () => {
+      const legacyData = structuredClone(decoded.data);
+      legacyData.products = legacyData.products.map(product => {
+        const row = { ...product }; delete row.buttonEmoji; return row;
+      });
+      const bytes = strToU8(JSON.stringify(legacyData));
+      const { signature: _, ...core } = decoded.manifest;
+      core.schemaHash = quantityTransferSchemaHash;
+      core.dataSha256 = createHash("sha256").update(bytes).digest("hex");
+      const signature = createHmac("sha256", process.env.SESSION_SECRET!).update(JSON.stringify(core)).digest("hex");
+      const files = unzipSync(exported.zip);
+      files["shop-data.json"] = bytes;
+      files["manifest.json"] = strToU8(JSON.stringify({ ...core, signature }));
+      const upgraded = decodeShopArchive(Buffer.from(zipSync(files)));
+      assert.deepEqual(upgraded.data.payments, decoded.data.payments);
+      assert.ok(upgraded.data.products.every(product => product.buttonEmoji === "🛍"));
+      validateShopRelationships(upgraded.data, source);
     });
     await t.test("corruption, unsafe ZIP paths, modification and incompatible encryption keys fail before writes", () => {
       assert.throws(() => decodeShopArchive(Buffer.from("not a ZIP")));

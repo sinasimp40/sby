@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { productCatalogMenu } from "../src/lib/telegram-catalog";
+import { isProductEmoji } from "../src/lib/product-emoji";
 
 const products = Array.from({ length: 30 }, (_, index) => ({
   id: index + 1, name: `Sample ${index + 1}`, price: 2.5, stock: 5, status: "active",
@@ -13,6 +14,10 @@ test("all 30 products are reachable across three ten-item pages", () => {
   const pages = [0, 1, 2].map(page => productCatalogMenu(products, page));
   for (const [index, page] of pages.entries()) {
     assert.equal(purchases(page).length, 10);
+    assert.equal(page.reply_markup.inline_keyboard.filter(row =>
+      row.some(button => button.callback_data.startsWith("buy:"))).length, 5);
+    assert.ok(page.reply_markup.inline_keyboard.filter(row =>
+      row.some(button => button.callback_data.startsWith("buy:"))).every(row => row.length === 2));
     assert.match(page.text, new RegExp(`Page <b>${index + 1} of 3`));
     assert.ok(purchases(page).every(button => button.text.includes("$2.50") && button.text.includes("📦 5")));
     assert.ok(buttons(page).every(button => Buffer.byteLength(button.callback_data) <= 64));
@@ -50,6 +55,26 @@ test("stale pages clamp when stock changes; invalid pages reset safely", () => {
   assert.equal(purchases(empty).length, 0);
   assert.ok(buttons(empty).some(button => button.callback_data === "products:0"));
   assert.ok(buttons(empty).some(button => button.callback_data === "cancel_home"));
+});
+
+test("odd product counts keep the final product in a single-button row", () => {
+  const page = productCatalogMenu(products.slice(0, 3));
+  const rows = page.reply_markup.inline_keyboard.filter(row =>
+    row.some(button => button.callback_data.startsWith("buy:")));
+  assert.deepEqual(rows.map(row => row.length), [2, 1]);
+  assert.deepEqual(purchases(page).map(button => button.callback_data), ["buy:1", "buy:2", "buy:3"]);
+});
+
+test("each product uses its saved ordinary emoji, with a safe legacy default", () => {
+  const page = productCatalogMenu([
+    { ...products[0], buttonEmoji: "🎮" },
+    { ...products[1], buttonEmoji: "🔑" },
+    { ...products[2], buttonEmoji: "not an emoji" },
+    products[3],
+  ]);
+  assert.deepEqual(purchases(page).map(button => button.text.split(" ")[0]), ["🎮", "🔑", "🛍", "🛍"]);
+  for (const emoji of ["🛍", "🎮", "👨‍👩‍👧‍👦", "🇩🇪", "👍🏽", "1️⃣"]) assert.equal(isProductEmoji(emoji), true);
+  for (const value of ["", "VIP", "🎮🔑", "https://example.invalid/photo.png", "1", null]) assert.equal(isProductEmoji(value), false);
 });
 
 test("single and exact ten-item pages need no navigation, refresh preserves the page", () => {

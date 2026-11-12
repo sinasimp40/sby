@@ -16,6 +16,7 @@ export interface Product {
   price: number;
   status: ProductStatus;
   deliveryFormat: ProductDeliveryFormat;
+  buttonEmoji?: string;
   stock: number;
   sold: number;
   createdAt: string;
