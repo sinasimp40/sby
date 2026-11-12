@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useAdminAuth } from "@/hooks/use-admin-auth";
-import { LayoutDashboard, Package, KeyRound, Receipt, Users, Wallet, Bot, CreditCard, Settings2, Menu, LogOut, Eye, LogIn, Database } from "lucide-react";
+import { LayoutDashboard, Package, KeyRound, Receipt, Users, Wallet, Bot, CreditCard, Settings2, Megaphone, Menu, LogOut, Eye, LogIn, Database } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -22,6 +22,7 @@ const groups = [
   ] },
   { label: "Setup", items: [
     { href: "/bot", label: "Bot messages", icon: Bot },
+    { href: "/advertising", label: "Advertising", icon: Megaphone },
     { href: "/payments", label: "NOWPayments", icon: CreditCard },
     { href: "/settings", label: "Settings", icon: Settings2 },
     { href: "/data-transfer", label: "Database transfer", icon: Database },

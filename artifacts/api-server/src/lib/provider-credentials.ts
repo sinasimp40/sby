@@ -1,10 +1,10 @@
 import { createCipheriv, createDecipheriv, createHmac, randomBytes } from "node:crypto";
-import { eq } from "drizzle-orm";
-import { db, providerCredentials } from "@workspace/db";
+import { eq, sql } from "drizzle-orm";
+import { db, providerCredentials, advertisingBots } from "@workspace/db";
 import { configuredOwnerId } from "./admin-bootstrap";
 import { CommerceError } from "./commerce-providers";
 
-type CredentialField = "telegram" | "nowpayments-api-key" | "nowpayments-ipn-secret";
+type CredentialField = "telegram" | "advertising" | "nowpayments-api-key" | "nowpayments-ipn-secret";
 export type ProviderCredentialValues = {
   telegramToken: string | null;
   nowpaymentsApiKey: string | null;
@@ -57,8 +57,12 @@ export async function readProviderCredentials(ownerId = configuredOwnerId()): Pr
 }
 
 export async function saveTelegramCredential(ownerId: string, token: string, username: string) {
-  const [existing] = await db.select().from(providerCredentials).where(eq(providerCredentials.ownerId, ownerId));
-  await db.insert(providerCredentials).values({
+  await db.transaction(async tx => {
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`telegram-bot:${token.split(":")[0]}`},74))`);
+  const [advertising] = await tx.select({ id: advertisingBots.botId }).from(advertisingBots).where(eq(advertisingBots.botId, token.split(":")[0]!));
+  if (advertising) throw new CommerceError("This bot is assigned to advertising. Use a different bot for the shop.");
+  const [existing] = await tx.select().from(providerCredentials).where(eq(providerCredentials.ownerId, ownerId));
+  await tx.insert(providerCredentials).values({
     ownerId,
     telegramTokenEncrypted: encryptProviderSecret(token, ownerId, "telegram"),
     telegramVerifiedAt: new Date(),
@@ -70,6 +74,7 @@ export async function saveTelegramCredential(ownerId: string, token: string, use
   }).onConflictDoUpdate({
     target: providerCredentials.ownerId,
     set: { telegramTokenEncrypted: encryptProviderSecret(token, ownerId, "telegram"), telegramVerifiedAt: new Date(), telegramBotUsername: username, updatedAt: new Date() },
+  });
   });
 }
 

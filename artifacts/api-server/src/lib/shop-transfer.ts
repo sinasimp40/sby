@@ -1,4 +1,5 @@
 import { pool } from "@workspace/db";
+import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { CommerceError } from "./commerce-providers";
 import { decryptCredential, encryptCredential, credentialFingerprint } from "./inventory-encryption";
@@ -19,7 +20,18 @@ const warnings = [
   "Imports never merge or overwrite business data. Saved shop preferences/provider configuration will be replaced; destination login credentials remain unchanged.",
   "The destination bot and payment processing stay paused for review. Stop the source server before resuming; never run both copies.",
   "Public callback URLs and unfinished Telegram selections are cleared. Historical payments, balances, stock and delivery records are retained.",
+  "Advertising credentials, groups, draft and history are included. Imported campaigns never resume automatically; check the bot and group permissions again.",
 ];
+
+async function advertisingImportBlocker(client: PoolClient, owner: string, data: TransferData) {
+  const bot = data.advertisingBots[0];
+  if (!bot?.botId) return null;
+  const conflict = await client.query(`SELECT 1 FROM advertising_bots WHERE bot_id=$1 AND owner_id<>$2
+    UNION ALL SELECT 1 FROM bot_connections WHERE bot_id=$1
+    UNION ALL SELECT 1 FROM provider_credentials WHERE lower(telegram_bot_username)=lower($3)`,
+    [bot.botId, owner, bot.username]);
+  return conflict.rowCount ? "The imported advertising bot is already assigned here. Disconnect its existing advertising connection or use an empty destination server; never reuse a shop bot." : null;
+}
 
 export async function shopTransferStatus(ownerId: string | null) {
   requireOwner(ownerId);
@@ -55,6 +67,8 @@ export async function previewShopTransfer(ownerId: string | null, zip: Buffer) {
   try {
     const state = await destinationTransferState(client, ownerId);
     if (archive.data.connection.length && state.connectionOwner && state.connectionOwner !== ownerId) state.blockers.push("The destination bot is bound to another shop. An operator must resolve that binding first.");
+    const advertisingBlocker = await advertisingImportBlocker(client, ownerId, archive.data);
+    if (advertisingBlocker) state.blockers.push(advertisingBlocker);
     return {
       createdAt: archive.manifest.createdAt, counts: archive.manifest.counts,
       archiveHash: archive.archiveHash, confirmationToken: previewToken(ownerId, archive.archiveHash),
@@ -126,6 +140,27 @@ async function importRows(client: PoolClient, data: TransferData, source: string
     await client.query("DELETE FROM bot_connections WHERE owner_id=$1", [owner]);
   }
   await write("updates", data.updates);
+  const groupIds = new Map(data.advertisingGroups.map(row => [String(row.id), randomUUID()]));
+  const campaignIds = new Map(data.advertisingCampaigns.map(row => [String(row.id), randomUUID()]));
+  for (const row of data.advertisingBots) await insertTransferRow(client, "advertisingBots", {
+    ...row, ownerId: owner,
+    tokenEncrypted: row.tokenEncrypted === null ? null : encryptProviderSecret(decryptProviderSecret(String(row.tokenEncrypted), source, "advertising"), owner, "advertising"),
+    checkedAt: null, lastError: "Imported advertising connection. Review the transfer, then check the bot before sending.", updateOffset: 0,
+  });
+  await write("advertisingGroups", data.advertisingGroups.map(row => ({
+    ...row, id: groupIds.get(String(row.id)), ownerId: owner, status: "pending", checkedAt: null,
+    note: "Imported group. Verify membership and posting permissions before sending.",
+  })));
+  await write("advertisingCampaigns", data.advertisingCampaigns.map(row => ({
+    ...row, id: campaignIds.get(String(row.id)), ownerId: owner,
+    status: ["queued", "sending"].includes(String(row.status)) ? "cancelled" : row.status,
+  })));
+  await write("advertisingDeliveries", data.advertisingDeliveries.map(row => ({
+    ...row, id: randomUUID(), ownerId: owner, campaignId: campaignIds.get(String(row.campaignId)),
+    groupId: groupIds.get(String(row.groupId)) ?? randomUUID(),
+    status: row.status === "pending" ? "cancelled" : row.status === "sending" ? "uncertain" : row.status,
+    note: ["pending", "sending"].includes(String(row.status)) ? "Imported history. No automatic resend; check the target group." : row.note,
+  })));
 }
 
 export async function importShopTransfer(ownerId: string | null, zip: Buffer, token: string) {
@@ -139,14 +174,20 @@ export async function importShopTransfer(ownerId: string | null, zip: Buffer, to
     await client.query("SET LOCAL lock_timeout='5s'");
     await client.query("SET LOCAL statement_timeout='5s'");
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended('telecart-runtime-control', 5))");
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,72))", [`advertising:${ownerId}`]);
+    const advertisingId = archive.data.advertisingBots[0]?.botId;
+    if (advertisingId) await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,74))", [`telegram-bot:${advertisingId}`]);
     // Serialize concurrent import/setup/checkout writes for the empty destination.
     // Normal SELECT readers continue; writers wait briefly or this transaction fails.
     await client.query(`LOCK TABLE shop_products, shop_inventory, bot_customers, shop_payments,
       wallet_entries, shop_records, shop_settings, shop_activity, provider_credentials,
-      bot_runtime_settings, bot_connections, bot_updates, shop_custom_emojis, emoji_import_sessions IN SHARE ROW EXCLUSIVE MODE`);
+      bot_runtime_settings, bot_connections, bot_updates, shop_custom_emojis, emoji_import_sessions,
+      advertising_bots, advertising_groups, advertising_campaigns, advertising_deliveries IN SHARE ROW EXCLUSIVE MODE`);
     const state = await destinationTransferState(client, ownerId);
     if (state.blockers.length) throw new CommerceError(state.blockers.join(" "), 409);
     if (archive.data.connection.length && state.connectionOwner && state.connectionOwner !== ownerId) throw new CommerceError("The bot is bound to another shop. Nothing was imported.", 409);
+    const advertisingBlocker = await advertisingImportBlocker(client, ownerId, archive.data);
+    if (advertisingBlocker) throw new CommerceError(advertisingBlocker, 409);
     await importRows(client, archive.data, archive.manifest.sourceOwnerId, ownerId);
     await client.query("DELETE FROM emoji_import_sessions WHERE owner_id=$1", [ownerId]);
     await client.query(`INSERT INTO shop_activity(owner_id,title,description,type)

@@ -9,6 +9,87 @@ tags:
   - name: health
   - name: shop
 paths:
+  /shop/advertising:
+    get:
+      operationId: getAdvertisingWorkspace
+      responses:
+        "200": {description: Advertising workspace, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
+  /shop/advertising/connection:
+    post:
+      operationId: connectAdvertisingBot
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingConnectionInput"}}}}
+      responses:
+        "200": {description: Verified connection, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
+    delete:
+      operationId: disconnectAdvertisingBot
+      responses:
+        "200": {description: Disconnected, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
+  /shop/advertising/connection/check:
+    post:
+      operationId: checkAdvertisingBot
+      responses:
+        "200": {description: Connection check, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
+  /shop/advertising/groups/discover:
+    post:
+      operationId: discoverAdvertisingGroups
+      responses:
+        "200": {description: Discover recent group additions, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
+  /shop/advertising/groups/preview:
+    post:
+      operationId: previewAdvertisingGroups
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingImportInput"}}}}
+      responses:
+        "200": {description: Segregated import, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingImportPreview"}}}}
+  /shop/advertising/groups:
+    post:
+      operationId: addAdvertisingGroups
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingGroupsInput"}}}}
+      responses:
+        "200": {description: Saved groups, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
+  /shop/advertising/groups/check:
+    post:
+      operationId: checkAdvertisingGroups
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingGroupSelection"}}}}
+      responses:
+        "200": {description: Posting permission checks, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
+  /shop/advertising/groups/{id}:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    patch:
+      operationId: updateAdvertisingGroup
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingGroupUpdate"}}}}
+      responses:
+        "200": {description: Updated group, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
+    delete:
+      operationId: deleteAdvertisingGroup
+      responses:
+        "200": {description: Removed group, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
+  /shop/advertising/draft:
+    put:
+      operationId: saveAdvertisingDraft
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingDraft"}}}}
+      responses:
+        "200": {description: Saved message, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
+  /shop/advertising/campaigns:
+    post:
+      operationId: startAdvertisingCampaign
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingCampaignInput"}}}}
+      responses:
+        "201": {description: Queued campaign, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingCampaign"}}}}
+  /shop/advertising/campaigns/{id}:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    get:
+      operationId: getAdvertisingCampaign
+      responses:
+        "200": {description: Delivery results, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingCampaignDetail"}}}}
+  /shop/advertising/campaigns/{id}/cancel:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    post:
+      operationId: cancelAdvertisingCampaign
+      responses:
+        "200": {description: Stopped unsent deliveries, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
   /shop/product-groups:
     get:
       operationId: listProductGroups
@@ -556,6 +637,124 @@ paths:
               schema: { $ref: "#/components/schemas/PaymentAttempt" }
 components:
   schemas:
+    AdvertisingDraft:
+      type: object
+      required: [text, imageUrl, buttonText, buttonUrl]
+      properties:
+        text: {type: string, maxLength: 4096}
+        imageUrl: {type: [string, "null"], maxLength: 2048}
+        buttonText: {type: string, maxLength: 64}
+        buttonUrl: {type: [string, "null"], maxLength: 2048}
+    AdvertisingConnectionInput:
+      type: object
+      required: [botLink, token]
+      properties:
+        botLink: {type: string, minLength: 5, maxLength: 150}
+        token: {type: string, minLength: 20, maxLength: 200}
+    AdvertisingBot:
+      type: object
+      required: [configured, connected, username, botLink, checkedAt, error]
+      properties:
+        configured: {type: boolean}
+        connected: {type: boolean}
+        username: {type: string}
+        botLink: {type: [string, "null"]}
+        checkedAt: {type: [string, "null"], format: date-time}
+        error: {type: [string, "null"]}
+    AdvertisingGroup:
+      type: object
+      required: [id, target, kind, title, chatId, enabled, status, note, checkedAt]
+      properties:
+        id: {type: string, format: uuid}
+        target: {type: string}
+        kind: {type: string, enum: [public, private_invite, chat_id]}
+        title: {type: string}
+        chatId: {type: [string, "null"]}
+        enabled: {type: boolean}
+        status: {type: string, enum: [pending, ready, needs_setup, duplicate, error]}
+        note: {type: string}
+        checkedAt: {type: [string, "null"], format: date-time}
+    AdvertisingImportInput:
+      type: object
+      required: [text]
+      properties:
+        text: {type: string, minLength: 1, maxLength: 65536}
+    AdvertisingImportRow:
+      type: object
+      required: [input, target, kind, status, reason]
+      properties:
+        input: {type: string}
+        target: {type: [string, "null"]}
+        kind: {type: string, enum: [public, private_invite, chat_id, invalid]}
+        status: {type: string, enum: [new, duplicate, invalid, needs_setup]}
+        reason: {type: string}
+    AdvertisingImportPreview:
+      type: object
+      required: [rows]
+      properties:
+        rows: {type: array, items: {$ref: "#/components/schemas/AdvertisingImportRow"}}
+    AdvertisingGroupsInput:
+      type: object
+      required: [targets, permissionConfirmed]
+      properties:
+        targets: {type: array, minItems: 1, maxItems: 500, items: {type: string, maxLength: 300}}
+        permissionConfirmed: {type: boolean}
+    AdvertisingGroupSelection:
+      type: object
+      required: [groupIds]
+      properties:
+        groupIds: {type: array, minItems: 1, maxItems: 20, uniqueItems: true, items: {type: string, format: uuid}}
+    AdvertisingGroupUpdate:
+      type: object
+      properties:
+        target: {type: string, minLength: 1, maxLength: 300}
+        enabled: {type: boolean}
+    AdvertisingCampaignInput:
+      type: object
+      required: [groupIds, permissionConfirmed, idempotencyKey, draft]
+      properties:
+        draft: {$ref: "#/components/schemas/AdvertisingDraft"}
+        groupIds: {type: array, minItems: 1, maxItems: 500, uniqueItems: true, items: {type: string, format: uuid}}
+        permissionConfirmed: {type: boolean}
+        idempotencyKey: {type: string, format: uuid}
+    AdvertisingCampaign:
+      type: object
+      required: [id, status, text, createdAt, total, sent, failed, uncertain, pending, cancelled]
+      properties:
+        id: {type: string, format: uuid}
+        status: {type: string, enum: [queued, sending, completed, partial, cancelled]}
+        text: {type: string}
+        createdAt: {type: string, format: date-time}
+        total: {type: integer}
+        sent: {type: integer}
+        failed: {type: integer}
+        uncertain: {type: integer}
+        pending: {type: integer}
+        cancelled: {type: integer}
+    AdvertisingDelivery:
+      type: object
+      required: [id, target, status, note, sentAt]
+      properties:
+        id: {type: string, format: uuid}
+        target: {type: string}
+        status: {type: string, enum: [pending, sending, sent, failed, uncertain, cancelled]}
+        note: {type: string}
+        sentAt: {type: [string, "null"], format: date-time}
+    AdvertisingCampaignDetail:
+      type: object
+      required: [campaign, deliveries]
+      properties:
+        campaign: {$ref: "#/components/schemas/AdvertisingCampaign"}
+        deliveries: {type: array, items: {$ref: "#/components/schemas/AdvertisingDelivery"}}
+    AdvertisingWorkspace:
+      type: object
+      required: [bot, draft, shopBotUrl, groups, campaigns]
+      properties:
+        bot: {$ref: "#/components/schemas/AdvertisingBot"}
+        draft: {$ref: "#/components/schemas/AdvertisingDraft"}
+        shopBotUrl: {type: [string, "null"]}
+        groups: {type: array, items: {$ref: "#/components/schemas/AdvertisingGroup"}}
+        campaigns: {type: array, items: {$ref: "#/components/schemas/AdvertisingCampaign"}}
     PaymentMinimum:
       type: object
       required: [coin, fixedUSD, floatingUSD, checkedAt]

@@ -3,6 +3,7 @@ import { logger } from "./lib/logger";
 import { initializeAdminBootstrap } from "./lib/admin-bootstrap";
 import { runWorkspacePolling } from "./lib/workspace-polling";
 import { runPaymentReconciliation } from "./lib/payment-reconciliation";
+import { runAdvertisingWorker } from "./lib/advertising-campaigns";
 
 const rawPort = process.env["PORT"];
 
@@ -36,4 +37,5 @@ app.listen(port, process.env.TELECART_LOCAL_ONLY === "true" ? "127.0.0.1" : "0.0
   logger.info({ port }, "Server listening");
   void runWorkspacePolling().catch(() => logger.error("Workspace Telegram poller stopped."));
   void runPaymentReconciliation().catch(() => logger.error("Payment reconciliation stopped."));
+  void runAdvertisingWorker().catch(() => logger.error("Advertising sender stopped."));
 });

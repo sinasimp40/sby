@@ -28,6 +28,17 @@ import type {
   Activity,
   AdminCredentials,
   AdminSession,
+  AdvertisingCampaign,
+  AdvertisingCampaignDetail,
+  AdvertisingCampaignInput,
+  AdvertisingConnectionInput,
+  AdvertisingDraft,
+  AdvertisingGroupSelection,
+  AdvertisingGroupUpdate,
+  AdvertisingGroupsInput,
+  AdvertisingImportInput,
+  AdvertisingImportPreview,
+  AdvertisingWorkspace,
   CustomEmojiLibrary,
   Customer,
   Deposit,
@@ -90,6 +101,1111 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetAdvertisingWorkspaceUrl = () => {
+
+
+
+
+  return `/api/shop/advertising`
+}
+
+export const getAdvertisingWorkspace = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdvertisingWorkspace> => {
+
+  return customFetch<AdvertisingWorkspace>(getGetAdvertisingWorkspaceUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdvertisingWorkspaceQueryKey = () => {
+    return [
+    `/api/shop/advertising`
+    ] as const;
+    }
+
+
+export const getGetAdvertisingWorkspaceQueryOptions = <TData = Awaited<ReturnType<typeof getAdvertisingWorkspace>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdvertisingWorkspace>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdvertisingWorkspaceQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdvertisingWorkspace>>> = ({ signal }) => getAdvertisingWorkspace({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdvertisingWorkspace>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAdvertisingWorkspaceQueryResult = NonNullable<Awaited<ReturnType<typeof getAdvertisingWorkspace>>>
+export type GetAdvertisingWorkspaceQueryError = ErrorType<unknown>
+
+
+export function useGetAdvertisingWorkspace<TData = Awaited<ReturnType<typeof getAdvertisingWorkspace>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdvertisingWorkspace>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdvertisingWorkspace>>,
+          TError,
+          Awaited<ReturnType<typeof getAdvertisingWorkspace>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAdvertisingWorkspace<TData = Awaited<ReturnType<typeof getAdvertisingWorkspace>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdvertisingWorkspace>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdvertisingWorkspace>>,
+          TError,
+          Awaited<ReturnType<typeof getAdvertisingWorkspace>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAdvertisingWorkspace<TData = Awaited<ReturnType<typeof getAdvertisingWorkspace>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdvertisingWorkspace>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetAdvertisingWorkspace<TData = Awaited<ReturnType<typeof getAdvertisingWorkspace>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdvertisingWorkspace>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAdvertisingWorkspaceQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getConnectAdvertisingBotUrl = () => {
+
+
+
+
+  return `/api/shop/advertising/connection`
+}
+
+export const connectAdvertisingBot = async (advertisingConnectionInput: AdvertisingConnectionInput, options?: Parameters<typeof customFetch>[1]): Promise<AdvertisingWorkspace> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdvertisingWorkspace>(getConnectAdvertisingBotUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(advertisingConnectionInput)
+  }
+);}
+
+
+
+
+
+export const getConnectAdvertisingBotMutationKey = () => ['connectAdvertisingBot'] as const;
+
+export const getConnectAdvertisingBotMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof connectAdvertisingBot>>, TError,ConnectAdvertisingBotMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof connectAdvertisingBot>>, TError,ConnectAdvertisingBotMutationVariables, TContext> => {
+
+const mutationKey = getConnectAdvertisingBotMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof connectAdvertisingBot>>, ConnectAdvertisingBotMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  connectAdvertisingBot(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConnectAdvertisingBotMutationResult = NonNullable<Awaited<ReturnType<typeof connectAdvertisingBot>>>
+    export type ConnectAdvertisingBotMutationBody = BodyType<AdvertisingConnectionInput>
+    export type ConnectAdvertisingBotMutationError = ErrorType<unknown>
+    export type ConnectAdvertisingBotMutationVariables = {data: BodyType<AdvertisingConnectionInput>}
+
+    export const useConnectAdvertisingBot = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof connectAdvertisingBot>>, TError,ConnectAdvertisingBotMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof connectAdvertisingBot>>,
+        TError,
+        ConnectAdvertisingBotMutationVariables,
+        TContext
+      > => {
+      return useMutation(getConnectAdvertisingBotMutationOptions(options), queryClient);
+    }
+
+export const getDisconnectAdvertisingBotUrl = () => {
+
+
+
+
+  return `/api/shop/advertising/connection`
+}
+
+export const disconnectAdvertisingBot = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdvertisingWorkspace> => {
+
+  return customFetch<AdvertisingWorkspace>(getDisconnectAdvertisingBotUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDisconnectAdvertisingBotMutationKey = () => ['disconnectAdvertisingBot'] as const;
+
+export const getDisconnectAdvertisingBotMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disconnectAdvertisingBot>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof disconnectAdvertisingBot>>, TError,void, TContext> => {
+
+const mutationKey = getDisconnectAdvertisingBotMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof disconnectAdvertisingBot>>, void> = () => {
+
+
+          return  disconnectAdvertisingBot(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DisconnectAdvertisingBotMutationResult = NonNullable<Awaited<ReturnType<typeof disconnectAdvertisingBot>>>
+
+    export type DisconnectAdvertisingBotMutationError = ErrorType<unknown>
+
+
+    export const useDisconnectAdvertisingBot = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disconnectAdvertisingBot>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof disconnectAdvertisingBot>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDisconnectAdvertisingBotMutationOptions(options), queryClient);
+    }
+
+export const getCheckAdvertisingBotUrl = () => {
+
+
+
+
+  return `/api/shop/advertising/connection/check`
+}
+
+export const checkAdvertisingBot = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdvertisingWorkspace> => {
+
+  return customFetch<AdvertisingWorkspace>(getCheckAdvertisingBotUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCheckAdvertisingBotMutationKey = () => ['checkAdvertisingBot'] as const;
+
+export const getCheckAdvertisingBotMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkAdvertisingBot>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof checkAdvertisingBot>>, TError,void, TContext> => {
+
+const mutationKey = getCheckAdvertisingBotMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof checkAdvertisingBot>>, void> = () => {
+
+
+          return  checkAdvertisingBot(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CheckAdvertisingBotMutationResult = NonNullable<Awaited<ReturnType<typeof checkAdvertisingBot>>>
+
+    export type CheckAdvertisingBotMutationError = ErrorType<unknown>
+
+
+    export const useCheckAdvertisingBot = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkAdvertisingBot>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof checkAdvertisingBot>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getCheckAdvertisingBotMutationOptions(options), queryClient);
+    }
+
+export const getDiscoverAdvertisingGroupsUrl = () => {
+
+
+
+
+  return `/api/shop/advertising/groups/discover`
+}
+
+export const discoverAdvertisingGroups = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdvertisingWorkspace> => {
+
+  return customFetch<AdvertisingWorkspace>(getDiscoverAdvertisingGroupsUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getDiscoverAdvertisingGroupsMutationKey = () => ['discoverAdvertisingGroups'] as const;
+
+export const getDiscoverAdvertisingGroupsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof discoverAdvertisingGroups>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof discoverAdvertisingGroups>>, TError,void, TContext> => {
+
+const mutationKey = getDiscoverAdvertisingGroupsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof discoverAdvertisingGroups>>, void> = () => {
+
+
+          return  discoverAdvertisingGroups(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DiscoverAdvertisingGroupsMutationResult = NonNullable<Awaited<ReturnType<typeof discoverAdvertisingGroups>>>
+
+    export type DiscoverAdvertisingGroupsMutationError = ErrorType<unknown>
+
+
+    export const useDiscoverAdvertisingGroups = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof discoverAdvertisingGroups>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof discoverAdvertisingGroups>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDiscoverAdvertisingGroupsMutationOptions(options), queryClient);
+    }
+
+export const getPreviewAdvertisingGroupsUrl = () => {
+
+
+
+
+  return `/api/shop/advertising/groups/preview`
+}
+
+export const previewAdvertisingGroups = async (advertisingImportInput: AdvertisingImportInput, options?: Parameters<typeof customFetch>[1]): Promise<AdvertisingImportPreview> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdvertisingImportPreview>(getPreviewAdvertisingGroupsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(advertisingImportInput)
+  }
+);}
+
+
+
+
+
+export const getPreviewAdvertisingGroupsMutationKey = () => ['previewAdvertisingGroups'] as const;
+
+export const getPreviewAdvertisingGroupsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewAdvertisingGroups>>, TError,PreviewAdvertisingGroupsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewAdvertisingGroups>>, TError,PreviewAdvertisingGroupsMutationVariables, TContext> => {
+
+const mutationKey = getPreviewAdvertisingGroupsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewAdvertisingGroups>>, PreviewAdvertisingGroupsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  previewAdvertisingGroups(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewAdvertisingGroupsMutationResult = NonNullable<Awaited<ReturnType<typeof previewAdvertisingGroups>>>
+    export type PreviewAdvertisingGroupsMutationBody = BodyType<AdvertisingImportInput>
+    export type PreviewAdvertisingGroupsMutationError = ErrorType<unknown>
+    export type PreviewAdvertisingGroupsMutationVariables = {data: BodyType<AdvertisingImportInput>}
+
+    export const usePreviewAdvertisingGroups = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewAdvertisingGroups>>, TError,PreviewAdvertisingGroupsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof previewAdvertisingGroups>>,
+        TError,
+        PreviewAdvertisingGroupsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPreviewAdvertisingGroupsMutationOptions(options), queryClient);
+    }
+
+export const getAddAdvertisingGroupsUrl = () => {
+
+
+
+
+  return `/api/shop/advertising/groups`
+}
+
+export const addAdvertisingGroups = async (advertisingGroupsInput: AdvertisingGroupsInput, options?: Parameters<typeof customFetch>[1]): Promise<AdvertisingWorkspace> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdvertisingWorkspace>(getAddAdvertisingGroupsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(advertisingGroupsInput)
+  }
+);}
+
+
+
+
+
+export const getAddAdvertisingGroupsMutationKey = () => ['addAdvertisingGroups'] as const;
+
+export const getAddAdvertisingGroupsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addAdvertisingGroups>>, TError,AddAdvertisingGroupsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addAdvertisingGroups>>, TError,AddAdvertisingGroupsMutationVariables, TContext> => {
+
+const mutationKey = getAddAdvertisingGroupsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addAdvertisingGroups>>, AddAdvertisingGroupsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  addAdvertisingGroups(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddAdvertisingGroupsMutationResult = NonNullable<Awaited<ReturnType<typeof addAdvertisingGroups>>>
+    export type AddAdvertisingGroupsMutationBody = BodyType<AdvertisingGroupsInput>
+    export type AddAdvertisingGroupsMutationError = ErrorType<unknown>
+    export type AddAdvertisingGroupsMutationVariables = {data: BodyType<AdvertisingGroupsInput>}
+
+    export const useAddAdvertisingGroups = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addAdvertisingGroups>>, TError,AddAdvertisingGroupsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof addAdvertisingGroups>>,
+        TError,
+        AddAdvertisingGroupsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAddAdvertisingGroupsMutationOptions(options), queryClient);
+    }
+
+export const getCheckAdvertisingGroupsUrl = () => {
+
+
+
+
+  return `/api/shop/advertising/groups/check`
+}
+
+export const checkAdvertisingGroups = async (advertisingGroupSelection: AdvertisingGroupSelection, options?: Parameters<typeof customFetch>[1]): Promise<AdvertisingWorkspace> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdvertisingWorkspace>(getCheckAdvertisingGroupsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(advertisingGroupSelection)
+  }
+);}
+
+
+
+
+
+export const getCheckAdvertisingGroupsMutationKey = () => ['checkAdvertisingGroups'] as const;
+
+export const getCheckAdvertisingGroupsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkAdvertisingGroups>>, TError,CheckAdvertisingGroupsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof checkAdvertisingGroups>>, TError,CheckAdvertisingGroupsMutationVariables, TContext> => {
+
+const mutationKey = getCheckAdvertisingGroupsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof checkAdvertisingGroups>>, CheckAdvertisingGroupsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  checkAdvertisingGroups(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CheckAdvertisingGroupsMutationResult = NonNullable<Awaited<ReturnType<typeof checkAdvertisingGroups>>>
+    export type CheckAdvertisingGroupsMutationBody = BodyType<AdvertisingGroupSelection>
+    export type CheckAdvertisingGroupsMutationError = ErrorType<unknown>
+    export type CheckAdvertisingGroupsMutationVariables = {data: BodyType<AdvertisingGroupSelection>}
+
+    export const useCheckAdvertisingGroups = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkAdvertisingGroups>>, TError,CheckAdvertisingGroupsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof checkAdvertisingGroups>>,
+        TError,
+        CheckAdvertisingGroupsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCheckAdvertisingGroupsMutationOptions(options), queryClient);
+    }
+
+export const getUpdateAdvertisingGroupUrl = (id: string,) => {
+
+
+
+
+  return `/api/shop/advertising/groups/${id}`
+}
+
+export const updateAdvertisingGroup = async (id: string,
+    advertisingGroupUpdate: AdvertisingGroupUpdate, options?: Parameters<typeof customFetch>[1]): Promise<AdvertisingWorkspace> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdvertisingWorkspace>(getUpdateAdvertisingGroupUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(advertisingGroupUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdvertisingGroupMutationKey = () => ['updateAdvertisingGroup'] as const;
+
+export const getUpdateAdvertisingGroupMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdvertisingGroup>>, TError,UpdateAdvertisingGroupMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdvertisingGroup>>, TError,UpdateAdvertisingGroupMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAdvertisingGroupMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdvertisingGroup>>, UpdateAdvertisingGroupMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateAdvertisingGroup(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdvertisingGroupMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdvertisingGroup>>>
+    export type UpdateAdvertisingGroupMutationBody = BodyType<AdvertisingGroupUpdate>
+    export type UpdateAdvertisingGroupMutationError = ErrorType<unknown>
+    export type UpdateAdvertisingGroupMutationVariables = {id: string;data: BodyType<AdvertisingGroupUpdate>}
+
+    export const useUpdateAdvertisingGroup = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdvertisingGroup>>, TError,UpdateAdvertisingGroupMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdvertisingGroup>>,
+        TError,
+        UpdateAdvertisingGroupMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAdvertisingGroupMutationOptions(options), queryClient);
+    }
+
+export const getDeleteAdvertisingGroupUrl = (id: string,) => {
+
+
+
+
+  return `/api/shop/advertising/groups/${id}`
+}
+
+export const deleteAdvertisingGroup = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<AdvertisingWorkspace> => {
+
+  return customFetch<AdvertisingWorkspace>(getDeleteAdvertisingGroupUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteAdvertisingGroupMutationKey = () => ['deleteAdvertisingGroup'] as const;
+
+export const getDeleteAdvertisingGroupMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdvertisingGroup>>, TError,DeleteAdvertisingGroupMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAdvertisingGroup>>, TError,DeleteAdvertisingGroupMutationVariables, TContext> => {
+
+const mutationKey = getDeleteAdvertisingGroupMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAdvertisingGroup>>, DeleteAdvertisingGroupMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteAdvertisingGroup(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAdvertisingGroupMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAdvertisingGroup>>>
+
+    export type DeleteAdvertisingGroupMutationError = ErrorType<unknown>
+    export type DeleteAdvertisingGroupMutationVariables = {id: string}
+
+    export const useDeleteAdvertisingGroup = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdvertisingGroup>>, TError,DeleteAdvertisingGroupMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAdvertisingGroup>>,
+        TError,
+        DeleteAdvertisingGroupMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteAdvertisingGroupMutationOptions(options), queryClient);
+    }
+
+export const getSaveAdvertisingDraftUrl = () => {
+
+
+
+
+  return `/api/shop/advertising/draft`
+}
+
+export const saveAdvertisingDraft = async (advertisingDraft: AdvertisingDraft, options?: Parameters<typeof customFetch>[1]): Promise<AdvertisingWorkspace> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdvertisingWorkspace>(getSaveAdvertisingDraftUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(advertisingDraft)
+  }
+);}
+
+
+
+
+
+export const getSaveAdvertisingDraftMutationKey = () => ['saveAdvertisingDraft'] as const;
+
+export const getSaveAdvertisingDraftMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveAdvertisingDraft>>, TError,SaveAdvertisingDraftMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveAdvertisingDraft>>, TError,SaveAdvertisingDraftMutationVariables, TContext> => {
+
+const mutationKey = getSaveAdvertisingDraftMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveAdvertisingDraft>>, SaveAdvertisingDraftMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  saveAdvertisingDraft(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveAdvertisingDraftMutationResult = NonNullable<Awaited<ReturnType<typeof saveAdvertisingDraft>>>
+    export type SaveAdvertisingDraftMutationBody = BodyType<AdvertisingDraft>
+    export type SaveAdvertisingDraftMutationError = ErrorType<unknown>
+    export type SaveAdvertisingDraftMutationVariables = {data: BodyType<AdvertisingDraft>}
+
+    export const useSaveAdvertisingDraft = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveAdvertisingDraft>>, TError,SaveAdvertisingDraftMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof saveAdvertisingDraft>>,
+        TError,
+        SaveAdvertisingDraftMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSaveAdvertisingDraftMutationOptions(options), queryClient);
+    }
+
+export const getStartAdvertisingCampaignUrl = () => {
+
+
+
+
+  return `/api/shop/advertising/campaigns`
+}
+
+export const startAdvertisingCampaign = async (advertisingCampaignInput: AdvertisingCampaignInput, options?: Parameters<typeof customFetch>[1]): Promise<AdvertisingCampaign> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdvertisingCampaign>(getStartAdvertisingCampaignUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(advertisingCampaignInput)
+  }
+);}
+
+
+
+
+
+export const getStartAdvertisingCampaignMutationKey = () => ['startAdvertisingCampaign'] as const;
+
+export const getStartAdvertisingCampaignMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startAdvertisingCampaign>>, TError,StartAdvertisingCampaignMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startAdvertisingCampaign>>, TError,StartAdvertisingCampaignMutationVariables, TContext> => {
+
+const mutationKey = getStartAdvertisingCampaignMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startAdvertisingCampaign>>, StartAdvertisingCampaignMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  startAdvertisingCampaign(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartAdvertisingCampaignMutationResult = NonNullable<Awaited<ReturnType<typeof startAdvertisingCampaign>>>
+    export type StartAdvertisingCampaignMutationBody = BodyType<AdvertisingCampaignInput>
+    export type StartAdvertisingCampaignMutationError = ErrorType<unknown>
+    export type StartAdvertisingCampaignMutationVariables = {data: BodyType<AdvertisingCampaignInput>}
+
+    export const useStartAdvertisingCampaign = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startAdvertisingCampaign>>, TError,StartAdvertisingCampaignMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof startAdvertisingCampaign>>,
+        TError,
+        StartAdvertisingCampaignMutationVariables,
+        TContext
+      > => {
+      return useMutation(getStartAdvertisingCampaignMutationOptions(options), queryClient);
+    }
+
+export const getGetAdvertisingCampaignUrl = (id: string,) => {
+
+
+
+
+  return `/api/shop/advertising/campaigns/${id}`
+}
+
+export const getAdvertisingCampaign = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<AdvertisingCampaignDetail> => {
+
+  return customFetch<AdvertisingCampaignDetail>(getGetAdvertisingCampaignUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdvertisingCampaignQueryKey = (id: string,) => {
+    return [
+    `/api/shop/advertising/campaigns/${id}`
+    ] as const;
+    }
+
+
+export const getGetAdvertisingCampaignQueryOptions = <TData = Awaited<ReturnType<typeof getAdvertisingCampaign>>, TError = ErrorType<unknown>>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdvertisingCampaign>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdvertisingCampaignQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdvertisingCampaign>>> = ({ signal }) => getAdvertisingCampaign(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdvertisingCampaign>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAdvertisingCampaignQueryResult = NonNullable<Awaited<ReturnType<typeof getAdvertisingCampaign>>>
+export type GetAdvertisingCampaignQueryError = ErrorType<unknown>
+
+
+export function useGetAdvertisingCampaign<TData = Awaited<ReturnType<typeof getAdvertisingCampaign>>, TError = ErrorType<unknown>>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdvertisingCampaign>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdvertisingCampaign>>,
+          TError,
+          Awaited<ReturnType<typeof getAdvertisingCampaign>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAdvertisingCampaign<TData = Awaited<ReturnType<typeof getAdvertisingCampaign>>, TError = ErrorType<unknown>>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdvertisingCampaign>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdvertisingCampaign>>,
+          TError,
+          Awaited<ReturnType<typeof getAdvertisingCampaign>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAdvertisingCampaign<TData = Awaited<ReturnType<typeof getAdvertisingCampaign>>, TError = ErrorType<unknown>>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdvertisingCampaign>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetAdvertisingCampaign<TData = Awaited<ReturnType<typeof getAdvertisingCampaign>>, TError = ErrorType<unknown>>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdvertisingCampaign>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAdvertisingCampaignQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCancelAdvertisingCampaignUrl = (id: string,) => {
+
+
+
+
+  return `/api/shop/advertising/campaigns/${id}/cancel`
+}
+
+export const cancelAdvertisingCampaign = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<AdvertisingWorkspace> => {
+
+  return customFetch<AdvertisingWorkspace>(getCancelAdvertisingCampaignUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCancelAdvertisingCampaignMutationKey = () => ['cancelAdvertisingCampaign'] as const;
+
+export const getCancelAdvertisingCampaignMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelAdvertisingCampaign>>, TError,CancelAdvertisingCampaignMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cancelAdvertisingCampaign>>, TError,CancelAdvertisingCampaignMutationVariables, TContext> => {
+
+const mutationKey = getCancelAdvertisingCampaignMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelAdvertisingCampaign>>, CancelAdvertisingCampaignMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  cancelAdvertisingCampaign(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CancelAdvertisingCampaignMutationResult = NonNullable<Awaited<ReturnType<typeof cancelAdvertisingCampaign>>>
+
+    export type CancelAdvertisingCampaignMutationError = ErrorType<unknown>
+    export type CancelAdvertisingCampaignMutationVariables = {id: string}
+
+    export const useCancelAdvertisingCampaign = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelAdvertisingCampaign>>, TError,CancelAdvertisingCampaignMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof cancelAdvertisingCampaign>>,
+        TError,
+        CancelAdvertisingCampaignMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCancelAdvertisingCampaignMutationOptions(options), queryClient);
+    }
 
 export const getListProductGroupsUrl = () => {
 

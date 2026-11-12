@@ -8,7 +8,7 @@ import { is } from "drizzle-orm";
 import { PgTable, getTableConfig } from "drizzle-orm/pg-core";
 import { exportShopTransfer, importShopTransfer, previewShopTransfer, shopTransferStatus, reviewShopTransfer } from "../src/lib/shop-transfer";
 import { decodeShopArchive, encodeShopArchive, previewToken, verifyPreviewToken } from "../src/lib/shop-transfer-archive";
-import { tableKeys, transferTables, singleItemTransferSchemaHash, quantityTransferSchemaHash, productEmojiTransferSchemaHash, customEmojiTransferSchemaHash, stockAnnouncementTransferSchemaHash, productImageTransferSchemaHash } from "../src/lib/shop-transfer-tables";
+import { tableKeys, transferTables, singleItemTransferSchemaHash, quantityTransferSchemaHash, productEmojiTransferSchemaHash, customEmojiTransferSchemaHash, stockAnnouncementTransferSchemaHash, productImageTransferSchemaHash, preAdvertisingTransferSchemaHash } from "../src/lib/shop-transfer-tables";
 import { assignedInventoryIds } from "../src/lib/payment-inventory";
 import { validateShopRelationships } from "../src/lib/shop-transfer-validation";
 import { decryptCredential } from "../src/lib/inventory-encryption";
@@ -21,6 +21,7 @@ import { seedTransferFixture, cleanTransferFixture, syntheticInventory } from ".
 
 function withoutGroups(data: ReturnType<typeof decodeShopArchive>["data"]) {
   const copy = structuredClone(data);
+  for (const key of tableKeys.filter(key => key.startsWith("advertising"))) delete (copy as Partial<typeof copy>)[key];
   copy.products.forEach(row => { delete row.groupId; delete row.groupName; delete row.groupDescription; delete row.optionName; });
   return copy;
 }
@@ -45,13 +46,30 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
       name=CASE WHEN status='active' THEN 'TEST_ONLY options — Basic' ELSE 'TEST_ONLY options — Draft' END WHERE owner_id=$2`, [randomUUID(), source]);
     const exported = await exportShopTransfer(source);
     const decoded = decodeShopArchive(exported.zip);
+    await t.test("pre-advertising ZIPs keep option groups and receive empty advertising datasets", () => {
+      const data = structuredClone(decoded.data);
+      for (const key of tableKeys.filter(key => key.startsWith("advertising"))) delete (data as Partial<typeof data>)[key];
+      const bytes = strToU8(JSON.stringify(data));
+      const { signature: _, ...core } = decoded.manifest;
+      core.schemaHash = preAdvertisingTransferSchemaHash;
+      core.counts = Object.fromEntries(Object.entries(data).map(([key, rows]) => [key, rows.length]));
+      core.dataSha256 = createHash("sha256").update(bytes).digest("hex");
+      const signature = createHmac("sha256", process.env.SESSION_SECRET!).update(JSON.stringify(core)).digest("hex");
+      const files = unzipSync(exported.zip);
+      files["shop-data.json"] = bytes;
+      files["manifest.json"] = strToU8(JSON.stringify({ ...core, signature }));
+      const restored = decodeShopArchive(Buffer.from(zipSync(files)));
+      assert.deepEqual(restored.data.products, decoded.data.products);
+      assert.deepEqual(restored.data.advertisingBots, []);
+      validateShopRelationships(restored.data, source);
+    });
     await t.test("ZIP is actual complete shop data, with no credentials key or sessions included", async () => {
       const exportedTables = Object.values(database).filter(value => is(value, PgTable)).map(table => getTableConfig(table as PgTable).name);
       const included = Object.values(transferTables).map(table => getTableConfig(table).name);
       // New persistent tables must be explicitly covered or deliberately excluded.
       assert.deepEqual(new Set(exportedTables), new Set([...included, "admin_sessions", "admin_login_limits", "emoji_import_sessions"]));
       assert.deepEqual(Object.keys(unzipSync(exported.zip)).sort(), ["README.txt", "manifest.json", "shop-data.json"]);
-      assert.equal(Object.keys(decoded.data).length, 13);
+      assert.equal(Object.keys(decoded.data).length, tableKeys.length);
       for (const key of tableKeys) assert.equal(decoded.manifest.counts[key], decoded.data[key].length);
       assert.equal(decoded.data.customers.length, 2);
       assert.equal(decoded.data.inventory.length, 5);
@@ -71,7 +89,7 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
       allTables.updates = [{ id: "999999999999:123", createdAt: new Date() }];
       const complete = decodeShopArchive(encodeShopArchive(source, allTables).zip);
       validateShopRelationships(complete.data, source);
-      assert.ok(tableKeys.every(key => complete.data[key].length > 0), "format covers every dataset, including bot identity and deduplication");
+      assert.ok(tableKeys.filter(key => !key.startsWith("advertising")).every(key => complete.data[key].length > 0), "format covers every shop dataset, including bot identity and deduplication");
       const bound = await pool.query("SELECT owner_id FROM bot_connections WHERE id='primary'");
       if (bound.rows[0]?.owner_id && bound.rows[0].owner_id !== destination) {
         const preview = await previewShopTransfer(destination, encodeShopArchive(source, allTables).zip);
@@ -115,7 +133,7 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
       const {signature:_,...core} = decoded.manifest;
       core.schemaHash = singleItemTransferSchemaHash;
       core.dataSha256 = createHash("sha256").update(bytes).digest("hex");
-      core.counts = Object.fromEntries(tableKeys.filter(key=>key!=="customEmojis").map(key=>[key,legacyData[key].length]));
+      core.counts = Object.fromEntries(Object.entries(legacyData).map(([key,rows])=>[key,rows.length]));
       const signature = createHmac("sha256",process.env.SESSION_SECRET!).update(JSON.stringify(core)).digest("hex");
       const files = unzipSync(exported.zip);
       files["shop-data.json"] = bytes;
@@ -134,7 +152,7 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
       const bytes = strToU8(JSON.stringify(legacyData));
       const { signature: _, ...core } = decoded.manifest;
       core.schemaHash = quantityTransferSchemaHash;
-      core.counts = Object.fromEntries(tableKeys.filter(key=>key!=="customEmojis").map(key=>[key,legacyData[key].length]));
+      core.counts = Object.fromEntries(Object.entries(legacyData).map(([key,rows])=>[key,rows.length]));
       core.dataSha256 = createHash("sha256").update(bytes).digest("hex");
       const signature = createHmac("sha256", process.env.SESSION_SECRET!).update(JSON.stringify(core)).digest("hex");
       const files = unzipSync(exported.zip);
@@ -154,7 +172,7 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
       const bytes = strToU8(JSON.stringify(legacyData));
       const { signature: _, ...core } = decoded.manifest;
       core.schemaHash = productEmojiTransferSchemaHash;
-      core.counts = Object.fromEntries(tableKeys.filter(key=>key!=="customEmojis").map(key=>[key,legacyData[key].length]));
+      core.counts = Object.fromEntries(Object.entries(legacyData).map(([key,rows])=>[key,rows.length]));
       core.dataSha256 = createHash("sha256").update(bytes).digest("hex");
       const signature = createHmac("sha256", process.env.SESSION_SECRET!).update(JSON.stringify(core)).digest("hex");
       const files = unzipSync(exported.zip);
@@ -173,6 +191,7 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
       const bytes = strToU8(JSON.stringify(oldData));
       const { signature: _, ...core } = decoded.manifest;
       core.schemaHash = customEmojiTransferSchemaHash;
+      core.counts = Object.fromEntries(Object.entries(oldData).map(([key,rows])=>[key,rows.length]));
       core.dataSha256 = createHash("sha256").update(bytes).digest("hex");
       const signature = createHmac("sha256", process.env.SESSION_SECRET!).update(JSON.stringify(core)).digest("hex");
       const files = unzipSync(exported.zip);
@@ -194,6 +213,7 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
       const bytes = strToU8(JSON.stringify(oldData));
       const { signature: _, ...core } = decoded.manifest;
       core.schemaHash = stockAnnouncementTransferSchemaHash;
+      core.counts = Object.fromEntries(Object.entries(oldData).map(([key,rows])=>[key,rows.length]));
       core.dataSha256 = createHash("sha256").update(bytes).digest("hex");
       const signature = createHmac("sha256", process.env.SESSION_SECRET!).update(JSON.stringify(core)).digest("hex");
       const files = unzipSync(exported.zip);
@@ -208,6 +228,7 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
       const bytes = strToU8(JSON.stringify(oldData));
       const { signature: _, ...core } = decoded.manifest;
       core.schemaHash = productImageTransferSchemaHash;
+      core.counts = Object.fromEntries(Object.entries(oldData).map(([key,rows])=>[key,rows.length]));
       core.dataSha256 = createHash("sha256").update(bytes).digest("hex");
       const signature = createHmac("sha256", process.env.SESSION_SECRET!).update(JSON.stringify(core)).digest("hex");
       const files = unzipSync(exported.zip);

@@ -8,6 +8,732 @@
 import * as zod from 'zod';
 
 
+export const getAdvertisingWorkspaceResponseDraftTextMax = 4096;
+
+export const getAdvertisingWorkspaceResponseDraftImageUrlMax = 2048;
+
+export const getAdvertisingWorkspaceResponseDraftButtonTextMax = 64;
+
+export const getAdvertisingWorkspaceResponseDraftButtonUrlMax = 2048;
+
+
+
+export const GetAdvertisingWorkspaceResponse = zod.object({
+  "bot": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "username": zod.string(),
+  "botLink": zod.string().nullable(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable()
+}),
+  "draft": zod.object({
+  "text": zod.string().max(getAdvertisingWorkspaceResponseDraftTextMax),
+  "imageUrl": zod.string().max(getAdvertisingWorkspaceResponseDraftImageUrlMax).nullable(),
+  "buttonText": zod.string().max(getAdvertisingWorkspaceResponseDraftButtonTextMax),
+  "buttonUrl": zod.string().max(getAdvertisingWorkspaceResponseDraftButtonUrlMax).nullable()
+}),
+  "shopBotUrl": zod.string().nullable(),
+  "groups": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "target": zod.string(),
+  "kind": zod.enum(['public', 'private_invite', 'chat_id']),
+  "title": zod.string(),
+  "chatId": zod.string().nullable(),
+  "enabled": zod.boolean(),
+  "status": zod.enum(['pending', 'ready', 'needs_setup', 'duplicate', 'error']),
+  "note": zod.string(),
+  "checkedAt": zod.coerce.date().nullable()
+})),
+  "campaigns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['queued', 'sending', 'completed', 'partial', 'cancelled']),
+  "text": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "total": zod.number().int(),
+  "sent": zod.number().int(),
+  "failed": zod.number().int(),
+  "uncertain": zod.number().int(),
+  "pending": zod.number().int(),
+  "cancelled": zod.number().int()
+}))
+})
+
+
+export const connectAdvertisingBotBodyBotLinkMin = 5;
+export const connectAdvertisingBotBodyBotLinkMax = 150;
+
+export const connectAdvertisingBotBodyTokenMin = 20;
+export const connectAdvertisingBotBodyTokenMax = 200;
+
+
+
+export const ConnectAdvertisingBotBody = zod.object({
+  "botLink": zod.string().min(connectAdvertisingBotBodyBotLinkMin).max(connectAdvertisingBotBodyBotLinkMax),
+  "token": zod.string().min(connectAdvertisingBotBodyTokenMin).max(connectAdvertisingBotBodyTokenMax)
+})
+
+export const connectAdvertisingBotResponseDraftTextMax = 4096;
+
+export const connectAdvertisingBotResponseDraftImageUrlMax = 2048;
+
+export const connectAdvertisingBotResponseDraftButtonTextMax = 64;
+
+export const connectAdvertisingBotResponseDraftButtonUrlMax = 2048;
+
+
+
+export const ConnectAdvertisingBotResponse = zod.object({
+  "bot": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "username": zod.string(),
+  "botLink": zod.string().nullable(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable()
+}),
+  "draft": zod.object({
+  "text": zod.string().max(connectAdvertisingBotResponseDraftTextMax),
+  "imageUrl": zod.string().max(connectAdvertisingBotResponseDraftImageUrlMax).nullable(),
+  "buttonText": zod.string().max(connectAdvertisingBotResponseDraftButtonTextMax),
+  "buttonUrl": zod.string().max(connectAdvertisingBotResponseDraftButtonUrlMax).nullable()
+}),
+  "shopBotUrl": zod.string().nullable(),
+  "groups": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "target": zod.string(),
+  "kind": zod.enum(['public', 'private_invite', 'chat_id']),
+  "title": zod.string(),
+  "chatId": zod.string().nullable(),
+  "enabled": zod.boolean(),
+  "status": zod.enum(['pending', 'ready', 'needs_setup', 'duplicate', 'error']),
+  "note": zod.string(),
+  "checkedAt": zod.coerce.date().nullable()
+})),
+  "campaigns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['queued', 'sending', 'completed', 'partial', 'cancelled']),
+  "text": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "total": zod.number().int(),
+  "sent": zod.number().int(),
+  "failed": zod.number().int(),
+  "uncertain": zod.number().int(),
+  "pending": zod.number().int(),
+  "cancelled": zod.number().int()
+}))
+})
+
+
+export const disconnectAdvertisingBotResponseDraftTextMax = 4096;
+
+export const disconnectAdvertisingBotResponseDraftImageUrlMax = 2048;
+
+export const disconnectAdvertisingBotResponseDraftButtonTextMax = 64;
+
+export const disconnectAdvertisingBotResponseDraftButtonUrlMax = 2048;
+
+
+
+export const DisconnectAdvertisingBotResponse = zod.object({
+  "bot": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "username": zod.string(),
+  "botLink": zod.string().nullable(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable()
+}),
+  "draft": zod.object({
+  "text": zod.string().max(disconnectAdvertisingBotResponseDraftTextMax),
+  "imageUrl": zod.string().max(disconnectAdvertisingBotResponseDraftImageUrlMax).nullable(),
+  "buttonText": zod.string().max(disconnectAdvertisingBotResponseDraftButtonTextMax),
+  "buttonUrl": zod.string().max(disconnectAdvertisingBotResponseDraftButtonUrlMax).nullable()
+}),
+  "shopBotUrl": zod.string().nullable(),
+  "groups": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "target": zod.string(),
+  "kind": zod.enum(['public', 'private_invite', 'chat_id']),
+  "title": zod.string(),
+  "chatId": zod.string().nullable(),
+  "enabled": zod.boolean(),
+  "status": zod.enum(['pending', 'ready', 'needs_setup', 'duplicate', 'error']),
+  "note": zod.string(),
+  "checkedAt": zod.coerce.date().nullable()
+})),
+  "campaigns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['queued', 'sending', 'completed', 'partial', 'cancelled']),
+  "text": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "total": zod.number().int(),
+  "sent": zod.number().int(),
+  "failed": zod.number().int(),
+  "uncertain": zod.number().int(),
+  "pending": zod.number().int(),
+  "cancelled": zod.number().int()
+}))
+})
+
+
+export const checkAdvertisingBotResponseDraftTextMax = 4096;
+
+export const checkAdvertisingBotResponseDraftImageUrlMax = 2048;
+
+export const checkAdvertisingBotResponseDraftButtonTextMax = 64;
+
+export const checkAdvertisingBotResponseDraftButtonUrlMax = 2048;
+
+
+
+export const CheckAdvertisingBotResponse = zod.object({
+  "bot": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "username": zod.string(),
+  "botLink": zod.string().nullable(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable()
+}),
+  "draft": zod.object({
+  "text": zod.string().max(checkAdvertisingBotResponseDraftTextMax),
+  "imageUrl": zod.string().max(checkAdvertisingBotResponseDraftImageUrlMax).nullable(),
+  "buttonText": zod.string().max(checkAdvertisingBotResponseDraftButtonTextMax),
+  "buttonUrl": zod.string().max(checkAdvertisingBotResponseDraftButtonUrlMax).nullable()
+}),
+  "shopBotUrl": zod.string().nullable(),
+  "groups": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "target": zod.string(),
+  "kind": zod.enum(['public', 'private_invite', 'chat_id']),
+  "title": zod.string(),
+  "chatId": zod.string().nullable(),
+  "enabled": zod.boolean(),
+  "status": zod.enum(['pending', 'ready', 'needs_setup', 'duplicate', 'error']),
+  "note": zod.string(),
+  "checkedAt": zod.coerce.date().nullable()
+})),
+  "campaigns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['queued', 'sending', 'completed', 'partial', 'cancelled']),
+  "text": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "total": zod.number().int(),
+  "sent": zod.number().int(),
+  "failed": zod.number().int(),
+  "uncertain": zod.number().int(),
+  "pending": zod.number().int(),
+  "cancelled": zod.number().int()
+}))
+})
+
+
+export const discoverAdvertisingGroupsResponseDraftTextMax = 4096;
+
+export const discoverAdvertisingGroupsResponseDraftImageUrlMax = 2048;
+
+export const discoverAdvertisingGroupsResponseDraftButtonTextMax = 64;
+
+export const discoverAdvertisingGroupsResponseDraftButtonUrlMax = 2048;
+
+
+
+export const DiscoverAdvertisingGroupsResponse = zod.object({
+  "bot": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "username": zod.string(),
+  "botLink": zod.string().nullable(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable()
+}),
+  "draft": zod.object({
+  "text": zod.string().max(discoverAdvertisingGroupsResponseDraftTextMax),
+  "imageUrl": zod.string().max(discoverAdvertisingGroupsResponseDraftImageUrlMax).nullable(),
+  "buttonText": zod.string().max(discoverAdvertisingGroupsResponseDraftButtonTextMax),
+  "buttonUrl": zod.string().max(discoverAdvertisingGroupsResponseDraftButtonUrlMax).nullable()
+}),
+  "shopBotUrl": zod.string().nullable(),
+  "groups": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "target": zod.string(),
+  "kind": zod.enum(['public', 'private_invite', 'chat_id']),
+  "title": zod.string(),
+  "chatId": zod.string().nullable(),
+  "enabled": zod.boolean(),
+  "status": zod.enum(['pending', 'ready', 'needs_setup', 'duplicate', 'error']),
+  "note": zod.string(),
+  "checkedAt": zod.coerce.date().nullable()
+})),
+  "campaigns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['queued', 'sending', 'completed', 'partial', 'cancelled']),
+  "text": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "total": zod.number().int(),
+  "sent": zod.number().int(),
+  "failed": zod.number().int(),
+  "uncertain": zod.number().int(),
+  "pending": zod.number().int(),
+  "cancelled": zod.number().int()
+}))
+})
+
+
+export const previewAdvertisingGroupsBodyTextMax = 65536;
+
+
+
+export const PreviewAdvertisingGroupsBody = zod.object({
+  "text": zod.string().min(1).max(previewAdvertisingGroupsBodyTextMax)
+})
+
+export const PreviewAdvertisingGroupsResponse = zod.object({
+  "rows": zod.array(zod.object({
+  "input": zod.string(),
+  "target": zod.string().nullable(),
+  "kind": zod.enum(['public', 'private_invite', 'chat_id', 'invalid']),
+  "status": zod.enum(['new', 'duplicate', 'invalid', 'needs_setup']),
+  "reason": zod.string()
+}))
+})
+
+
+export const addAdvertisingGroupsBodyTargetsItemMax = 300;
+
+export const addAdvertisingGroupsBodyTargetsMax = 500;
+
+
+
+export const AddAdvertisingGroupsBody = zod.object({
+  "targets": zod.array(zod.string().max(addAdvertisingGroupsBodyTargetsItemMax)).min(1).max(addAdvertisingGroupsBodyTargetsMax),
+  "permissionConfirmed": zod.boolean()
+})
+
+export const addAdvertisingGroupsResponseDraftTextMax = 4096;
+
+export const addAdvertisingGroupsResponseDraftImageUrlMax = 2048;
+
+export const addAdvertisingGroupsResponseDraftButtonTextMax = 64;
+
+export const addAdvertisingGroupsResponseDraftButtonUrlMax = 2048;
+
+
+
+export const AddAdvertisingGroupsResponse = zod.object({
+  "bot": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "username": zod.string(),
+  "botLink": zod.string().nullable(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable()
+}),
+  "draft": zod.object({
+  "text": zod.string().max(addAdvertisingGroupsResponseDraftTextMax),
+  "imageUrl": zod.string().max(addAdvertisingGroupsResponseDraftImageUrlMax).nullable(),
+  "buttonText": zod.string().max(addAdvertisingGroupsResponseDraftButtonTextMax),
+  "buttonUrl": zod.string().max(addAdvertisingGroupsResponseDraftButtonUrlMax).nullable()
+}),
+  "shopBotUrl": zod.string().nullable(),
+  "groups": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "target": zod.string(),
+  "kind": zod.enum(['public', 'private_invite', 'chat_id']),
+  "title": zod.string(),
+  "chatId": zod.string().nullable(),
+  "enabled": zod.boolean(),
+  "status": zod.enum(['pending', 'ready', 'needs_setup', 'duplicate', 'error']),
+  "note": zod.string(),
+  "checkedAt": zod.coerce.date().nullable()
+})),
+  "campaigns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['queued', 'sending', 'completed', 'partial', 'cancelled']),
+  "text": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "total": zod.number().int(),
+  "sent": zod.number().int(),
+  "failed": zod.number().int(),
+  "uncertain": zod.number().int(),
+  "pending": zod.number().int(),
+  "cancelled": zod.number().int()
+}))
+})
+
+
+export const checkAdvertisingGroupsBodyGroupIdsMax = 20;
+
+
+
+export const CheckAdvertisingGroupsBody = zod.object({
+  "groupIds": zod.array(zod.string().uuid()).min(1).max(checkAdvertisingGroupsBodyGroupIdsMax)
+})
+
+export const checkAdvertisingGroupsResponseDraftTextMax = 4096;
+
+export const checkAdvertisingGroupsResponseDraftImageUrlMax = 2048;
+
+export const checkAdvertisingGroupsResponseDraftButtonTextMax = 64;
+
+export const checkAdvertisingGroupsResponseDraftButtonUrlMax = 2048;
+
+
+
+export const CheckAdvertisingGroupsResponse = zod.object({
+  "bot": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "username": zod.string(),
+  "botLink": zod.string().nullable(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable()
+}),
+  "draft": zod.object({
+  "text": zod.string().max(checkAdvertisingGroupsResponseDraftTextMax),
+  "imageUrl": zod.string().max(checkAdvertisingGroupsResponseDraftImageUrlMax).nullable(),
+  "buttonText": zod.string().max(checkAdvertisingGroupsResponseDraftButtonTextMax),
+  "buttonUrl": zod.string().max(checkAdvertisingGroupsResponseDraftButtonUrlMax).nullable()
+}),
+  "shopBotUrl": zod.string().nullable(),
+  "groups": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "target": zod.string(),
+  "kind": zod.enum(['public', 'private_invite', 'chat_id']),
+  "title": zod.string(),
+  "chatId": zod.string().nullable(),
+  "enabled": zod.boolean(),
+  "status": zod.enum(['pending', 'ready', 'needs_setup', 'duplicate', 'error']),
+  "note": zod.string(),
+  "checkedAt": zod.coerce.date().nullable()
+})),
+  "campaigns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['queued', 'sending', 'completed', 'partial', 'cancelled']),
+  "text": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "total": zod.number().int(),
+  "sent": zod.number().int(),
+  "failed": zod.number().int(),
+  "uncertain": zod.number().int(),
+  "pending": zod.number().int(),
+  "cancelled": zod.number().int()
+}))
+})
+
+
+export const UpdateAdvertisingGroupParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const updateAdvertisingGroupBodyTargetMax = 300;
+
+
+
+export const UpdateAdvertisingGroupBody = zod.object({
+  "target": zod.string().min(1).max(updateAdvertisingGroupBodyTargetMax).optional(),
+  "enabled": zod.boolean().optional()
+})
+
+export const updateAdvertisingGroupResponseDraftTextMax = 4096;
+
+export const updateAdvertisingGroupResponseDraftImageUrlMax = 2048;
+
+export const updateAdvertisingGroupResponseDraftButtonTextMax = 64;
+
+export const updateAdvertisingGroupResponseDraftButtonUrlMax = 2048;
+
+
+
+export const UpdateAdvertisingGroupResponse = zod.object({
+  "bot": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "username": zod.string(),
+  "botLink": zod.string().nullable(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable()
+}),
+  "draft": zod.object({
+  "text": zod.string().max(updateAdvertisingGroupResponseDraftTextMax),
+  "imageUrl": zod.string().max(updateAdvertisingGroupResponseDraftImageUrlMax).nullable(),
+  "buttonText": zod.string().max(updateAdvertisingGroupResponseDraftButtonTextMax),
+  "buttonUrl": zod.string().max(updateAdvertisingGroupResponseDraftButtonUrlMax).nullable()
+}),
+  "shopBotUrl": zod.string().nullable(),
+  "groups": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "target": zod.string(),
+  "kind": zod.enum(['public', 'private_invite', 'chat_id']),
+  "title": zod.string(),
+  "chatId": zod.string().nullable(),
+  "enabled": zod.boolean(),
+  "status": zod.enum(['pending', 'ready', 'needs_setup', 'duplicate', 'error']),
+  "note": zod.string(),
+  "checkedAt": zod.coerce.date().nullable()
+})),
+  "campaigns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['queued', 'sending', 'completed', 'partial', 'cancelled']),
+  "text": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "total": zod.number().int(),
+  "sent": zod.number().int(),
+  "failed": zod.number().int(),
+  "uncertain": zod.number().int(),
+  "pending": zod.number().int(),
+  "cancelled": zod.number().int()
+}))
+})
+
+
+export const DeleteAdvertisingGroupParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const deleteAdvertisingGroupResponseDraftTextMax = 4096;
+
+export const deleteAdvertisingGroupResponseDraftImageUrlMax = 2048;
+
+export const deleteAdvertisingGroupResponseDraftButtonTextMax = 64;
+
+export const deleteAdvertisingGroupResponseDraftButtonUrlMax = 2048;
+
+
+
+export const DeleteAdvertisingGroupResponse = zod.object({
+  "bot": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "username": zod.string(),
+  "botLink": zod.string().nullable(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable()
+}),
+  "draft": zod.object({
+  "text": zod.string().max(deleteAdvertisingGroupResponseDraftTextMax),
+  "imageUrl": zod.string().max(deleteAdvertisingGroupResponseDraftImageUrlMax).nullable(),
+  "buttonText": zod.string().max(deleteAdvertisingGroupResponseDraftButtonTextMax),
+  "buttonUrl": zod.string().max(deleteAdvertisingGroupResponseDraftButtonUrlMax).nullable()
+}),
+  "shopBotUrl": zod.string().nullable(),
+  "groups": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "target": zod.string(),
+  "kind": zod.enum(['public', 'private_invite', 'chat_id']),
+  "title": zod.string(),
+  "chatId": zod.string().nullable(),
+  "enabled": zod.boolean(),
+  "status": zod.enum(['pending', 'ready', 'needs_setup', 'duplicate', 'error']),
+  "note": zod.string(),
+  "checkedAt": zod.coerce.date().nullable()
+})),
+  "campaigns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['queued', 'sending', 'completed', 'partial', 'cancelled']),
+  "text": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "total": zod.number().int(),
+  "sent": zod.number().int(),
+  "failed": zod.number().int(),
+  "uncertain": zod.number().int(),
+  "pending": zod.number().int(),
+  "cancelled": zod.number().int()
+}))
+})
+
+
+export const saveAdvertisingDraftBodyTextMax = 4096;
+
+export const saveAdvertisingDraftBodyImageUrlMax = 2048;
+
+export const saveAdvertisingDraftBodyButtonTextMax = 64;
+
+export const saveAdvertisingDraftBodyButtonUrlMax = 2048;
+
+
+
+export const SaveAdvertisingDraftBody = zod.object({
+  "text": zod.string().max(saveAdvertisingDraftBodyTextMax),
+  "imageUrl": zod.string().max(saveAdvertisingDraftBodyImageUrlMax).nullable(),
+  "buttonText": zod.string().max(saveAdvertisingDraftBodyButtonTextMax),
+  "buttonUrl": zod.string().max(saveAdvertisingDraftBodyButtonUrlMax).nullable()
+})
+
+export const saveAdvertisingDraftResponseDraftTextMax = 4096;
+
+export const saveAdvertisingDraftResponseDraftImageUrlMax = 2048;
+
+export const saveAdvertisingDraftResponseDraftButtonTextMax = 64;
+
+export const saveAdvertisingDraftResponseDraftButtonUrlMax = 2048;
+
+
+
+export const SaveAdvertisingDraftResponse = zod.object({
+  "bot": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "username": zod.string(),
+  "botLink": zod.string().nullable(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable()
+}),
+  "draft": zod.object({
+  "text": zod.string().max(saveAdvertisingDraftResponseDraftTextMax),
+  "imageUrl": zod.string().max(saveAdvertisingDraftResponseDraftImageUrlMax).nullable(),
+  "buttonText": zod.string().max(saveAdvertisingDraftResponseDraftButtonTextMax),
+  "buttonUrl": zod.string().max(saveAdvertisingDraftResponseDraftButtonUrlMax).nullable()
+}),
+  "shopBotUrl": zod.string().nullable(),
+  "groups": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "target": zod.string(),
+  "kind": zod.enum(['public', 'private_invite', 'chat_id']),
+  "title": zod.string(),
+  "chatId": zod.string().nullable(),
+  "enabled": zod.boolean(),
+  "status": zod.enum(['pending', 'ready', 'needs_setup', 'duplicate', 'error']),
+  "note": zod.string(),
+  "checkedAt": zod.coerce.date().nullable()
+})),
+  "campaigns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['queued', 'sending', 'completed', 'partial', 'cancelled']),
+  "text": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "total": zod.number().int(),
+  "sent": zod.number().int(),
+  "failed": zod.number().int(),
+  "uncertain": zod.number().int(),
+  "pending": zod.number().int(),
+  "cancelled": zod.number().int()
+}))
+})
+
+
+export const startAdvertisingCampaignBodyDraftTextMax = 4096;
+
+export const startAdvertisingCampaignBodyDraftImageUrlMax = 2048;
+
+export const startAdvertisingCampaignBodyDraftButtonTextMax = 64;
+
+export const startAdvertisingCampaignBodyDraftButtonUrlMax = 2048;
+
+export const startAdvertisingCampaignBodyGroupIdsMax = 500;
+
+
+
+export const StartAdvertisingCampaignBody = zod.object({
+  "draft": zod.object({
+  "text": zod.string().max(startAdvertisingCampaignBodyDraftTextMax),
+  "imageUrl": zod.string().max(startAdvertisingCampaignBodyDraftImageUrlMax).nullable(),
+  "buttonText": zod.string().max(startAdvertisingCampaignBodyDraftButtonTextMax),
+  "buttonUrl": zod.string().max(startAdvertisingCampaignBodyDraftButtonUrlMax).nullable()
+}),
+  "groupIds": zod.array(zod.string().uuid()).min(1).max(startAdvertisingCampaignBodyGroupIdsMax),
+  "permissionConfirmed": zod.boolean(),
+  "idempotencyKey": zod.string().uuid()
+})
+
+export const StartAdvertisingCampaignResponse = zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['queued', 'sending', 'completed', 'partial', 'cancelled']),
+  "text": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "total": zod.number().int(),
+  "sent": zod.number().int(),
+  "failed": zod.number().int(),
+  "uncertain": zod.number().int(),
+  "pending": zod.number().int(),
+  "cancelled": zod.number().int()
+})
+
+
+export const GetAdvertisingCampaignParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const GetAdvertisingCampaignResponse = zod.object({
+  "campaign": zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['queued', 'sending', 'completed', 'partial', 'cancelled']),
+  "text": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "total": zod.number().int(),
+  "sent": zod.number().int(),
+  "failed": zod.number().int(),
+  "uncertain": zod.number().int(),
+  "pending": zod.number().int(),
+  "cancelled": zod.number().int()
+}),
+  "deliveries": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "target": zod.string(),
+  "status": zod.enum(['pending', 'sending', 'sent', 'failed', 'uncertain', 'cancelled']),
+  "note": zod.string(),
+  "sentAt": zod.coerce.date().nullable()
+}))
+})
+
+
+export const CancelAdvertisingCampaignParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const cancelAdvertisingCampaignResponseDraftTextMax = 4096;
+
+export const cancelAdvertisingCampaignResponseDraftImageUrlMax = 2048;
+
+export const cancelAdvertisingCampaignResponseDraftButtonTextMax = 64;
+
+export const cancelAdvertisingCampaignResponseDraftButtonUrlMax = 2048;
+
+
+
+export const CancelAdvertisingCampaignResponse = zod.object({
+  "bot": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "username": zod.string(),
+  "botLink": zod.string().nullable(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable()
+}),
+  "draft": zod.object({
+  "text": zod.string().max(cancelAdvertisingCampaignResponseDraftTextMax),
+  "imageUrl": zod.string().max(cancelAdvertisingCampaignResponseDraftImageUrlMax).nullable(),
+  "buttonText": zod.string().max(cancelAdvertisingCampaignResponseDraftButtonTextMax),
+  "buttonUrl": zod.string().max(cancelAdvertisingCampaignResponseDraftButtonUrlMax).nullable()
+}),
+  "shopBotUrl": zod.string().nullable(),
+  "groups": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "target": zod.string(),
+  "kind": zod.enum(['public', 'private_invite', 'chat_id']),
+  "title": zod.string(),
+  "chatId": zod.string().nullable(),
+  "enabled": zod.boolean(),
+  "status": zod.enum(['pending', 'ready', 'needs_setup', 'duplicate', 'error']),
+  "note": zod.string(),
+  "checkedAt": zod.coerce.date().nullable()
+})),
+  "campaigns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['queued', 'sending', 'completed', 'partial', 'cancelled']),
+  "text": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "total": zod.number().int(),
+  "sent": zod.number().int(),
+  "failed": zod.number().int(),
+  "uncertain": zod.number().int(),
+  "pending": zod.number().int(),
+  "cancelled": zod.number().int()
+}))
+})
+
+
 export const ListProductGroupsResponseItem = zod.object({
   "id": zod.string(),
   "name": zod.string(),

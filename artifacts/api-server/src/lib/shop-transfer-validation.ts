@@ -9,6 +9,9 @@ import { SaveSettingsBody } from "@workspace/api-zod";
 import { validCoinNormalIcon } from "./coin-button-icons";
 import { coinNames } from "./deposit-coin-buttons";
 import { validProductMediaUrl } from "./product-media";
+import { parseAdvertisingTarget } from "./advertising-targets";
+import { validateAdvertisingDraft } from "./advertising-telegram";
+import type { AdvertisingDraft } from "@workspace/api-zod";
 
 export function validateShopRelationships(data: TransferData, ownerId: string) {
   let area = "ownership";
@@ -21,7 +24,7 @@ export function validateShopRelationships(data: TransferData, ownerId: string) {
     for (const key of tableKeys) for (const row of data[key]) {
       if ("ownerId" in row && row.ownerId !== ownerId) throw new Error();
     }
-    for (const key of ["settings", "providerCredentials", "runtime", "connection"] as const) {
+    for (const key of ["settings", "providerCredentials", "runtime", "connection", "advertisingBots"] as const) {
       if (data[key].length > 1) throw new Error();
     }
     area = "duplicate identifiers";
@@ -113,6 +116,40 @@ export function validateShopRelationships(data: TransferData, ownerId: string) {
     if (connection && (connection.id !== "primary" || !/^\d+$/.test(String(connection.botId)))) throw new Error();
     if (data.updates.some(row => !connection || !String(row.id).startsWith(`${connection.botId}:`))) throw new Error();
     area = "provider credential encryption";
+    const advertising = data.advertisingBots[0];
+    const jsonDraft = (value: unknown) => (typeof value === "string" ? JSON.parse(value) : value) as AdvertisingDraft;
+    if (advertising) {
+      validateAdvertisingDraft(jsonDraft(advertising.draft));
+      if (advertising.tokenEncrypted !== null) {
+        const token = decryptProviderSecret(String(advertising.tokenEncrypted), ownerId, "advertising");
+        if (token.split(":")[0] !== advertising.botId || String(advertising.botId) === String(connection?.botId)) throw new Error();
+      } else if (advertising.botId !== null) throw new Error();
+    }
+    area = "advertising groups and delivery history";
+    if (data.advertisingGroups.length > 1000) throw new Error();
+    indexed(data.advertisingGroups); indexed(data.advertisingGroups, "target");
+    indexed(data.advertisingGroups.filter(row => row.chatId !== null), "chatId");
+    for (const group of data.advertisingGroups) {
+      const parsed = parseAdvertisingTarget(String(group.target));
+      if (parsed.target !== group.target || parsed.kind !== group.kind ||
+        !["pending", "ready", "needs_setup", "duplicate", "error"].includes(String(group.status)) ||
+        (group.chatId !== null && !/^-[1-9]\d{5,15}$/.test(String(group.chatId))) ||
+        (group.status === "ready" && group.chatId === null)) throw new Error();
+    }
+    const adCampaigns = indexed(data.advertisingCampaigns);
+    indexed(data.advertisingDeliveries);
+    const recipients = new Set<string>();
+    for (const campaign of data.advertisingCampaigns) {
+      if (!["queued", "sending", "completed", "partial", "cancelled"].includes(String(campaign.status))) throw new Error();
+      validateAdvertisingDraft(jsonDraft(campaign.draft), true);
+    }
+    for (const delivery of data.advertisingDeliveries) {
+      const key = `${delivery.campaignId}:${delivery.chatId}`;
+      if (!adCampaigns.has(delivery.campaignId) || recipients.has(key) ||
+        !/^-[1-9]\d{5,15}$/.test(String(delivery.chatId)) ||
+        !["pending", "sending", "sent", "failed", "uncertain", "cancelled"].includes(String(delivery.status))) throw new Error();
+      recipients.add(key);
+    }
     const credentials = data.providerCredentials[0];
     if (credentials) {
       for (const [field, purpose] of [

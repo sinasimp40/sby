@@ -7,6 +7,7 @@ import {
   shopProducts, shopInventory, botCustomers, shopPayments, walletEntries, shopRecords,
   shopSettings, shopActivity, providerCredentials, botRuntimeSettings, botConnections, botUpdates,
   shopCustomEmojis,
+  advertisingBots, advertisingGroups, advertisingCampaigns, advertisingDeliveries,
 } from "@workspace/db";
 
 // Explicit allowlist: login sessions and database/platform credentials never travel.
@@ -15,6 +16,7 @@ export const transferTables = {
   payments: shopPayments, walletEntries, records: shopRecords, settings: shopSettings,
   activity: shopActivity, providerCredentials, runtime: botRuntimeSettings,
   connection: botConnections, updates: botUpdates, customEmojis: shopCustomEmojis,
+  advertisingBots, advertisingGroups, advertisingCampaigns, advertisingDeliveries,
 };
 export type TransferTable = keyof typeof transferTables;
 export type TransferRow = Record<string, unknown>;
@@ -35,6 +37,8 @@ function schemaHash() { return createHash("sha256").update(JSON.stringify(tableK
   })),
 })))).digest("hex"); }
 export const transferSchemaHash = schemaHash();
+export const preAdvertisingTransferSchemaHash = "3713eeb9bf5cd5165800e1c7bd281f307d9e62213111a1d198ce415eb46a3468";
+export const advertisingTransferKeys = ["advertisingBots", "advertisingGroups", "advertisingCampaigns", "advertisingDeliveries"] as const;
 export const productImageTransferSchemaHash = "3be12df019faf16f9003b94852b3901d49efdd326334563d078ceeee9a5f419d";
 export const stockAnnouncementTransferSchemaHash = "31b3e0ba15d0ec9c6c50fe4459d27c51fa66bf8a303c521d7bfabeeedb1bcc37";
 export const customEmojiTransferSchemaHash = "77ef1802650bd259a6a5be7810dd487d2c3f55fc4a24096d0e22780e6c5604f2";

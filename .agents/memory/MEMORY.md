@@ -8,3 +8,4 @@
 - [Product options](product-options.md) — One product entry can contain independently named, priced and stocked options; grouping must preserve existing inventory identity.
 - [Product alerts](product-alerts.md) — Wait for stock; label the first announcement “New product” and subsequent restocks “Added stock.”
 - [Welcome message media](welcome-media.md) — The user requires an image link above welcome text, delivered with its menu in exactly one Telegram message.
+- [Separate advertising bot](advertising-bot.md) — Group promotions use a different bot in the same dashboard; imported links require permission checks and sends require confirmation.

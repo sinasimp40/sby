@@ -5,6 +5,220 @@
  * Telecart shop administration. Live Telegram and payments are not connected.
  * OpenAPI spec version: 0.1.0
  */
+export interface AdvertisingDraft {
+  /** @maxLength 4096 */
+  text: string;
+  /**
+     * @maxLength 2048
+     * @nullable
+     */
+  imageUrl: string | null;
+  /** @maxLength 64 */
+  buttonText: string;
+  /**
+     * @maxLength 2048
+     * @nullable
+     */
+  buttonUrl: string | null;
+}
+
+export interface AdvertisingConnectionInput {
+  /**
+     * @minLength 5
+     * @maxLength 150
+     */
+  botLink: string;
+  /**
+     * @minLength 20
+     * @maxLength 200
+     */
+  token: string;
+}
+
+export interface AdvertisingBot {
+  configured: boolean;
+  connected: boolean;
+  username: string;
+  /** @nullable */
+  botLink: string | null;
+  /** @nullable */
+  checkedAt: string | null;
+  /** @nullable */
+  error: string | null;
+}
+
+export type AdvertisingGroupKind = typeof AdvertisingGroupKind[keyof typeof AdvertisingGroupKind];
+
+
+export const AdvertisingGroupKind = {
+  public: 'public',
+  private_invite: 'private_invite',
+  chat_id: 'chat_id',
+} as const;
+
+export type AdvertisingGroupStatus = typeof AdvertisingGroupStatus[keyof typeof AdvertisingGroupStatus];
+
+
+export const AdvertisingGroupStatus = {
+  pending: 'pending',
+  ready: 'ready',
+  needs_setup: 'needs_setup',
+  duplicate: 'duplicate',
+  error: 'error',
+} as const;
+
+export interface AdvertisingGroup {
+  id: string;
+  target: string;
+  kind: AdvertisingGroupKind;
+  title: string;
+  /** @nullable */
+  chatId: string | null;
+  enabled: boolean;
+  status: AdvertisingGroupStatus;
+  note: string;
+  /** @nullable */
+  checkedAt: string | null;
+}
+
+export interface AdvertisingImportInput {
+  /**
+     * @minLength 1
+     * @maxLength 65536
+     */
+  text: string;
+}
+
+export type AdvertisingImportRowKind = typeof AdvertisingImportRowKind[keyof typeof AdvertisingImportRowKind];
+
+
+export const AdvertisingImportRowKind = {
+  public: 'public',
+  private_invite: 'private_invite',
+  chat_id: 'chat_id',
+  invalid: 'invalid',
+} as const;
+
+export type AdvertisingImportRowStatus = typeof AdvertisingImportRowStatus[keyof typeof AdvertisingImportRowStatus];
+
+
+export const AdvertisingImportRowStatus = {
+  new: 'new',
+  duplicate: 'duplicate',
+  invalid: 'invalid',
+  needs_setup: 'needs_setup',
+} as const;
+
+export interface AdvertisingImportRow {
+  input: string;
+  /** @nullable */
+  target: string | null;
+  kind: AdvertisingImportRowKind;
+  status: AdvertisingImportRowStatus;
+  reason: string;
+}
+
+export interface AdvertisingImportPreview {
+  rows: AdvertisingImportRow[];
+}
+
+export interface AdvertisingGroupsInput {
+  /**
+     * @minItems 1
+     * @maxItems 500
+     * @items.maxLength 300
+     */
+  targets: string[];
+  permissionConfirmed: boolean;
+}
+
+export interface AdvertisingGroupSelection {
+  /**
+     * @minItems 1
+     * @maxItems 20
+     */
+  groupIds: string[];
+}
+
+export interface AdvertisingGroupUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 300
+     */
+  target?: string;
+  enabled?: boolean;
+}
+
+export interface AdvertisingCampaignInput {
+  draft: AdvertisingDraft;
+  /**
+     * @minItems 1
+     * @maxItems 500
+     */
+  groupIds: string[];
+  permissionConfirmed: boolean;
+  idempotencyKey: string;
+}
+
+export type AdvertisingCampaignStatus = typeof AdvertisingCampaignStatus[keyof typeof AdvertisingCampaignStatus];
+
+
+export const AdvertisingCampaignStatus = {
+  queued: 'queued',
+  sending: 'sending',
+  completed: 'completed',
+  partial: 'partial',
+  cancelled: 'cancelled',
+} as const;
+
+export interface AdvertisingCampaign {
+  id: string;
+  status: AdvertisingCampaignStatus;
+  text: string;
+  createdAt: string;
+  total: number;
+  sent: number;
+  failed: number;
+  uncertain: number;
+  pending: number;
+  cancelled: number;
+}
+
+export type AdvertisingDeliveryStatus = typeof AdvertisingDeliveryStatus[keyof typeof AdvertisingDeliveryStatus];
+
+
+export const AdvertisingDeliveryStatus = {
+  pending: 'pending',
+  sending: 'sending',
+  sent: 'sent',
+  failed: 'failed',
+  uncertain: 'uncertain',
+  cancelled: 'cancelled',
+} as const;
+
+export interface AdvertisingDelivery {
+  id: string;
+  target: string;
+  status: AdvertisingDeliveryStatus;
+  note: string;
+  /** @nullable */
+  sentAt: string | null;
+}
+
+export interface AdvertisingCampaignDetail {
+  campaign: AdvertisingCampaign;
+  deliveries: AdvertisingDelivery[];
+}
+
+export interface AdvertisingWorkspace {
+  bot: AdvertisingBot;
+  draft: AdvertisingDraft;
+  /** @nullable */
+  shopBotUrl: string | null;
+  groups: AdvertisingGroup[];
+  campaigns: AdvertisingCampaign[];
+}
+
 export interface PaymentMinimum {
   coin: string;
   /** @nullable */
