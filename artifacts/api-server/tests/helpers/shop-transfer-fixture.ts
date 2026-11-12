@@ -51,7 +51,7 @@ export async function seedTransferFixture(owner: string) {
 export async function cleanTransferFixture(owner: string) {
   if (!owner.startsWith("transfer-test-")) throw new Error("Refusing non-test cleanup.");
   await pool.query("DELETE FROM wallet_entries WHERE customer_id IN (SELECT id FROM bot_customers WHERE owner_id=$1)", [owner]);
-  for (const table of ["shop_payments", "shop_inventory", "shop_products", "bot_customers", "shop_records", "shop_settings", "shop_activity", "provider_credentials", "bot_runtime_settings"]) {
+  for (const table of ["shop_payments", "shop_inventory", "shop_products", "shop_custom_emojis", "emoji_import_sessions", "bot_customers", "shop_records", "shop_settings", "shop_activity", "provider_credentials", "bot_runtime_settings"]) {
     await pool.query(`DELETE FROM "${table}" WHERE owner_id=$1`, [owner]);
   }
 }

@@ -24,7 +24,7 @@ export async function telegram<T = Record<string, unknown>>(method: string, body
 
 // Administrative calls may configure a paused bot, but may never send messages.
 export async function telegramControl<T = Record<string, unknown>>(
-  method: "getMe" | "getWebhookInfo" | "setWebhook" | "deleteWebhook", body: Record<string, unknown> = {},
+  method: "getMe" | "getWebhookInfo" | "setWebhook" | "deleteWebhook" | "getStickerSet" | "getCustomEmojiStickers" | "getFile", body: Record<string, unknown> = {},
 ): Promise<T> {
   return telegramRequest<T>(method, body);
 }

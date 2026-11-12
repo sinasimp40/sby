@@ -34,4 +34,9 @@ export interface ProductInput {
      * @maxLength 32
      */
   buttonEmoji?: string;
+  /**
+     * @nullable
+     * @pattern ^[0-9]{1,30}$
+     */
+  buttonCustomEmojiId?: string | null;
 }

@@ -18,8 +18,10 @@ import { customerDeliveredInventory } from "./order-delivery";
 import { quantityPrompt, quantityKeyboard, purchaseConfirmation } from "./purchase-copy";
 import { MAX_PURCHASE_QUANTITY } from "./checkout-allocation";
 import { productCatalogMenu } from "./telegram-catalog";
+import { handleEmojiImportMessage, type EmojiImportMessage } from "./emoji-import-session";
+import { withCustomEmojiFallback } from "./custom-emoji-delivery";
 
-interface TelegramMessage {
+interface TelegramMessage extends EmojiImportMessage {
   message_id?: number;
   photo?: Array<{ file_id?: string }>;
   chat: { id: number; type: string };
@@ -49,6 +51,20 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
     if (!locked) throw new CommerceError("Update is being processed. Retry shortly.", 503);
     const [seen] = await db.select().from(botUpdates).where(eq(botUpdates.id, eventId));
     if (seen) return;
+    // A dashboard-authorized import never becomes a shop customer or purchase selection.
+    if (!update.callback_query) {
+      try {
+        if (await handleEmojiImportMessage(connection.ownerId, String(message.chat.id), message)) {
+          await db.insert(botUpdates).values({ id: eventId }).onConflictDoNothing();
+          return;
+        }
+      } catch (error) {
+        if (!(error instanceof CommerceError) || error.status >= 500) throw error;
+        await telegram("sendMessage", { chat_id: String(message.chat.id), text: error.message });
+        await db.insert(botUpdates).values({ id: eventId }).onConflictDoNothing();
+        return;
+      }
+    }
     const username = telegramCustomerName(from);
     const [customer] = await db.insert(botCustomers).values({
       id: randomUUID(), ownerId: connection.ownerId, telegramId: String(from.id),
@@ -255,7 +271,11 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
       } else if (data === "products" || data.startsWith("products:") || [settings.productsLabel, labels[0]![0], "/products"].includes(text)) {
         const page = data.startsWith("products:") && /^products:\d{1,9}$/.test(data)
           ? Number(data.split(":")[1]) : 0;
-        await showMenuView(productCatalogMenu(await productsForOwner(connection.ownerId), page));
+        const products = await productsForOwner(connection.ownerId);
+        await withCustomEmojiFallback(
+          () => showMenuView(productCatalogMenu(products, page)),
+          () => showMenuView(productCatalogMenu(products, page, false)),
+        );
       } else if ([settings.supportLabel, labels[0]![1], "/support"].includes(text)) {
         await send(`${settings.supportMessage}${settings.supportUsername ? `\n@${settings.supportUsername.replace(/^@/, "")}` : ""}`);
       } else if ([settings.walletLabel, labels[1]![0], "/wallet"].includes(text)) {

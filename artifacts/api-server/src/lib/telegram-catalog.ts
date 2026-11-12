@@ -8,11 +8,12 @@ interface CatalogProduct {
   stock: number;
   status: string;
   buttonEmoji?: string;
+  buttonCustomEmojiId?: string | null;
 }
 
 export const CATALOG_PAGE_SIZE = 10;
 
-export function productCatalogMenu(input: CatalogProduct[], requestedPage = 0) {
+export function productCatalogMenu(input: CatalogProduct[], requestedPage = 0, customIcons = true) {
   const products = input.filter(product => product.status === "active" && product.stock > 0)
     .sort((a, b) => a.id - b.id);
   const pages = Math.max(1, Math.ceil(products.length / CATALOG_PAGE_SIZE));
@@ -20,10 +21,14 @@ export function productCatalogMenu(input: CatalogProduct[], requestedPage = 0) {
     ? Math.max(0, Math.min(requestedPage, pages - 1)) : 0;
   const start = page * CATALOG_PAGE_SIZE;
   const entries = products.slice(start, start + CATALOG_PAGE_SIZE);
-  const buttons = entries.map(product => ({
-    text: `${isProductEmoji(product.buttonEmoji) ? product.buttonEmoji : "🛍"} ${Array.from(customerMessageText(product.name)).slice(0, 30).join("")} · $${product.price.toFixed(2)} · 📦 ${product.stock}`,
+  const buttons = entries.map(product => {
+    const customId = customIcons && typeof product.buttonCustomEmojiId === "string" &&
+      /^[0-9]{1,30}$/.test(product.buttonCustomEmojiId) ? product.buttonCustomEmojiId : null;
+    return {
+    ...(customId ? { icon_custom_emoji_id: customId } : {}),
+    text: `${customId ? "" : `${isProductEmoji(product.buttonEmoji) ? product.buttonEmoji : "🛍"} `}${Array.from(customerMessageText(product.name)).slice(0, 30).join("")} · $${product.price.toFixed(2)} · 📦 ${product.stock}`,
     callback_data: `buy:${product.id}`,
-  }));
+  }; });
   const inline_keyboard = Array.from({ length: Math.ceil(buttons.length / 2) },
     (_, index) => buttons.slice(index * 2, index * 2 + 2));
   const navigation = [

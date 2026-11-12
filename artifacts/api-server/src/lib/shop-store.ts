@@ -16,6 +16,7 @@ export async function productsForOwner(ownerId: string | null) {
     status: shopProducts.status,
     deliveryFormat: shopProducts.deliveryFormat,
     buttonEmoji: shopProducts.buttonEmoji,
+    buttonCustomEmojiId: shopProducts.buttonCustomEmojiId,
     createdAt: shopProducts.createdAt,
     stock: sql<number>`count(${shopInventory.id}) filter (where ${shopInventory.status} = 'available')::integer`,
     sold: sql<number>`count(${shopInventory.id}) filter (where ${shopInventory.status} = 'delivered')::integer`,

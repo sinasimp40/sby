@@ -8,7 +8,7 @@ import { is } from "drizzle-orm";
 import { PgTable, getTableConfig } from "drizzle-orm/pg-core";
 import { exportShopTransfer, importShopTransfer, previewShopTransfer, shopTransferStatus, reviewShopTransfer } from "../src/lib/shop-transfer";
 import { decodeShopArchive, encodeShopArchive, previewToken, verifyPreviewToken } from "../src/lib/shop-transfer-archive";
-import { tableKeys, transferTables, singleItemTransferSchemaHash, quantityTransferSchemaHash } from "../src/lib/shop-transfer-tables";
+import { tableKeys, transferTables, singleItemTransferSchemaHash, quantityTransferSchemaHash, productEmojiTransferSchemaHash } from "../src/lib/shop-transfer-tables";
 import { assignedInventoryIds } from "../src/lib/payment-inventory";
 import { validateShopRelationships } from "../src/lib/shop-transfer-validation";
 import { decryptCredential } from "../src/lib/inventory-encryption";
@@ -31,21 +31,24 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
   try {
     const fixture = await seedTransferFixture(source);
     await pool.query("UPDATE shop_products SET button_emoji=$1 WHERE owner_id=$2", ["🔑", source]);
+    await pool.query("INSERT INTO shop_custom_emojis(owner_id,custom_emoji_id,emoji,set_name,format) VALUES($1,'900000000000000001','🔑','TEST_ONLY','animated')", [source]);
+    await pool.query("UPDATE shop_products SET button_custom_emoji_id='900000000000000001' WHERE owner_id=$1", [source]);
     const exported = await exportShopTransfer(source);
     const decoded = decodeShopArchive(exported.zip);
     await t.test("ZIP is actual complete shop data, with no credentials key or sessions included", async () => {
       const exportedTables = Object.values(database).filter(value => is(value, PgTable)).map(table => getTableConfig(table as PgTable).name);
       const included = Object.values(transferTables).map(table => getTableConfig(table).name);
       // New persistent tables must be explicitly covered or deliberately excluded.
-      assert.deepEqual(new Set(exportedTables), new Set([...included, "admin_sessions", "admin_login_limits"]));
+      assert.deepEqual(new Set(exportedTables), new Set([...included, "admin_sessions", "admin_login_limits", "emoji_import_sessions"]));
       assert.deepEqual(Object.keys(unzipSync(exported.zip)).sort(), ["README.txt", "manifest.json", "shop-data.json"]);
-      assert.equal(Object.keys(decoded.data).length, 12);
+      assert.equal(Object.keys(decoded.data).length, 13);
       for (const key of tableKeys) assert.equal(decoded.manifest.counts[key], decoded.data[key].length);
       assert.equal(decoded.data.customers.length, 2);
       assert.equal(decoded.data.inventory.length, 5);
       assert.equal(decoded.data.payments.length, 6);
       assert.equal(decoded.data.walletEntries.length, 3);
       assert.ok(decoded.data.products.every(product => product.buttonEmoji === "🔑"));
+      assert.equal(decoded.data.customEmojis.length, 1);
       const raw = strFromU8(unzipSync(exported.zip)["shop-data.json"]!);
       assert.doesNotMatch(raw, /TEST_ONLY_TELEGRAM|TEST_ONLY_API|TEST_ONLY_IPN|TEST_ONLY:delivered|admin_sessions/);
       const allTables = structuredClone(decoded.data);
@@ -67,17 +70,18 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
     await t.test("authenticated ZIPs from before quantity support upgrade single-item orders safely",()=>{
       const legacyData = structuredClone(decoded.data);
       legacyData.products = legacyData.products.map(product => {
-        const row = { ...product }; delete row.buttonEmoji; return row;
+        const row = { ...product }; delete row.buttonEmoji; delete row.buttonCustomEmojiId; return row;
       });
       legacyData.payments = legacyData.payments.filter(p=>p.quantity===1).map(p=>{
         const row = {...p}; delete row.quantity; delete row.inventoryIds; return row;
       });
       legacyData.walletEntries = legacyData.walletEntries.filter(e=>legacyData.payments.some(p=>p.id===e.paymentId));
+      delete (legacyData as Partial<typeof legacyData>).customEmojis;
       const bytes = strToU8(JSON.stringify(legacyData));
       const {signature:_,...core} = decoded.manifest;
       core.schemaHash = singleItemTransferSchemaHash;
       core.dataSha256 = createHash("sha256").update(bytes).digest("hex");
-      core.counts = Object.fromEntries(tableKeys.map(key=>[key,legacyData[key].length]));
+      core.counts = Object.fromEntries(tableKeys.filter(key=>key!=="customEmojis").map(key=>[key,legacyData[key].length]));
       const signature = createHmac("sha256",process.env.SESSION_SECRET!).update(JSON.stringify(core)).digest("hex");
       const files = unzipSync(exported.zip);
       files["shop-data.json"] = bytes;
@@ -90,11 +94,13 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
     await t.test("authenticated quantity-order ZIPs from before product emojis retain all orders", () => {
       const legacyData = structuredClone(decoded.data);
       legacyData.products = legacyData.products.map(product => {
-        const row = { ...product }; delete row.buttonEmoji; return row;
+        const row = { ...product }; delete row.buttonEmoji; delete row.buttonCustomEmojiId; return row;
       });
+      delete (legacyData as Partial<typeof legacyData>).customEmojis;
       const bytes = strToU8(JSON.stringify(legacyData));
       const { signature: _, ...core } = decoded.manifest;
       core.schemaHash = quantityTransferSchemaHash;
+      core.counts = Object.fromEntries(tableKeys.filter(key=>key!=="customEmojis").map(key=>[key,legacyData[key].length]));
       core.dataSha256 = createHash("sha256").update(bytes).digest("hex");
       const signature = createHmac("sha256", process.env.SESSION_SECRET!).update(JSON.stringify(core)).digest("hex");
       const files = unzipSync(exported.zip);
@@ -103,6 +109,26 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
       const upgraded = decodeShopArchive(Buffer.from(zipSync(files)));
       assert.deepEqual(upgraded.data.payments, decoded.data.payments);
       assert.ok(upgraded.data.products.every(product => product.buttonEmoji === "🛍"));
+      validateShopRelationships(upgraded.data, source);
+    });
+    await t.test("authenticated plain-emoji ZIPs upgrade without inventing custom icons", () => {
+      const legacyData = structuredClone(decoded.data);
+      legacyData.products = legacyData.products.map(product => {
+        const row = { ...product }; delete row.buttonCustomEmojiId; return row;
+      });
+      delete (legacyData as Partial<typeof legacyData>).customEmojis;
+      const bytes = strToU8(JSON.stringify(legacyData));
+      const { signature: _, ...core } = decoded.manifest;
+      core.schemaHash = productEmojiTransferSchemaHash;
+      core.counts = Object.fromEntries(tableKeys.filter(key=>key!=="customEmojis").map(key=>[key,legacyData[key].length]));
+      core.dataSha256 = createHash("sha256").update(bytes).digest("hex");
+      const signature = createHmac("sha256", process.env.SESSION_SECRET!).update(JSON.stringify(core)).digest("hex");
+      const files = unzipSync(exported.zip);
+      files["shop-data.json"] = bytes;
+      files["manifest.json"] = strToU8(JSON.stringify({ ...core, signature }));
+      const upgraded = decodeShopArchive(Buffer.from(zipSync(files)));
+      assert.ok(upgraded.data.products.every(product => product.buttonEmoji === "🔑" && product.buttonCustomEmojiId === null));
+      assert.deepEqual(upgraded.data.customEmojis, []);
       validateShopRelationships(upgraded.data, source);
     });
     await t.test("corruption, unsafe ZIP paths, modification and incompatible encryption keys fail before writes", () => {

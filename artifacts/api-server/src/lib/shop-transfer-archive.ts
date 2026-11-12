@@ -3,7 +3,7 @@ import { unzipSync, zipSync, strFromU8, strToU8 } from "fflate";
 import { z } from "zod/v4";
 import { CommerceError } from "./commerce-providers";
 import {
-  parseTransferData, tableKeys, transferSchemaHash, singleItemTransferSchemaHash, quantityTransferSchemaHash, MAX_TRANSFER_BYTES, MAX_ZIP_BYTES,
+  parseTransferData, tableKeys, transferSchemaHash, singleItemTransferSchemaHash, quantityTransferSchemaHash, productEmojiTransferSchemaHash, MAX_TRANSFER_BYTES, MAX_ZIP_BYTES,
   type TransferData,
 } from "./shop-transfer-tables";
 
@@ -92,12 +92,25 @@ export function decodeShopArchive(zip: Buffer) {
     if (seen.size !== 3 || !files["manifest.json"] || files["manifest.json"].length > 20000 || !files["shop-data.json"]) throw new Error("Required archive files are missing.");
     const manifest = manifestSchema.parse(JSON.parse(strFromU8(files["manifest.json"])));
     const { signature: signed, ...core } = manifest;
-    if (![transferSchemaHash, singleItemTransferSchemaHash, quantityTransferSchemaHash].includes(manifest.schemaHash)) throw new Error("The app schema differs. Use the same Telecart version on source and destination.");
+    if (![transferSchemaHash, singleItemTransferSchemaHash, quantityTransferSchemaHash, productEmojiTransferSchemaHash].includes(manifest.schemaHash)) throw new Error("The app schema differs. Use the same Telecart version on source and destination.");
     if (digest(files["shop-data.json"]) !== manifest.dataSha256) throw new Error("Data checksum does not match.");
     if (!timingSafeEqual(Buffer.from(signed, "hex"), Buffer.from(signature(core), "hex"))) {
       throw new Error("Cannot authenticate this archive. Configure the matching original SESSION_SECRET and use an unmodified export.");
     }
     const rawData = JSON.parse(strFromU8(files["shop-data.json"]));
+    const legacy = [singleItemTransferSchemaHash, quantityTransferSchemaHash, productEmojiTransferSchemaHash].includes(manifest.schemaHash);
+    // Verify signed legacy table counts BEFORE introducing safe new defaults.
+    if (legacy) {
+      const oldKeys = tableKeys.filter(key => key !== "customEmojis");
+      if (!rawData || typeof rawData !== "object" || "customEmojis" in rawData ||
+        Object.keys(rawData).length !== oldKeys.length || Object.keys(manifest.counts).length !== oldKeys.length ||
+        oldKeys.some(key => !Array.isArray(rawData[key]) || rawData[key].length !== manifest.counts[key])) throw new Error("Table counts do not match.");
+      rawData.customEmojis = [];
+      rawData.products = rawData.products.map((row: Record<string, unknown>) => {
+        if (!row || typeof row !== "object" || "buttonCustomEmojiId" in row) throw new Error("Invalid legacy product shape.");
+        return { ...row, buttonCustomEmojiId: null };
+      });
+    }
     if ([singleItemTransferSchemaHash, quantityTransferSchemaHash].includes(manifest.schemaHash) && Array.isArray(rawData?.products)) {
       rawData.products = rawData.products.map((row: Record<string, unknown>) => {
         if (!row || typeof row !== "object" || "buttonEmoji" in row) throw new Error("Invalid legacy product shape.");
@@ -112,7 +125,7 @@ export function decodeShopArchive(zip: Buffer) {
       });
     }
     const data = parseTransferData(rawData);
-    if (Object.keys(manifest.counts).length !== tableKeys.length || tableKeys.some(key => manifest.counts[key] !== data[key].length)) throw new Error("Table counts do not match.");
+    if (!legacy && (Object.keys(manifest.counts).length !== tableKeys.length || tableKeys.some(key => manifest.counts[key] !== data[key].length))) throw new Error("Table counts do not match.");
     return { data, manifest, archiveHash: digest(zip) };
   } catch (error) {
     if (error instanceof CommerceError) throw error;

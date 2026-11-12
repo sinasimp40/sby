@@ -9,6 +9,84 @@ tags:
   - name: health
   - name: shop
 paths:
+  /shop/custom-emojis:
+    get:
+      operationId: listCustomEmojis
+      tags: [shop]
+      responses:
+        "200":
+          description: The signed-in shop's imported custom emoji library.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CustomEmojiLibrary" }
+        "401": { description: Sign-in required }
+  /shop/custom-emojis/pack:
+    post:
+      operationId: importCustomEmojiPack
+      tags: [shop]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmojiPackInput" }
+      responses:
+        "200":
+          description: Verified custom emoji pack imported without duplicate entries.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmojiImportResult" }
+        "400": { description: Invalid link or not a custom emoji pack }
+        "401": { description: Sign-in required }
+        "403": { description: Not the bot owner or invalid origin }
+        "503": { description: Telegram connection required }
+  /shop/custom-emojis/session:
+    post:
+      operationId: startEmojiImport
+      tags: [shop]
+      responses:
+        "200":
+          description: Private ten-minute link for importing emojis through Telegram.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmojiImportLink" }
+        "401": { description: Sign-in required }
+        "503": { description: Enable Telegram processing first }
+    delete:
+      operationId: stopEmojiImport
+      tags: [shop]
+      responses:
+        "204": { description: Current import link and Telegram pairing revoked }
+        "401": { description: Sign-in required }
+  /shop/custom-emojis/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, pattern: '^[0-9]{1,30}$' }
+    delete:
+      operationId: deleteCustomEmoji
+      tags: [shop]
+      responses:
+        "204": { description: Removed from library; products using it revert to normal emoji }
+        "401": { description: Sign-in required }
+        "404": { description: Emoji not in your library }
+  /shop/custom-emojis/{id}/preview:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, pattern: '^[0-9]{1,30}$' }
+    get:
+      operationId: previewCustomEmoji
+      tags: [shop]
+      responses:
+        "200":
+          description: Private static thumbnail; no bot token is exposed.
+          content:
+            image/webp:
+              schema: { type: string, format: binary }
+        "401": { description: Sign-in required }
+        "404": { description: Preview unavailable }
   /admin/session:
     get:
       operationId: getAdminSession
@@ -487,6 +565,7 @@ components:
         status: { type: string, enum: [active, draft, archived] }
         deliveryFormat: { type: string, enum: ["email:pass", "user:pass"] }
         buttonEmoji: { type: string, minLength: 1, maxLength: 32, description: "One ordinary Unicode emoji for the Telegram product button." }
+        buttonCustomEmojiId: { type: [string, "null"], pattern: '^[0-9]{1,30}$' }
     Product:
       type: object
       required: [id, name, description, category, price, status, deliveryFormat, stock, sold, createdAt]
@@ -499,9 +578,44 @@ components:
         status: { type: string, enum: [active, draft, archived] }
         deliveryFormat: { type: string, enum: ["email:pass", "user:pass"] }
         buttonEmoji: { type: string }
+        buttonCustomEmojiId: { type: [string, "null"] }
         stock: { type: integer }
         sold: { type: integer }
         createdAt: { type: string }
+    CustomEmoji:
+      type: object
+      required: [id, emoji, setName, format, previewUrl]
+      properties:
+        id: { type: string }
+        emoji: { type: string }
+        setName: { type: [string, "null"] }
+        format: { type: string, enum: [static, animated, video] }
+        previewUrl: { type: string }
+    CustomEmojiLibrary:
+      type: object
+      required: [items, maxItems]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/CustomEmoji" } }
+        maxItems: { type: integer }
+    EmojiPackInput:
+      type: object
+      required: [pack]
+      additionalProperties: false
+      properties:
+        pack: { type: string, minLength: 1, maxLength: 250 }
+    EmojiImportResult:
+      type: object
+      required: [imported, updated, total]
+      properties:
+        imported: { type: integer }
+        updated: { type: integer }
+        total: { type: integer }
+    EmojiImportLink:
+      type: object
+      required: [url, expiresAt]
+      properties:
+        url: { type: string }
+        expiresAt: { type: string }
     InventoryInput:
       type: object
       additionalProperties: false

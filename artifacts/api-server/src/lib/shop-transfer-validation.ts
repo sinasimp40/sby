@@ -4,6 +4,7 @@ import { decryptProviderSecret } from "./provider-credentials";
 import { tableKeys, type TransferData, type TransferRow } from "./shop-transfer-tables";
 import { assignedInventoryIds } from "./payment-inventory";
 import { isProductEmoji } from "./product-emoji";
+import { customEmojiIdValid, MAX_CUSTOM_EMOJIS } from "./custom-emoji-library";
 
 export function validateShopRelationships(data: TransferData, ownerId: string) {
   let area = "ownership";
@@ -32,9 +33,16 @@ export function validateShopRelationships(data: TransferData, ownerId: string) {
     indexed(data.payments.filter(p => p.providerPaymentId !== null), "providerPaymentId");
     const fingerprints = new Set<string>();
     area = "product values";
+    const customEmojis = indexed(data.customEmojis, "customEmojiId");
+    if (customEmojis.size > MAX_CUSTOM_EMOJIS) throw new Error();
+    for (const emoji of data.customEmojis) {
+      if (!customEmojiIdValid(emoji.customEmojiId) || !isProductEmoji(emoji.emoji) ||
+        !["static", "animated", "video"].includes(String(emoji.format))) throw new Error();
+    }
     for (const p of data.products) {
       if (!Number.isSafeInteger(p.id) || Number(p.id) <= 0 || Number(p.priceCents) < 0 ||
-        !["active", "draft", "archived"].includes(String(p.status)) || !isProductEmoji(p.buttonEmoji)) throw new Error();
+        !["active", "draft", "archived"].includes(String(p.status)) || !isProductEmoji(p.buttonEmoji) ||
+        (p.buttonCustomEmojiId !== null && !customEmojis.has(p.buttonCustomEmojiId))) throw new Error();
     }
     area = "inventory links and encryption";
     for (const stock of data.inventory) {

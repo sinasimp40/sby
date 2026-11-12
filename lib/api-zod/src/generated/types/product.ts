@@ -17,6 +17,8 @@ export interface Product {
   status: ProductStatus;
   deliveryFormat: ProductDeliveryFormat;
   buttonEmoji?: string;
+  /** @nullable */
+  buttonCustomEmojiId?: string | null;
   stock: number;
   sold: number;
   createdAt: string;

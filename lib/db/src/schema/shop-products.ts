@@ -1,5 +1,6 @@
-import { pgTable, serial, text, integer, timestamp, uniqueIndex, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, uniqueIndex, index, foreignKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
+import { shopCustomEmojis } from "./custom-emojis";
 
 export const shopProducts = pgTable("shop_products", {
   id: serial("id").primaryKey(),
@@ -11,8 +12,13 @@ export const shopProducts = pgTable("shop_products", {
   status: text("status").$type<"active" | "draft" | "archived">().notNull().default("draft"),
   deliveryFormat: text("delivery_format").$type<"email:pass" | "user:pass">().notNull(),
   buttonEmoji: text("button_emoji").notNull().default("🛍"),
+  buttonCustomEmojiId: text("button_custom_emoji_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (table) => [index("shop_products_owner_idx").on(table.ownerId)]);
+}, (table) => [
+  index("shop_products_owner_idx").on(table.ownerId),
+  foreignKey({ columns: [table.ownerId, table.buttonCustomEmojiId],
+    foreignColumns: [shopCustomEmojis.ownerId, shopCustomEmojis.customEmojiId] }),
+]);
 
 export const shopInventory = pgTable("shop_inventory", {
   id: serial("id").primaryKey(),

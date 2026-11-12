@@ -78,6 +78,7 @@ async function importRows(client: PoolClient, data: TransferData, source: string
   const inventoryIds = await allocate("shop_inventory", data.inventory.length);
   data.products.forEach((p, index) => products.set(Number(p.id), productIds[index]!));
   data.inventory.forEach((p, index) => inventory.set(Number(p.id), inventoryIds[index]!));
+  await write("customEmojis", data.customEmojis.map(emoji => ({ ...emoji, ownerId: owner })));
   await write("products", data.products.map(p => ({ ...p, id: products.get(Number(p.id)), ownerId: owner })));
   const stockRows: TransferRow[] = [];
   for (const stock of data.inventory) {
@@ -142,11 +143,12 @@ export async function importShopTransfer(ownerId: string | null, zip: Buffer, to
     // Normal SELECT readers continue; writers wait briefly or this transaction fails.
     await client.query(`LOCK TABLE shop_products, shop_inventory, bot_customers, shop_payments,
       wallet_entries, shop_records, shop_settings, shop_activity, provider_credentials,
-      bot_runtime_settings, bot_connections, bot_updates IN SHARE ROW EXCLUSIVE MODE`);
+      bot_runtime_settings, bot_connections, bot_updates, shop_custom_emojis, emoji_import_sessions IN SHARE ROW EXCLUSIVE MODE`);
     const state = await destinationTransferState(client, ownerId);
     if (state.blockers.length) throw new CommerceError(state.blockers.join(" "), 409);
     if (archive.data.connection.length && state.connectionOwner && state.connectionOwner !== ownerId) throw new CommerceError("The bot is bound to another shop. Nothing was imported.", 409);
     await importRows(client, archive.data, archive.manifest.sourceOwnerId, ownerId);
+    await client.query("DELETE FROM emoji_import_sessions WHERE owner_id=$1", [ownerId]);
     await client.query(`INSERT INTO shop_activity(owner_id,title,description,type)
       VALUES($1,'Shop data imported',$2,'data_transfer')`,
     [ownerId, `Verified portable import ${archive.archiveHash.slice(0, 12)}. Bot and payment processing paused for review.`]);

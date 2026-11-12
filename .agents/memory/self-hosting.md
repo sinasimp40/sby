@@ -14,3 +14,9 @@ The user chose **portable shop-data files inside a ZIP**, rather than a native P
 **Why:** They plan to move the shop to their own computer and want the database records carried with it, not just a product CSV.
 
 **How to apply:** Preserve the complete persistent business dataset and payment/delivery idempotency when evolving transfers. Keep installation secrets and login identity separate. Empty-destination import and a processing hold are intentional safeguards against overwriting money or running two copies.
+
+Previously exported, authenticated shop ZIPs must remain usable when routine product-customization features add fields or datasets.
+
+**Why:** A shop owner preparing a move must not lose access to a valid export simply because they updated the dashboard before importing it.
+
+**How to apply:** Preserve known signed formats and migrate only after signature verification, with safe defaults for new optional features. Custom emoji libraries are portable business data; short-lived emoji pairing links are installation-local authorization, like login sessions.

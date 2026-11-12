@@ -15,6 +15,7 @@ const tableLabels: Record<string, string> = {
   payments: "Orders & deposits", walletEntries: "Wallet ledger", records: "Legacy records",
   settings: "Shop settings", activity: "Activity history", providerCredentials: "Encrypted provider credentials",
   runtime: "Bot runtime settings", connection: "Bot connection", updates: "Telegram update deduplication",
+  customEmojis: "Custom emoji library",
 };
 function Counts({ counts }: { counts: Record<string, number> }) {
   return <dl className="grid gap-x-8 rounded-lg border bg-background/60 px-3 sm:grid-cols-2">{Object.entries(counts).map(([key, count]) => (
@@ -59,7 +60,7 @@ export default function DataTransferPage() {
       </div>
     </Panel>}
     <Panel title="Export shop data" meta={<Download className="h-4 w-4" aria-hidden="true" />}>
-      <p className="mb-3 text-sm text-muted-foreground">One authenticated, read-only snapshot includes every row for your shop in all 12 supported datasets: products, inventory, customers, orders and deposits, wallet credits and purchase debits, legacy records, settings, activity, saved provider credentials, bot configuration and Telegram deduplication history. No export files are stored on the server.</p>
+      <p className="mb-3 text-sm text-muted-foreground">One authenticated, read-only snapshot includes every row for your shop in all supported datasets: products, inventory, customers, orders and deposits, wallet credits and purchase debits, legacy records, settings, activity, saved provider credentials, bot configuration, Telegram deduplication history and your custom emoji library. Temporary emoji import links are excluded. No export files are stored on the server.</p>
       <p className="mb-4 text-xs text-muted-foreground">The ZIP contains <code className="rounded bg-muted px-1 font-mono text-[0.85em]">manifest.json</code>, <code className="rounded bg-muted px-1 font-mono text-[0.85em]">shop-data.json</code> and <code className="rounded bg-muted px-1 font-mono text-[0.85em]">README.txt</code>. Checksums, authenticated signatures and schema checks detect corruption or modification. Limit: 50,000 total rows, 30 MB expanded data, 20 MB ZIP. An oversized shop fails explicitly—never a partial export.</p>
       <Button disabled={busy || status.isLoading || status.isError} data-testid="button-export-shop" onClick={() => {
         setDownloaded(false);

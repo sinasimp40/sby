@@ -19,6 +19,7 @@ export * from "./bot-runtime";
 //   export type Post = typeof postsTable.$inferSelect;
 
 export * from "./shop-products";
+export * from "./custom-emojis";
 export * from "./shop-settings";
 export * from "./shop-records";
 export * from "./shop-commerce";

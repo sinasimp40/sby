@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuthGate } from "@/components/auth-gate";
 import { money, shortDate, errMsg } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { CustomEmojiPicker } from "@/components/custom-emoji-picker";
 
 const schema = z.object({
   name: z.string().trim().min(1, "Name is required").max(120),
@@ -28,9 +29,10 @@ const schema = z.object({
   deliveryFormat: z.enum(["email:pass", "user:pass"]),
   buttonEmoji: z.string().min(1, "Choose an emoji").max(32).emoji("Enter an emoji, not text or an image URL")
     .refine(value => Array.from(new Intl.Segmenter("en", { granularity: "grapheme" }).segment(value)).length === 1, "Choose just one emoji"),
+  buttonCustomEmojiId: z.string().regex(/^[0-9]{1,30}$/).nullable(),
 });
 type FormValues = z.infer<typeof schema>;
-const blank: FormValues = { name: "", description: "", category: "", price: 0, status: "draft", deliveryFormat: "email:pass", buttonEmoji: "🛍" };
+const blank: FormValues = { name: "", description: "", category: "", price: 0, status: "draft", deliveryFormat: "email:pass", buttonEmoji: "🛍", buttonCustomEmojiId: null };
 const selectClassName = "h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
 
 function useInvalidate() {
@@ -49,7 +51,7 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
   const { toast } = useToast();
   const form = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: blank });
   useEffect(() => {
-    if (open) form.reset(product ? { name: product.name, description: product.description, category: product.category, price: product.price, status: product.status, deliveryFormat: product.deliveryFormat, buttonEmoji: product.buttonEmoji ?? "🛍" } : blank);
+    if (open) form.reset(product ? { name: product.name, description: product.description, category: product.category, price: product.price, status: product.status, deliveryFormat: product.deliveryFormat, buttonEmoji: product.buttonEmoji ?? "🛍", buttonCustomEmojiId: product.buttonCustomEmojiId ?? null } : blank);
   }, [open, product, form]);
   const pending = create.isPending || update.isPending;
   const onSubmit = (v: FormValues) => {
@@ -62,7 +64,7 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
   };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">{product ? "Edit product" : "New product"}</DialogTitle>
           <DialogDescription>Only list accounts you are authorized to resell. Stock comes from inventory imports.</DialogDescription>
@@ -74,7 +76,7 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
             )} />
             <FormField control={form.control} name="buttonEmoji" render={({ field }) => (
               <FormItem>
-                <FormLabel>Telegram button emoji</FormLabel>
+                <FormLabel>Normal button emoji / fallback</FormLabel>
                 <div className="flex flex-wrap gap-1.5" role="group" aria-label="Suggested product emojis">
                   {["🛍", "🎮", "🔑", "🎬", "🎵", "📚", "💎", "⚡", "🚀", "🎨"].map(emoji => (
                     <Button key={emoji} type="button" variant={field.value === emoji ? "default" : "outline"}
@@ -91,6 +93,10 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
                 </div>
                 <FormMessage />
               </FormItem>
+            )} />
+            <FormField control={form.control} name="buttonCustomEmojiId" render={({ field }) => (
+              <CustomEmojiPicker open={open} value={field.value} disabled={pending} fallbackEmoji={form.watch("buttonEmoji") || "🛍"}
+                onChange={id => form.setValue("buttonCustomEmojiId", id, { shouldDirty: true })} />
             )} />
             <div className="grid grid-cols-2 gap-3">
               <FormField control={form.control} name="category" render={({ field }) => (

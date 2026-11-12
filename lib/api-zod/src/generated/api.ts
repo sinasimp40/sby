@@ -8,6 +8,62 @@
 import * as zod from 'zod';
 
 
+export const ListCustomEmojisResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "emoji": zod.string(),
+  "setName": zod.string().nullable(),
+  "format": zod.enum(['static', 'animated', 'video']),
+  "previewUrl": zod.string()
+})),
+  "maxItems": zod.number().int()
+})
+
+
+export const importCustomEmojiPackBodyPackMax = 250;
+
+
+
+export const ImportCustomEmojiPackBody = zod.object({
+  "pack": zod.string().min(1).max(importCustomEmojiPackBodyPackMax)
+})
+
+export const ImportCustomEmojiPackResponse = zod.object({
+  "imported": zod.number().int(),
+  "updated": zod.number().int(),
+  "total": zod.number().int()
+})
+
+
+export const StartEmojiImportResponse = zod.object({
+  "url": zod.string(),
+  "expiresAt": zod.string()
+})
+
+
+export const StopEmojiImportResponse = zod.void()
+
+
+export const deleteCustomEmojiPathIdRegExp = new RegExp('^[0-9]{1,30}$');
+
+
+export const DeleteCustomEmojiParams = zod.object({
+  "id": zod.coerce.string().regex(deleteCustomEmojiPathIdRegExp)
+})
+
+export const DeleteCustomEmojiResponse = zod.void()
+
+
+export const previewCustomEmojiPathIdRegExp = new RegExp('^[0-9]{1,30}$');
+
+
+export const PreviewCustomEmojiParams = zod.object({
+  "id": zod.coerce.string().regex(previewCustomEmojiPathIdRegExp)
+})
+
+export const PreviewCustomEmojiResponse = zod.unknown()
+
+
 export const GetAdminSessionResponse = zod.object({
   "signedIn": zod.boolean(),
   "ownerId": zod.string().nullable(),
@@ -71,6 +127,7 @@ export const GetOverviewResponse = zod.object({
   "status": zod.enum(['active', 'draft', 'archived']),
   "deliveryFormat": zod.enum(['email:pass', 'user:pass']),
   "buttonEmoji": zod.string().optional(),
+  "buttonCustomEmojiId": zod.string().nullish(),
   "stock": zod.number().int(),
   "sold": zod.number().int(),
   "createdAt": zod.string()
@@ -92,6 +149,7 @@ export const ListProductsResponseItem = zod.object({
   "status": zod.enum(['active', 'draft', 'archived']),
   "deliveryFormat": zod.enum(['email:pass', 'user:pass']),
   "buttonEmoji": zod.string().optional(),
+  "buttonCustomEmojiId": zod.string().nullish(),
   "stock": zod.number().int(),
   "sold": zod.number().int(),
   "createdAt": zod.string()
@@ -110,6 +168,7 @@ export const createProductBodyPriceMax = 100000;
 
 export const createProductBodyButtonEmojiMax = 32;
 
+export const createProductBodyButtonCustomEmojiIdRegExp = new RegExp('^[0-9]{1,30}$');
 
 
 export const CreateProductBody = zod.object({
@@ -119,7 +178,8 @@ export const CreateProductBody = zod.object({
   "price": zod.number().min(createProductBodyPriceMin).max(createProductBodyPriceMax),
   "status": zod.enum(['active', 'draft', 'archived']),
   "deliveryFormat": zod.enum(['email:pass', 'user:pass']),
-  "buttonEmoji": zod.string().min(1).max(createProductBodyButtonEmojiMax).optional().describe('One ordinary Unicode emoji for the Telegram product button.')
+  "buttonEmoji": zod.string().min(1).max(createProductBodyButtonEmojiMax).optional().describe('One ordinary Unicode emoji for the Telegram product button.'),
+  "buttonCustomEmojiId": zod.string().regex(createProductBodyButtonCustomEmojiIdRegExp).nullish()
 })
 
 export const CreateProductResponse = zod.object({
@@ -131,6 +191,7 @@ export const CreateProductResponse = zod.object({
   "status": zod.enum(['active', 'draft', 'archived']),
   "deliveryFormat": zod.enum(['email:pass', 'user:pass']),
   "buttonEmoji": zod.string().optional(),
+  "buttonCustomEmojiId": zod.string().nullish(),
   "stock": zod.number().int(),
   "sold": zod.number().int(),
   "createdAt": zod.string()
@@ -155,6 +216,7 @@ export const updateProductBodyPriceMax = 100000;
 
 export const updateProductBodyButtonEmojiMax = 32;
 
+export const updateProductBodyButtonCustomEmojiIdRegExp = new RegExp('^[0-9]{1,30}$');
 
 
 export const UpdateProductBody = zod.object({
@@ -164,7 +226,8 @@ export const UpdateProductBody = zod.object({
   "price": zod.number().min(updateProductBodyPriceMin).max(updateProductBodyPriceMax),
   "status": zod.enum(['active', 'draft', 'archived']),
   "deliveryFormat": zod.enum(['email:pass', 'user:pass']),
-  "buttonEmoji": zod.string().min(1).max(updateProductBodyButtonEmojiMax).optional().describe('One ordinary Unicode emoji for the Telegram product button.')
+  "buttonEmoji": zod.string().min(1).max(updateProductBodyButtonEmojiMax).optional().describe('One ordinary Unicode emoji for the Telegram product button.'),
+  "buttonCustomEmojiId": zod.string().regex(updateProductBodyButtonCustomEmojiIdRegExp).nullish()
 })
 
 export const UpdateProductResponse = zod.object({
@@ -176,6 +239,7 @@ export const UpdateProductResponse = zod.object({
   "status": zod.enum(['active', 'draft', 'archived']),
   "deliveryFormat": zod.enum(['email:pass', 'user:pass']),
   "buttonEmoji": zod.string().optional(),
+  "buttonCustomEmojiId": zod.string().nullish(),
   "stock": zod.number().int(),
   "sold": zod.number().int(),
   "createdAt": zod.string()

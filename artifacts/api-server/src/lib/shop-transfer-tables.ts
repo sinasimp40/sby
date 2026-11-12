@@ -6,6 +6,7 @@ import { z } from "zod/v4";
 import {
   shopProducts, shopInventory, botCustomers, shopPayments, walletEntries, shopRecords,
   shopSettings, shopActivity, providerCredentials, botRuntimeSettings, botConnections, botUpdates,
+  shopCustomEmojis,
 } from "@workspace/db";
 
 // Explicit allowlist: login sessions and database/platform credentials never travel.
@@ -13,7 +14,7 @@ export const transferTables = {
   products: shopProducts, inventory: shopInventory, customers: botCustomers,
   payments: shopPayments, walletEntries, records: shopRecords, settings: shopSettings,
   activity: shopActivity, providerCredentials, runtime: botRuntimeSettings,
-  connection: botConnections, updates: botUpdates,
+  connection: botConnections, updates: botUpdates, customEmojis: shopCustomEmojis,
 };
 export type TransferTable = keyof typeof transferTables;
 export type TransferRow = Record<string, unknown>;
@@ -37,6 +38,7 @@ export const transferSchemaHash = schemaHash();
 // Immutable fingerprints of previous signed formats, not recomputed from the live schema.
 export const singleItemTransferSchemaHash = "c2df18244024c0f53fbaa510fc9e817791f4c396471322e28f6b460728d78aa2";
 export const quantityTransferSchemaHash = "dc5b747920c146462b82548aaeebf8c014a686dca0999d80b81d55a93292ec31";
+export const productEmojiTransferSchemaHash = "6f7453f0f72a548f8ee69454133b7262a5b7031ee8b5ce8a62d4931286c87488";
 
 const schemas = Object.fromEntries(tableKeys.map(key => {
   const overrides: Record<string, z.ZodType> = {};

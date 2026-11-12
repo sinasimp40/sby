@@ -10,6 +10,7 @@ import {
 import { productsForOwner, ownedProduct, recordActivity } from "../lib/shop-store";
 import { encryptCredential, credentialFingerprint } from "../lib/inventory-encryption";
 import { isProductEmoji } from "../lib/product-emoji";
+import { assertOwnedCustomEmoji } from "../lib/custom-emoji-library";
 
 const router: IRouter = Router();
 
@@ -25,6 +26,7 @@ router.post("/products", async (req, res): Promise<void> => {
   }
   const ownerId = getAuth(req).userId!;
   const { price, ...input } = parsed.data;
+  await assertOwnedCustomEmoji(ownerId, input.buttonCustomEmojiId);
   if (input.buttonEmoji !== undefined && !isProductEmoji(input.buttonEmoji)) {
     res.status(400).json({ error: "Choose or paste one ordinary emoji for the product button." }); return;
   }
@@ -45,6 +47,7 @@ router.patch("/products/:id", async (req, res): Promise<void> => {
   }
   const ownerId = getAuth(req).userId!;
   const { price, ...input } = body.data;
+  await assertOwnedCustomEmoji(ownerId, input.buttonCustomEmojiId);
   if (input.buttonEmoji !== undefined && !isProductEmoji(input.buttonEmoji)) {
     res.status(400).json({ error: "Choose or paste one ordinary emoji for the product button." }); return;
   }

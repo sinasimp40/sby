@@ -28,9 +28,13 @@ import type {
   Activity,
   AdminCredentials,
   AdminSession,
+  CustomEmojiLibrary,
   Customer,
   Deposit,
   DepositCancellation,
+  EmojiImportLink,
+  EmojiImportResult,
+  EmojiPackInput,
   HealthStatus,
   ImportResult,
   IntegrationInput,
@@ -84,6 +88,482 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getListCustomEmojisUrl = () => {
+
+
+
+
+  return `/api/shop/custom-emojis`
+}
+
+export const listCustomEmojis = async ( options?: Parameters<typeof customFetch>[1]): Promise<CustomEmojiLibrary> => {
+
+  return customFetch<CustomEmojiLibrary>(getListCustomEmojisUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCustomEmojisQueryKey = () => {
+    return [
+    `/api/shop/custom-emojis`
+    ] as const;
+    }
+
+
+export const getListCustomEmojisQueryOptions = <TData = Awaited<ReturnType<typeof listCustomEmojis>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCustomEmojis>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCustomEmojisQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCustomEmojis>>> = ({ signal }) => listCustomEmojis({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCustomEmojis>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListCustomEmojisQueryResult = NonNullable<Awaited<ReturnType<typeof listCustomEmojis>>>
+export type ListCustomEmojisQueryError = ErrorType<void>
+
+
+export function useListCustomEmojis<TData = Awaited<ReturnType<typeof listCustomEmojis>>, TError = ErrorType<void>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCustomEmojis>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listCustomEmojis>>,
+          TError,
+          Awaited<ReturnType<typeof listCustomEmojis>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListCustomEmojis<TData = Awaited<ReturnType<typeof listCustomEmojis>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCustomEmojis>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listCustomEmojis>>,
+          TError,
+          Awaited<ReturnType<typeof listCustomEmojis>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListCustomEmojis<TData = Awaited<ReturnType<typeof listCustomEmojis>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCustomEmojis>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useListCustomEmojis<TData = Awaited<ReturnType<typeof listCustomEmojis>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCustomEmojis>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListCustomEmojisQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getImportCustomEmojiPackUrl = () => {
+
+
+
+
+  return `/api/shop/custom-emojis/pack`
+}
+
+export const importCustomEmojiPack = async (emojiPackInput: EmojiPackInput, options?: Parameters<typeof customFetch>[1]): Promise<EmojiImportResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<EmojiImportResult>(getImportCustomEmojiPackUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(emojiPackInput)
+  }
+);}
+
+
+
+
+
+export const getImportCustomEmojiPackMutationKey = () => ['importCustomEmojiPack'] as const;
+
+export const getImportCustomEmojiPackMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importCustomEmojiPack>>, TError,ImportCustomEmojiPackMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof importCustomEmojiPack>>, TError,ImportCustomEmojiPackMutationVariables, TContext> => {
+
+const mutationKey = getImportCustomEmojiPackMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof importCustomEmojiPack>>, ImportCustomEmojiPackMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  importCustomEmojiPack(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ImportCustomEmojiPackMutationResult = NonNullable<Awaited<ReturnType<typeof importCustomEmojiPack>>>
+    export type ImportCustomEmojiPackMutationBody = BodyType<EmojiPackInput>
+    export type ImportCustomEmojiPackMutationError = ErrorType<void>
+    export type ImportCustomEmojiPackMutationVariables = {data: BodyType<EmojiPackInput>}
+
+    export const useImportCustomEmojiPack = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importCustomEmojiPack>>, TError,ImportCustomEmojiPackMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof importCustomEmojiPack>>,
+        TError,
+        ImportCustomEmojiPackMutationVariables,
+        TContext
+      > => {
+      return useMutation(getImportCustomEmojiPackMutationOptions(options), queryClient);
+    }
+
+export const getStartEmojiImportUrl = () => {
+
+
+
+
+  return `/api/shop/custom-emojis/session`
+}
+
+export const startEmojiImport = async ( options?: Parameters<typeof customFetch>[1]): Promise<EmojiImportLink> => {
+
+  return customFetch<EmojiImportLink>(getStartEmojiImportUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getStartEmojiImportMutationKey = () => ['startEmojiImport'] as const;
+
+export const getStartEmojiImportMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startEmojiImport>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startEmojiImport>>, TError,void, TContext> => {
+
+const mutationKey = getStartEmojiImportMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startEmojiImport>>, void> = () => {
+
+
+          return  startEmojiImport(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartEmojiImportMutationResult = NonNullable<Awaited<ReturnType<typeof startEmojiImport>>>
+
+    export type StartEmojiImportMutationError = ErrorType<void>
+
+
+    export const useStartEmojiImport = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startEmojiImport>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof startEmojiImport>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getStartEmojiImportMutationOptions(options), queryClient);
+    }
+
+export const getStopEmojiImportUrl = () => {
+
+
+
+
+  return `/api/shop/custom-emojis/session`
+}
+
+export const stopEmojiImport = async ( options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getStopEmojiImportUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getStopEmojiImportMutationKey = () => ['stopEmojiImport'] as const;
+
+export const getStopEmojiImportMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof stopEmojiImport>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof stopEmojiImport>>, TError,void, TContext> => {
+
+const mutationKey = getStopEmojiImportMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof stopEmojiImport>>, void> = () => {
+
+
+          return  stopEmojiImport(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StopEmojiImportMutationResult = NonNullable<Awaited<ReturnType<typeof stopEmojiImport>>>
+
+    export type StopEmojiImportMutationError = ErrorType<void>
+
+
+    export const useStopEmojiImport = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof stopEmojiImport>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof stopEmojiImport>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getStopEmojiImportMutationOptions(options), queryClient);
+    }
+
+export const getDeleteCustomEmojiUrl = (id: string,) => {
+
+
+
+
+  return `/api/shop/custom-emojis/${id}`
+}
+
+export const deleteCustomEmoji = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteCustomEmojiUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteCustomEmojiMutationKey = () => ['deleteCustomEmoji'] as const;
+
+export const getDeleteCustomEmojiMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCustomEmoji>>, TError,DeleteCustomEmojiMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteCustomEmoji>>, TError,DeleteCustomEmojiMutationVariables, TContext> => {
+
+const mutationKey = getDeleteCustomEmojiMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteCustomEmoji>>, DeleteCustomEmojiMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteCustomEmoji(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteCustomEmojiMutationResult = NonNullable<Awaited<ReturnType<typeof deleteCustomEmoji>>>
+
+    export type DeleteCustomEmojiMutationError = ErrorType<void>
+    export type DeleteCustomEmojiMutationVariables = {id: string}
+
+    export const useDeleteCustomEmoji = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCustomEmoji>>, TError,DeleteCustomEmojiMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteCustomEmoji>>,
+        TError,
+        DeleteCustomEmojiMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteCustomEmojiMutationOptions(options), queryClient);
+    }
+
+export const getPreviewCustomEmojiUrl = (id: string,) => {
+
+
+
+
+  return `/api/shop/custom-emojis/${id}/preview`
+}
+
+export const previewCustomEmoji = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getPreviewCustomEmojiUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getPreviewCustomEmojiQueryKey = (id: string,) => {
+    return [
+    `/api/shop/custom-emojis/${id}/preview`
+    ] as const;
+    }
+
+
+export const getPreviewCustomEmojiQueryOptions = <TData = Awaited<ReturnType<typeof previewCustomEmoji>>, TError = ErrorType<void>>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof previewCustomEmoji>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getPreviewCustomEmojiQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof previewCustomEmoji>>> = ({ signal }) => previewCustomEmoji(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof previewCustomEmoji>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type PreviewCustomEmojiQueryResult = NonNullable<Awaited<ReturnType<typeof previewCustomEmoji>>>
+export type PreviewCustomEmojiQueryError = ErrorType<void>
+
+
+export function usePreviewCustomEmoji<TData = Awaited<ReturnType<typeof previewCustomEmoji>>, TError = ErrorType<void>>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof previewCustomEmoji>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof previewCustomEmoji>>,
+          TError,
+          Awaited<ReturnType<typeof previewCustomEmoji>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePreviewCustomEmoji<TData = Awaited<ReturnType<typeof previewCustomEmoji>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof previewCustomEmoji>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof previewCustomEmoji>>,
+          TError,
+          Awaited<ReturnType<typeof previewCustomEmoji>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePreviewCustomEmoji<TData = Awaited<ReturnType<typeof previewCustomEmoji>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof previewCustomEmoji>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function usePreviewCustomEmoji<TData = Awaited<ReturnType<typeof previewCustomEmoji>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof previewCustomEmoji>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getPreviewCustomEmojiQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetAdminSessionUrl = () => {
 

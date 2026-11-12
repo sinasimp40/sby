@@ -16,6 +16,8 @@ async function main() {
   setBaseUrl(base);
   const signedOut = await fetch(`${base}/api/shop/data-transfer`);
   assert.equal(signedOut.status, 401);
+  assert.equal((await fetch(`${base}/api/shop/custom-emojis`)).status, 401);
+  assert.equal((await fetch(`${base}/api/shop/custom-emojis/session`, { method: "POST" })).status, 401);
   const login = await fetch(`${base}/api/admin/login`, { method: "POST", headers: { Origin: origin, "Content-Type": "application/json" },
     body: JSON.stringify({ email: process.env.TELECART_ADMIN_EMAIL, password: process.env.TELECART_ADMIN_INITIAL_PASSWORD }) });
   assert.equal(login.status, 200, "Configured-admin sign-in must succeed.");
@@ -23,13 +25,27 @@ async function main() {
   if (!cookie) throw new Error("No admin session was issued.");
   const headers = { Origin: origin, Cookie: cookie };
   try {
+    const library = await fetch(`${base}/api/shop/custom-emojis`, { headers });
+    assert.equal(library.status, 200);
+    const icons = await library.json() as { items: unknown[]; maxItems: number };
+    assert.ok(Array.isArray(icons.items));
+    assert.equal(icons.maxItems, 2000);
+    const badPack = await fetch(`${base}/api/shop/custom-emojis/pack`, {
+      method: "POST", headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ pack: "https://example.invalid/addemoji/Test" }),
+    });
+    assert.equal(badPack.status, 400);
+    const foreignSession = await fetch(`${base}/api/shop/custom-emojis/session`, {
+      method: "POST", headers: { Cookie: cookie, Origin: "https://example.invalid" },
+    });
+    assert.equal(foreignSession.status, 403);
     const status = await getShopTransferStatus({ headers });
     const archive = await exportShopData({ headers, responseType: "blob" });
     assert.ok(archive instanceof Blob);
     assert.equal(archive.type, "application/zip");
     assert.deepEqual(Object.keys(unzipSync(new Uint8Array(await archive.arrayBuffer()))).sort(), ["README.txt", "manifest.json", "shop-data.json"]);
     const preview = await previewShopData(archive, { headers });
-    assert.equal(Object.keys(preview.counts).length, 12);
+    assert.equal(Object.keys(preview.counts).length, 13);
     if (!status.empty) assert.equal(preview.canImport, false);
     assert.ok(preview.confirmationToken);
     const badZip = await fetch(`${base}/api/shop/data-transfer/preview`, {
@@ -48,7 +64,7 @@ async function main() {
       method: "POST", headers: { Cookie: cookie, Origin: "https://example.invalid" },
     });
     assert.equal(crossOrigin.status, 403);
-    console.log("PASS: signed-out protection, authenticated ZIP download and generated-client upload, all 12 datasets, invalid ZIP rejection, explicit import/review confirmation and cross-origin protection. No shop data imported or changed.");
+    console.log("PASS: signed-out protection, authenticated ZIP download and generated-client upload, all 13 datasets, invalid ZIP rejection, explicit import/review confirmation and cross-origin protection. No shop data imported or changed.");
   } finally {
     await fetch(`${base}/api/admin/logout`, { method: "POST", headers });
   }

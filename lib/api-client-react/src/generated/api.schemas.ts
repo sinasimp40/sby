@@ -86,6 +86,8 @@ export interface Product {
   status: ProductStatus;
   deliveryFormat: ProductDeliveryFormat;
   buttonEmoji?: string;
+  /** @nullable */
+  buttonCustomEmojiId?: string | null;
   stock: number;
   sold: number;
   createdAt: string;
@@ -156,6 +158,53 @@ export interface ProductInput {
      * @maxLength 32
      */
   buttonEmoji?: string;
+  /**
+     * @nullable
+     * @pattern ^[0-9]{1,30}$
+     */
+  buttonCustomEmojiId?: string | null;
+}
+
+export type CustomEmojiFormat = typeof CustomEmojiFormat[keyof typeof CustomEmojiFormat];
+
+
+export const CustomEmojiFormat = {
+  static: 'static',
+  animated: 'animated',
+  video: 'video',
+} as const;
+
+export interface CustomEmoji {
+  id: string;
+  emoji: string;
+  /** @nullable */
+  setName: string | null;
+  format: CustomEmojiFormat;
+  previewUrl: string;
+}
+
+export interface CustomEmojiLibrary {
+  items: CustomEmoji[];
+  maxItems: number;
+}
+
+export interface EmojiPackInput {
+  /**
+     * @minLength 1
+     * @maxLength 250
+     */
+  pack: string;
+}
+
+export interface EmojiImportResult {
+  imported: number;
+  updated: number;
+  total: number;
+}
+
+export interface EmojiImportLink {
+  url: string;
+  expiresAt: string;
 }
 
 export interface InventoryInput {
