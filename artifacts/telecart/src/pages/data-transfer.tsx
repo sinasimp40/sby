@@ -11,9 +11,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { errMsg, dateTime } from "@/lib/format";
 
 const tableLabels: Record<string, string> = {
-  products: "Products", inventory: "Encrypted inventory", customers: "Customers & balances",
+  products: "Products", inventory: "Stock credentials", customers: "Customers & balances",
   payments: "Orders & deposits", walletEntries: "Wallet ledger", records: "Legacy records",
-  settings: "Shop settings", activity: "Activity history", providerCredentials: "Encrypted provider credentials",
+  settings: "Shop settings", activity: "Activity history", providerCredentials: "Saved provider credentials",
   runtime: "Bot runtime settings", connection: "Bot connection", updates: "Telegram update deduplication",
   customEmojis: "Custom emoji library",
 };
@@ -33,6 +33,7 @@ export default function DataTransferPage() {
   const [sourceStopped, setSourceStopped] = useState(false);
   const [recordsReviewed, setRecordsReviewed] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
+  const [exportAcknowledged, setExportAcknowledged] = useState(false);
   const qc = useQueryClient();
   const apply = useImportShopData({
     request: { headers: {
@@ -45,8 +46,10 @@ export default function DataTransferPage() {
   return <div className="mx-auto max-w-4xl space-y-5">
     <PageHeader eyebrow="Data management" title="Database transfer" description="Download a portable ZIP of this shop’s records, or safely import one into an empty shop. This is not a PostgreSQL disaster-recovery backup." />
     <div className="rise rounded-xl border border-signal/30 border-l-4 border-l-signal bg-signal-soft/60 p-4 text-sm">
-      <div className="mb-2 flex items-center gap-2 font-semibold"><ShieldCheck className="h-4 w-4 text-signal" aria-hidden="true" /> Your encryption key stays separate</div>
-      <p className="text-muted-foreground">The destination must use the original <code className="rounded bg-muted px-1 font-mono text-[0.85em]">SESSION_SECRET</code> to verify the ZIP and decrypt inventory and saved provider credentials. The key, login passwords, login sessions, database connection credentials and application code are never included. Environment-only provider keys need separate configuration.</p>
+      <div className="mb-2 flex items-center gap-2 font-semibold"><ShieldCheck className="h-4 w-4 text-signal" aria-hidden="true" /> ZIP-only transfer · SQLite database inside</div>
+      <p className="text-muted-foreground">New exports contain a real <code className="rounded bg-muted px-1 font-mono text-[0.85em]">shop.db</code> SQLite database, not JSON files. Import needs only the ZIP—no matching secret key or transfer password. Stock and saved credentials are encrypted with the destination’s own key when imported. The live app still uses PostgreSQL.</p>
+      <p className="mt-2 font-medium text-signal">Anyone with this ZIP can read its stock credentials and saved bot/payment keys. It is not password-protected. Keep it private and import only a trusted file.</p>
+      <p className="mt-2 text-muted-foreground">Your installation secret, admin password, login sessions and database connection credentials are never exported. Old JSON exports still need the original SESSION_SECRET; this update cannot recover an old archive’s encrypted values without that key.</p>
       <p className="mt-2 text-muted-foreground">The ZIP contains private customer and financial information. Keep it secure. For a final move, stop the source processing before the final export, and do not restart that copy.</p>
     </div>
     {status.isError && <ErrorState message={errMsg(status.error)} onRetry={() => status.refetch()} />}
@@ -60,9 +63,10 @@ export default function DataTransferPage() {
       </div>
     </Panel>}
     <Panel title="Export shop data" meta={<Download className="h-4 w-4" aria-hidden="true" />}>
-      <p className="mb-3 text-sm text-muted-foreground">One authenticated, read-only snapshot includes every row for your shop in all supported datasets: products, inventory, customers, orders and deposits, wallet credits and purchase debits, legacy records, settings, activity, saved provider credentials, bot configuration, Telegram deduplication history and your custom emoji library. Temporary emoji import links are excluded. No export files are stored on the server.</p>
-      <p className="mb-4 text-xs text-muted-foreground">The ZIP contains <code className="rounded bg-muted px-1 font-mono text-[0.85em]">manifest.json</code>, <code className="rounded bg-muted px-1 font-mono text-[0.85em]">shop-data.json</code> and <code className="rounded bg-muted px-1 font-mono text-[0.85em]">README.txt</code>. Checksums, authenticated signatures and schema checks detect corruption or modification. Limit: 50,000 total rows, 30 MB expanded data, 20 MB ZIP. An oversized shop fails explicitly—never a partial export.</p>
-      <Button disabled={busy || status.isLoading || status.isError} data-testid="button-export-shop" onClick={() => {
+      <p className="mb-3 text-sm text-muted-foreground">One read-only snapshot includes every row for your shop in separate SQLite tables: products, inventory, customers, orders and deposits, wallet credits and purchase debits, legacy records, settings, activity, saved provider credentials, bot configuration, Telegram deduplication history and your custom emoji library. Temporary emoji import links are excluded. Temporary transfer files are deleted after processing.</p>
+      <p className="mb-4 text-xs text-muted-foreground">The ZIP contains <code className="rounded bg-muted px-1 font-mono text-[0.85em]">shop.db</code> and <code className="rounded bg-muted px-1 font-mono text-[0.85em]">README.txt</code>. SQLite tables let database viewers browse logs without opening one large JSON file. Checksums and schema checks detect corruption, but do not prove who created the file. Limit: 50,000 total rows, 30 MB expanded data, 20 MB ZIP. An oversized shop fails explicitly—never a partial export.</p>
+      <label className="mb-4 flex cursor-pointer items-start gap-3 rounded-lg border border-signal/30 p-3 text-sm"><Checkbox className="mt-0.5" checked={exportAcknowledged} disabled={busy} onCheckedChange={value => setExportAcknowledged(value === true)} data-testid="checkbox-confirm-export" />I understand this ZIP contains readable stock and saved provider credentials. I will keep it private.</label>
+      <Button disabled={busy || status.isLoading || status.isError || !exportAcknowledged} data-testid="button-export-shop" onClick={() => {
         setDownloaded(false);
         download.mutate(undefined, { onSuccess: blob => {
           const url = URL.createObjectURL(blob);
@@ -73,7 +77,7 @@ export default function DataTransferPage() {
           setDownloaded(true); download.reset();
         } });
       }}><Download className="mr-2 h-4 w-4" aria-hidden="true" />{download.isPending ? "Preparing ZIP…" : "Download shop-data ZIP"}</Button>
-      {downloaded && <p role="status" className="pop mt-3 text-sm text-ok">ZIP download started. Store it securely with access to your separately held encryption key.</p>}
+      {downloaded && <p role="status" className="pop mt-3 text-sm text-ok">SQLite ZIP download started. Only this ZIP is needed to import into another installation. Keep it private.</p>}
       {download.isError && <p role="alert" className="pop mt-3 text-sm text-destructive">{errMsg(download.error)}</p>}
     </Panel>
     <Panel title="Import shop data" meta={<Upload className="h-4 w-4" aria-hidden="true" />}>
@@ -93,7 +97,7 @@ export default function DataTransferPage() {
       {preview.data && <section className="pop mt-5 space-y-4 border-t border-dashed pt-5" data-testid="section-import-preview">
         <div><h3 className="text-sm font-semibold">Verified archive · {dateTime(preview.data.createdAt)}</h3><p className="mt-1 break-all font-mono text-xs text-muted-foreground">SHA-256: {preview.data.archiveHash}</p></div>
         <Counts counts={preview.data.counts} />
-        <p className="text-xs text-muted-foreground">Schema, file signature, row counts, encrypted values and relationships verified. Preview expires in five minutes.</p>
+        <p className="text-xs text-muted-foreground">Archive structure, integrity, row counts, credentials and relationships checked. Preview expires in five minutes. Only import an export you trust.</p>
         {preview.data.warnings.map(warning => <p key={warning} className="text-xs text-muted-foreground">{warning}</p>)}
         {preview.data.blockers.map(blocker => <p key={blocker} role="alert" className="pop rounded-md border-l-2 border-signal bg-signal-soft/50 px-3 py-1.5 text-sm text-signal">{blocker}</p>)}
         <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-primary/30 bg-accent/40 p-3 text-sm transition-colors hover:bg-accent/70"><Checkbox className="mt-0.5" checked={acknowledged} disabled={busy || !preview.data.canImport || apply.isSuccess} onCheckedChange={value => setAcknowledged(value === true)} data-testid="checkbox-confirm-import" />I confirm this is the intended ZIP and an empty destination. I understand configuration is replaced and processing remains paused for review.</label>

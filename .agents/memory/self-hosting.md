@@ -20,3 +20,9 @@ Previously exported, authenticated shop ZIPs must remain usable when routine pro
 **Why:** A shop owner preparing a move must not lose access to a valid export simply because they updated the dashboard before importing it.
 
 **How to apply:** Preserve known signed formats and migrate only after signature verification, with safe defaults for new optional features. Custom emoji libraries are portable business data; short-lived emoji pairing links are installation-local authorization, like login sessions.
+
+The user requires that new transfers work with the ZIP alone, without a matching secret or transfer password, and contain a `.db` rather than JSON files.
+
+**Why:** The user lost access to the source key and explicitly requested ZIP-only imports and SQLite files because large JSON logs are difficult to open.
+
+**How to apply:** Keep the live PostgreSQL database and its encryption; use SQLite only for portable transfer files. Do not export the installation secret. Warn clearly that possession of a portable ZIP exposes its stock and saved provider credentials. Preserve legacy authenticated imports without claiming old encrypted values can be recovered without their original key.

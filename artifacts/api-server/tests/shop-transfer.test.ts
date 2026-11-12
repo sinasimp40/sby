@@ -44,8 +44,11 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
     await pool.query(`UPDATE shop_products SET group_id=$1, group_name='TEST_ONLY options', group_description='Shared option description',
       option_name=CASE WHEN status='active' THEN 'Basic' ELSE 'Draft' END,
       name=CASE WHEN status='active' THEN 'TEST_ONLY options — Basic' ELSE 'TEST_ONLY options — Draft' END WHERE owner_id=$2`, [randomUUID(), source]);
-    const exported = await exportShopTransfer(source);
-    const decoded = decodeShopArchive(exported.zip);
+    // Keep the legacy-format migration and signature regression fixtures.
+    // New SQLite export/cross-key import behavior has its own test suite.
+    const exported = encodeShopArchive(source, decodeShopArchive((await exportShopTransfer(source)).zip).data);
+    const archive = decodeShopArchive(exported.zip);
+    const decoded = { ...archive, manifest: exported.manifest };
     await t.test("pre-advertising ZIPs keep option groups and receive empty advertising datasets", () => {
       const data = structuredClone(decoded.data);
       for (const key of tableKeys.filter(key => key.startsWith("advertising"))) delete (data as Partial<typeof data>)[key];

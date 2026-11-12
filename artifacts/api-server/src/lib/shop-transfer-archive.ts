@@ -2,6 +2,7 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { unzipSync, zipSync, strFromU8, strToU8 } from "fflate";
 import { z } from "zod/v4";
 import { CommerceError } from "./commerce-providers";
+import { decodeSqliteShopArchive } from "./shop-transfer-sqlite";
 import {
   parseTransferData, tableKeys, transferSchemaHash, singleItemTransferSchemaHash, quantityTransferSchemaHash, productEmojiTransferSchemaHash, customEmojiTransferSchemaHash, MAX_TRANSFER_BYTES, MAX_ZIP_BYTES,
   stockAnnouncementTransferSchemaHash, productImageTransferSchemaHash, type TransferData,
@@ -19,6 +20,7 @@ const manifestSchema = z.object({
   signature: z.string().regex(/^[a-f0-9]{64}$/),
 }).strict();
 type Manifest = z.infer<typeof manifestSchema>;
+const legacyKeyError = "Cannot authenticate this legacy JSON ZIP. It requires the matching original SESSION_SECRET; the ZIP does not contain that key. New SQLite exports do not need a matching source key. Nothing was imported.";
 function secret() {
   if (!process.env.SESSION_SECRET) throw new CommerceError("Configure the original SESSION_SECRET before transferring encrypted shop data.", 503);
   return process.env.SESSION_SECRET;
@@ -85,19 +87,23 @@ export function decodeShopArchive(zip: Buffer) {
     const seen = new Set<string>();
     let expanded = 0;
     const files = unzipSync(zip, { filter(file) {
-      if (!["manifest.json", "shop-data.json", "README.txt"].includes(file.name) || seen.has(file.name)) throw new Error("Unexpected or duplicate ZIP entry.");
+      if (!["manifest.json", "shop-data.json", "shop.db", "README.txt"].includes(file.name) || seen.has(file.name)) throw new Error("Unexpected or duplicate ZIP entry.");
       seen.add(file.name);
       expanded += file.originalSize;
       if (expanded > MAX_TRANSFER_BYTES + 50000 || file.originalSize > MAX_TRANSFER_BYTES) throw new Error("Expanded ZIP is too large.");
       return true;
     } });
+    if (files["shop.db"]) {
+      if (seen.size !== 2 || !files["README.txt"] || files["README.txt"].length > 20000) throw new Error("Unexpected SQLite archive entries.");
+      return decodeSqliteShopArchive(files["shop.db"], zip);
+    }
     if (seen.size !== 3 || !files["manifest.json"] || files["manifest.json"].length > 20000 || !files["shop-data.json"]) throw new Error("Required archive files are missing.");
     const manifest = manifestSchema.parse(JSON.parse(strFromU8(files["manifest.json"])));
     const { signature: signed, ...core } = manifest;
     if (![transferSchemaHash, preAccountTransferSchemaHash, preAdvertisingTransferSchemaHash, productImageTransferSchemaHash, stockAnnouncementTransferSchemaHash, singleItemTransferSchemaHash, quantityTransferSchemaHash, productEmojiTransferSchemaHash, customEmojiTransferSchemaHash].includes(manifest.schemaHash)) throw new Error("The app schema differs. Use the same Telecart version on source and destination.");
     if (digest(files["shop-data.json"]) !== manifest.dataSha256) throw new Error("Data checksum does not match.");
     if (!timingSafeEqual(Buffer.from(signed, "hex"), Buffer.from(signature(core), "hex"))) {
-      throw new Error("Cannot authenticate this archive. Configure the matching original SESSION_SECRET and use an unmodified export.");
+      throw new Error(legacyKeyError);
     }
     const rawData = JSON.parse(strFromU8(files["shop-data.json"]));
     const legacy = [singleItemTransferSchemaHash, quantityTransferSchemaHash, productEmojiTransferSchemaHash].includes(manifest.schemaHash);
@@ -164,7 +170,7 @@ export function decodeShopArchive(zip: Buffer) {
     // Never return JSON, row values, credentials, library parse errors or ZIP paths.
     const allowed = [
       "The app schema differs. Use the same Telecart version on source and destination.",
-      "Cannot authenticate this archive. Configure the matching original SESSION_SECRET and use an unmodified export.",
+      legacyKeyError,
       "Data checksum does not match.", "Table counts do not match.",
     ];
     throw new CommerceError(error instanceof Error && allowed.includes(error.message)

@@ -40,7 +40,8 @@ For **Webhook** mode, supply a public HTTPS origin, e.g. `https://shop.example.c
 
 - Disable Telegram on the old copy **before** enabling it on your computer. Never run two receivers for one token.
 - Keep the **same shop owner ID** shown in the dashboard's “Moving this shop to your computer” section.
-- Preserve the **original SESSION_SECRET** when using existing data. Provider keys and stock are encrypted using it; generating another one does not migrate them.
+- With a **new SQLite ZIP export** from the dashboard, the ZIP alone is sufficient: it contains `shop.db`, not JSON files. The destination can use its own installation secret and owner; import encrypts stock and saved provider credentials for that installation. Keep the ZIP private: anyone with it can read those credentials. Only import a trusted file.
+- Preserve the **original SESSION_SECRET** when attaching an existing database or importing an old JSON ZIP. Existing ciphertext needs its original key; an old ZIP alone cannot recover that key. The new format does not repair previously exported files with lost keys.
 - The local database must contain the existing shop's data if you want its products, stock, customers, orders, saved credentials and settings. An empty database starts a new shop; downloading code does **not** copy database rows.
 - Point to a database you deliberately control. Do not reset or replace the running shop's database during setup. Plan the database transfer separately; no automatic transfer or destructive migration is performed here.
 - With an explicit owner ID and no Clerk secret in the local environment, password sign-in uses that trusted local owner without creating or changing any cloud user.

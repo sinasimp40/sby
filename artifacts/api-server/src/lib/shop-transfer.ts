@@ -4,7 +4,8 @@ import type { PoolClient } from "pg";
 import { CommerceError } from "./commerce-providers";
 import { decryptCredential, encryptCredential, credentialFingerprint } from "./inventory-encryption";
 import { decryptProviderSecret, encryptProviderSecret } from "./provider-credentials";
-import { encodeShopArchive, decodeShopArchive, previewToken, verifyPreviewToken } from "./shop-transfer-archive";
+import { decodeShopArchive, previewToken, verifyPreviewToken } from "./shop-transfer-archive";
+import { encodeSqliteShopArchive } from "./shop-transfer-sqlite";
 import { validateShopRelationships } from "./shop-transfer-validation";
 import { readShopTransferData, insertTransferRow, insertTransferRows, destinationTransferState } from "./shop-transfer-store";
 import type { TransferData, TransferRow, TransferTable } from "./shop-transfer-tables";
@@ -14,8 +15,8 @@ function requireOwner(owner: string | null): asserts owner is string {
   if (!owner) throw new CommerceError("Sign in to transfer your private shop data.", 401);
 }
 const warnings = [
-  "This ZIP contains private customer and financial information. Store it securely.",
-  "Use the original SESSION_SECRET on the destination; it is intentionally not included.",
+  "Anyone with a new SQLite ZIP can read its stock, saved bot/payment credentials, customer and financial information. Store it privately.",
+  "New SQLite ZIPs need no matching SESSION_SECRET or password. Legacy JSON ZIPs still require their original SESSION_SECRET.",
   "Admin passwords, login sessions, database URLs, environment-only provider keys and application code are not included.",
   "Imports never merge or overwrite business data. Saved shop preferences/provider configuration will be replaced; destination login credentials remain unchanged.",
   "The destination bot and payment processing stay paused for review. Stop the source server before resuming; never run both copies.",
@@ -50,8 +51,8 @@ export async function exportShopTransfer(ownerId: string | null) {
     await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
     await client.query("SET LOCAL statement_timeout = '15s'");
     const data = await readShopTransferData(client, ownerId);
-    const archive = encodeShopArchive(ownerId, data);
     validateShopRelationships(data, ownerId);
+    const archive = encodeSqliteShopArchive(ownerId, data);
     await client.query("COMMIT");
     return archive;
   } catch (error) {
