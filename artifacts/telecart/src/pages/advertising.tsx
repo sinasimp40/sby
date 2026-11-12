@@ -25,7 +25,7 @@ export default function AdvertisingPage() {
   useEffect(() => {
     if (server && (!inited.current || !dirty)) {
       inited.current = true;
-      setD({ text: server.text, imageUrl: server.imageUrl ?? "", buttonText: server.buttonText, buttonUrl: server.buttonUrl ?? "" });
+      setD({ text: server.text, imageUrl: server.imageUrl ?? "", buttonText: server.buttonText, buttonUrl: server.buttonUrl ?? "", entities: server.entities ?? [] });
     }
   }, [server, dirty]);
   if (ws.isLoading) return <div><PageHeader eyebrow="Growth" title="Advertising" /><RowsSkeleton rows={8} /></div>;
@@ -44,7 +44,7 @@ export default function AdvertisingPage() {
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <div className="min-w-0 space-y-5">
           <AccountPanel ws={w} />
-          <DraftPanel d={d} setD={v => { setD(v); setDirty(true); }} dirty={dirty} onSave={saveDraft} saving={save.isPending} shopBotUrl={w.shopBotUrl} />
+          <DraftPanel d={d} setD={v => { setD(v); setDirty(true); }} dirty={dirty} onSave={saveDraft} saving={save.isPending} shopBotUrl={w.shopBotUrl} connected={w.account.connected && !w.account.login} />
           <ImportPanel ws={w} />
           <GroupsPanel ws={w} selected={selected} setSelected={setSelected} />
           <RunsPanel ws={w} />

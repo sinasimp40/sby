@@ -243,9 +243,15 @@ test("personal-account connection ownership, login promotion, failure stops and 
       const id = owner(), h = harness();
       await phoneLogin(id, h.factory);
       h.background("AUTH_KEY_DUPLICATED");
-      await withAdvertisingLock(id, async () => {}); // queued persistence has completed
+      // Disposing the transport precedes asynchronous persistence. A separately
+      // queued no-op lock can win that race, so wait for the observable result.
+      const deadline = Date.now() + 2000;
+      let status = await accountStatus(id);
+      while (status.connected && Date.now() < deadline) {
+        await new Promise(resolve => setTimeout(resolve, 10));
+        status = await accountStatus(id);
+      }
       assert.equal(h.stats.disposed, 1);
-      const status = await accountStatus(id);
       assert.equal(status.connected, false);
       assert.match(status.error!, /AUTH_KEY_DUPLICATED/);
       await assert.rejects(discoverAccountGroups(id, h.factory), /connection stopped/);

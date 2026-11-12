@@ -5,6 +5,7 @@
  * Telecart shop administration. Live Telegram and payments are not connected.
  * OpenAPI spec version: 0.1.0
  */
+import type { AdvertisingTextEntity } from './advertisingTextEntity';
 
 export interface AdvertisingDraft {
   /** @maxLength 4096 */
@@ -21,4 +22,6 @@ export interface AdvertisingDraft {
      * @nullable
      */
   buttonUrl: string | null;
+  /** @maxItems 100 */
+  entities?: AdvertisingTextEntity[];
 }

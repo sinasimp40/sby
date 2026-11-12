@@ -28,6 +28,14 @@ export const saveAdvertisingAppCredentialsResponseDraftButtonTextMax = 64;
 
 export const saveAdvertisingAppCredentialsResponseDraftButtonUrlMax = 2048;
 
+export const saveAdvertisingAppCredentialsResponseDraftEntitiesItemOffsetMin = 0;
+
+
+export const saveAdvertisingAppCredentialsResponseDraftEntitiesItemUrlMax = 2048;
+
+export const saveAdvertisingAppCredentialsResponseDraftEntitiesItemDocumentIdRegExp = new RegExp('^[1-9][0-9]{0,18}$');
+export const saveAdvertisingAppCredentialsResponseDraftEntitiesMax = 100;
+
 export const saveAdvertisingAppCredentialsResponseGroupsItemIntervalSecondsMin = 60;
 export const saveAdvertisingAppCredentialsResponseGroupsItemIntervalSecondsMax = 2592000;
 
@@ -72,7 +80,14 @@ export const SaveAdvertisingAppCredentialsResponse = zod.object({
   "text": zod.string().max(saveAdvertisingAppCredentialsResponseDraftTextMax),
   "imageUrl": zod.string().max(saveAdvertisingAppCredentialsResponseDraftImageUrlMax).nullable(),
   "buttonText": zod.string().max(saveAdvertisingAppCredentialsResponseDraftButtonTextMax),
-  "buttonUrl": zod.string().max(saveAdvertisingAppCredentialsResponseDraftButtonUrlMax).nullable()
+  "buttonUrl": zod.string().max(saveAdvertisingAppCredentialsResponseDraftButtonUrlMax).nullable(),
+  "entities": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'text_link', 'custom_emoji']),
+  "offset": zod.number().int().min(saveAdvertisingAppCredentialsResponseDraftEntitiesItemOffsetMin),
+  "length": zod.number().int().min(1),
+  "url": zod.string().max(saveAdvertisingAppCredentialsResponseDraftEntitiesItemUrlMax).optional(),
+  "documentId": zod.string().regex(saveAdvertisingAppCredentialsResponseDraftEntitiesItemDocumentIdRegExp).optional()
+})).max(saveAdvertisingAppCredentialsResponseDraftEntitiesMax).optional()
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
@@ -113,6 +128,14 @@ export const forgetAdvertisingAppCredentialsResponseDraftImageUrlMax = 2048;
 export const forgetAdvertisingAppCredentialsResponseDraftButtonTextMax = 64;
 
 export const forgetAdvertisingAppCredentialsResponseDraftButtonUrlMax = 2048;
+
+export const forgetAdvertisingAppCredentialsResponseDraftEntitiesItemOffsetMin = 0;
+
+
+export const forgetAdvertisingAppCredentialsResponseDraftEntitiesItemUrlMax = 2048;
+
+export const forgetAdvertisingAppCredentialsResponseDraftEntitiesItemDocumentIdRegExp = new RegExp('^[1-9][0-9]{0,18}$');
+export const forgetAdvertisingAppCredentialsResponseDraftEntitiesMax = 100;
 
 export const forgetAdvertisingAppCredentialsResponseGroupsItemIntervalSecondsMin = 60;
 export const forgetAdvertisingAppCredentialsResponseGroupsItemIntervalSecondsMax = 2592000;
@@ -158,7 +181,14 @@ export const ForgetAdvertisingAppCredentialsResponse = zod.object({
   "text": zod.string().max(forgetAdvertisingAppCredentialsResponseDraftTextMax),
   "imageUrl": zod.string().max(forgetAdvertisingAppCredentialsResponseDraftImageUrlMax).nullable(),
   "buttonText": zod.string().max(forgetAdvertisingAppCredentialsResponseDraftButtonTextMax),
-  "buttonUrl": zod.string().max(forgetAdvertisingAppCredentialsResponseDraftButtonUrlMax).nullable()
+  "buttonUrl": zod.string().max(forgetAdvertisingAppCredentialsResponseDraftButtonUrlMax).nullable(),
+  "entities": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'text_link', 'custom_emoji']),
+  "offset": zod.number().int().min(forgetAdvertisingAppCredentialsResponseDraftEntitiesItemOffsetMin),
+  "length": zod.number().int().min(1),
+  "url": zod.string().max(forgetAdvertisingAppCredentialsResponseDraftEntitiesItemUrlMax).optional(),
+  "documentId": zod.string().regex(forgetAdvertisingAppCredentialsResponseDraftEntitiesItemDocumentIdRegExp).optional()
+})).max(forgetAdvertisingAppCredentialsResponseDraftEntitiesMax).optional()
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
@@ -216,6 +246,14 @@ export const beginAdvertisingAccountLoginResponseDraftButtonTextMax = 64;
 
 export const beginAdvertisingAccountLoginResponseDraftButtonUrlMax = 2048;
 
+export const beginAdvertisingAccountLoginResponseDraftEntitiesItemOffsetMin = 0;
+
+
+export const beginAdvertisingAccountLoginResponseDraftEntitiesItemUrlMax = 2048;
+
+export const beginAdvertisingAccountLoginResponseDraftEntitiesItemDocumentIdRegExp = new RegExp('^[1-9][0-9]{0,18}$');
+export const beginAdvertisingAccountLoginResponseDraftEntitiesMax = 100;
+
 export const beginAdvertisingAccountLoginResponseGroupsItemIntervalSecondsMin = 60;
 export const beginAdvertisingAccountLoginResponseGroupsItemIntervalSecondsMax = 2592000;
 
@@ -260,7 +298,14 @@ export const BeginAdvertisingAccountLoginResponse = zod.object({
   "text": zod.string().max(beginAdvertisingAccountLoginResponseDraftTextMax),
   "imageUrl": zod.string().max(beginAdvertisingAccountLoginResponseDraftImageUrlMax).nullable(),
   "buttonText": zod.string().max(beginAdvertisingAccountLoginResponseDraftButtonTextMax),
-  "buttonUrl": zod.string().max(beginAdvertisingAccountLoginResponseDraftButtonUrlMax).nullable()
+  "buttonUrl": zod.string().max(beginAdvertisingAccountLoginResponseDraftButtonUrlMax).nullable(),
+  "entities": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'text_link', 'custom_emoji']),
+  "offset": zod.number().int().min(beginAdvertisingAccountLoginResponseDraftEntitiesItemOffsetMin),
+  "length": zod.number().int().min(1),
+  "url": zod.string().max(beginAdvertisingAccountLoginResponseDraftEntitiesItemUrlMax).optional(),
+  "documentId": zod.string().regex(beginAdvertisingAccountLoginResponseDraftEntitiesItemDocumentIdRegExp).optional()
+})).max(beginAdvertisingAccountLoginResponseDraftEntitiesMax).optional()
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
@@ -301,6 +346,14 @@ export const cancelAdvertisingAccountLoginResponseDraftImageUrlMax = 2048;
 export const cancelAdvertisingAccountLoginResponseDraftButtonTextMax = 64;
 
 export const cancelAdvertisingAccountLoginResponseDraftButtonUrlMax = 2048;
+
+export const cancelAdvertisingAccountLoginResponseDraftEntitiesItemOffsetMin = 0;
+
+
+export const cancelAdvertisingAccountLoginResponseDraftEntitiesItemUrlMax = 2048;
+
+export const cancelAdvertisingAccountLoginResponseDraftEntitiesItemDocumentIdRegExp = new RegExp('^[1-9][0-9]{0,18}$');
+export const cancelAdvertisingAccountLoginResponseDraftEntitiesMax = 100;
 
 export const cancelAdvertisingAccountLoginResponseGroupsItemIntervalSecondsMin = 60;
 export const cancelAdvertisingAccountLoginResponseGroupsItemIntervalSecondsMax = 2592000;
@@ -346,7 +399,14 @@ export const CancelAdvertisingAccountLoginResponse = zod.object({
   "text": zod.string().max(cancelAdvertisingAccountLoginResponseDraftTextMax),
   "imageUrl": zod.string().max(cancelAdvertisingAccountLoginResponseDraftImageUrlMax).nullable(),
   "buttonText": zod.string().max(cancelAdvertisingAccountLoginResponseDraftButtonTextMax),
-  "buttonUrl": zod.string().max(cancelAdvertisingAccountLoginResponseDraftButtonUrlMax).nullable()
+  "buttonUrl": zod.string().max(cancelAdvertisingAccountLoginResponseDraftButtonUrlMax).nullable(),
+  "entities": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'text_link', 'custom_emoji']),
+  "offset": zod.number().int().min(cancelAdvertisingAccountLoginResponseDraftEntitiesItemOffsetMin),
+  "length": zod.number().int().min(1),
+  "url": zod.string().max(cancelAdvertisingAccountLoginResponseDraftEntitiesItemUrlMax).optional(),
+  "documentId": zod.string().regex(cancelAdvertisingAccountLoginResponseDraftEntitiesItemDocumentIdRegExp).optional()
+})).max(cancelAdvertisingAccountLoginResponseDraftEntitiesMax).optional()
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
@@ -401,6 +461,14 @@ export const verifyAdvertisingAccountLoginResponseDraftButtonTextMax = 64;
 
 export const verifyAdvertisingAccountLoginResponseDraftButtonUrlMax = 2048;
 
+export const verifyAdvertisingAccountLoginResponseDraftEntitiesItemOffsetMin = 0;
+
+
+export const verifyAdvertisingAccountLoginResponseDraftEntitiesItemUrlMax = 2048;
+
+export const verifyAdvertisingAccountLoginResponseDraftEntitiesItemDocumentIdRegExp = new RegExp('^[1-9][0-9]{0,18}$');
+export const verifyAdvertisingAccountLoginResponseDraftEntitiesMax = 100;
+
 export const verifyAdvertisingAccountLoginResponseGroupsItemIntervalSecondsMin = 60;
 export const verifyAdvertisingAccountLoginResponseGroupsItemIntervalSecondsMax = 2592000;
 
@@ -445,7 +513,14 @@ export const VerifyAdvertisingAccountLoginResponse = zod.object({
   "text": zod.string().max(verifyAdvertisingAccountLoginResponseDraftTextMax),
   "imageUrl": zod.string().max(verifyAdvertisingAccountLoginResponseDraftImageUrlMax).nullable(),
   "buttonText": zod.string().max(verifyAdvertisingAccountLoginResponseDraftButtonTextMax),
-  "buttonUrl": zod.string().max(verifyAdvertisingAccountLoginResponseDraftButtonUrlMax).nullable()
+  "buttonUrl": zod.string().max(verifyAdvertisingAccountLoginResponseDraftButtonUrlMax).nullable(),
+  "entities": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'text_link', 'custom_emoji']),
+  "offset": zod.number().int().min(verifyAdvertisingAccountLoginResponseDraftEntitiesItemOffsetMin),
+  "length": zod.number().int().min(1),
+  "url": zod.string().max(verifyAdvertisingAccountLoginResponseDraftEntitiesItemUrlMax).optional(),
+  "documentId": zod.string().regex(verifyAdvertisingAccountLoginResponseDraftEntitiesItemDocumentIdRegExp).optional()
+})).max(verifyAdvertisingAccountLoginResponseDraftEntitiesMax).optional()
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
@@ -491,6 +566,14 @@ export const pollAdvertisingAccountLoginResponseDraftButtonTextMax = 64;
 
 export const pollAdvertisingAccountLoginResponseDraftButtonUrlMax = 2048;
 
+export const pollAdvertisingAccountLoginResponseDraftEntitiesItemOffsetMin = 0;
+
+
+export const pollAdvertisingAccountLoginResponseDraftEntitiesItemUrlMax = 2048;
+
+export const pollAdvertisingAccountLoginResponseDraftEntitiesItemDocumentIdRegExp = new RegExp('^[1-9][0-9]{0,18}$');
+export const pollAdvertisingAccountLoginResponseDraftEntitiesMax = 100;
+
 export const pollAdvertisingAccountLoginResponseGroupsItemIntervalSecondsMin = 60;
 export const pollAdvertisingAccountLoginResponseGroupsItemIntervalSecondsMax = 2592000;
 
@@ -535,7 +618,14 @@ export const PollAdvertisingAccountLoginResponse = zod.object({
   "text": zod.string().max(pollAdvertisingAccountLoginResponseDraftTextMax),
   "imageUrl": zod.string().max(pollAdvertisingAccountLoginResponseDraftImageUrlMax).nullable(),
   "buttonText": zod.string().max(pollAdvertisingAccountLoginResponseDraftButtonTextMax),
-  "buttonUrl": zod.string().max(pollAdvertisingAccountLoginResponseDraftButtonUrlMax).nullable()
+  "buttonUrl": zod.string().max(pollAdvertisingAccountLoginResponseDraftButtonUrlMax).nullable(),
+  "entities": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'text_link', 'custom_emoji']),
+  "offset": zod.number().int().min(pollAdvertisingAccountLoginResponseDraftEntitiesItemOffsetMin),
+  "length": zod.number().int().min(1),
+  "url": zod.string().max(pollAdvertisingAccountLoginResponseDraftEntitiesItemUrlMax).optional(),
+  "documentId": zod.string().regex(pollAdvertisingAccountLoginResponseDraftEntitiesItemDocumentIdRegExp).optional()
+})).max(pollAdvertisingAccountLoginResponseDraftEntitiesMax).optional()
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
@@ -576,6 +666,14 @@ export const checkAdvertisingAccountResponseDraftImageUrlMax = 2048;
 export const checkAdvertisingAccountResponseDraftButtonTextMax = 64;
 
 export const checkAdvertisingAccountResponseDraftButtonUrlMax = 2048;
+
+export const checkAdvertisingAccountResponseDraftEntitiesItemOffsetMin = 0;
+
+
+export const checkAdvertisingAccountResponseDraftEntitiesItemUrlMax = 2048;
+
+export const checkAdvertisingAccountResponseDraftEntitiesItemDocumentIdRegExp = new RegExp('^[1-9][0-9]{0,18}$');
+export const checkAdvertisingAccountResponseDraftEntitiesMax = 100;
 
 export const checkAdvertisingAccountResponseGroupsItemIntervalSecondsMin = 60;
 export const checkAdvertisingAccountResponseGroupsItemIntervalSecondsMax = 2592000;
@@ -621,7 +719,14 @@ export const CheckAdvertisingAccountResponse = zod.object({
   "text": zod.string().max(checkAdvertisingAccountResponseDraftTextMax),
   "imageUrl": zod.string().max(checkAdvertisingAccountResponseDraftImageUrlMax).nullable(),
   "buttonText": zod.string().max(checkAdvertisingAccountResponseDraftButtonTextMax),
-  "buttonUrl": zod.string().max(checkAdvertisingAccountResponseDraftButtonUrlMax).nullable()
+  "buttonUrl": zod.string().max(checkAdvertisingAccountResponseDraftButtonUrlMax).nullable(),
+  "entities": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'text_link', 'custom_emoji']),
+  "offset": zod.number().int().min(checkAdvertisingAccountResponseDraftEntitiesItemOffsetMin),
+  "length": zod.number().int().min(1),
+  "url": zod.string().max(checkAdvertisingAccountResponseDraftEntitiesItemUrlMax).optional(),
+  "documentId": zod.string().regex(checkAdvertisingAccountResponseDraftEntitiesItemDocumentIdRegExp).optional()
+})).max(checkAdvertisingAccountResponseDraftEntitiesMax).optional()
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
@@ -655,6 +760,24 @@ export const CheckAdvertisingAccountResponse = zod.object({
 })
 
 
+export const loadAdvertisingEmojiSetBodyLinkMax = 512;
+
+
+
+export const LoadAdvertisingEmojiSetBody = zod.object({
+  "link": zod.string().min(1).max(loadAdvertisingEmojiSetBodyLinkMax)
+})
+
+export const LoadAdvertisingEmojiSetResponse = zod.object({
+  "title": zod.string(),
+  "emojis": zod.array(zod.object({
+  "documentId": zod.string(),
+  "emoji": zod.string(),
+  "available": zod.boolean()
+}))
+})
+
+
 export const disconnectAdvertisingAccountResponseDraftTextMax = 4096;
 
 export const disconnectAdvertisingAccountResponseDraftImageUrlMax = 2048;
@@ -662,6 +785,14 @@ export const disconnectAdvertisingAccountResponseDraftImageUrlMax = 2048;
 export const disconnectAdvertisingAccountResponseDraftButtonTextMax = 64;
 
 export const disconnectAdvertisingAccountResponseDraftButtonUrlMax = 2048;
+
+export const disconnectAdvertisingAccountResponseDraftEntitiesItemOffsetMin = 0;
+
+
+export const disconnectAdvertisingAccountResponseDraftEntitiesItemUrlMax = 2048;
+
+export const disconnectAdvertisingAccountResponseDraftEntitiesItemDocumentIdRegExp = new RegExp('^[1-9][0-9]{0,18}$');
+export const disconnectAdvertisingAccountResponseDraftEntitiesMax = 100;
 
 export const disconnectAdvertisingAccountResponseGroupsItemIntervalSecondsMin = 60;
 export const disconnectAdvertisingAccountResponseGroupsItemIntervalSecondsMax = 2592000;
@@ -707,7 +838,14 @@ export const DisconnectAdvertisingAccountResponse = zod.object({
   "text": zod.string().max(disconnectAdvertisingAccountResponseDraftTextMax),
   "imageUrl": zod.string().max(disconnectAdvertisingAccountResponseDraftImageUrlMax).nullable(),
   "buttonText": zod.string().max(disconnectAdvertisingAccountResponseDraftButtonTextMax),
-  "buttonUrl": zod.string().max(disconnectAdvertisingAccountResponseDraftButtonUrlMax).nullable()
+  "buttonUrl": zod.string().max(disconnectAdvertisingAccountResponseDraftButtonUrlMax).nullable(),
+  "entities": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'text_link', 'custom_emoji']),
+  "offset": zod.number().int().min(disconnectAdvertisingAccountResponseDraftEntitiesItemOffsetMin),
+  "length": zod.number().int().min(1),
+  "url": zod.string().max(disconnectAdvertisingAccountResponseDraftEntitiesItemUrlMax).optional(),
+  "documentId": zod.string().regex(disconnectAdvertisingAccountResponseDraftEntitiesItemDocumentIdRegExp).optional()
+})).max(disconnectAdvertisingAccountResponseDraftEntitiesMax).optional()
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
@@ -758,6 +896,14 @@ export const startAdvertisingAccountSchedulesBodyDraftButtonTextMax = 64;
 
 export const startAdvertisingAccountSchedulesBodyDraftButtonUrlMax = 2048;
 
+export const startAdvertisingAccountSchedulesBodyDraftEntitiesItemOffsetMin = 0;
+
+
+export const startAdvertisingAccountSchedulesBodyDraftEntitiesItemUrlMax = 2048;
+
+export const startAdvertisingAccountSchedulesBodyDraftEntitiesItemDocumentIdRegExp = new RegExp('^[1-9][0-9]{0,18}$');
+export const startAdvertisingAccountSchedulesBodyDraftEntitiesMax = 100;
+
 
 
 export const StartAdvertisingAccountSchedulesBody = zod.object({
@@ -772,7 +918,14 @@ export const StartAdvertisingAccountSchedulesBody = zod.object({
   "text": zod.string().max(startAdvertisingAccountSchedulesBodyDraftTextMax),
   "imageUrl": zod.string().max(startAdvertisingAccountSchedulesBodyDraftImageUrlMax).nullable(),
   "buttonText": zod.string().max(startAdvertisingAccountSchedulesBodyDraftButtonTextMax),
-  "buttonUrl": zod.string().max(startAdvertisingAccountSchedulesBodyDraftButtonUrlMax).nullable()
+  "buttonUrl": zod.string().max(startAdvertisingAccountSchedulesBodyDraftButtonUrlMax).nullable(),
+  "entities": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'text_link', 'custom_emoji']),
+  "offset": zod.number().int().min(startAdvertisingAccountSchedulesBodyDraftEntitiesItemOffsetMin),
+  "length": zod.number().int().min(1),
+  "url": zod.string().max(startAdvertisingAccountSchedulesBodyDraftEntitiesItemUrlMax).optional(),
+  "documentId": zod.string().regex(startAdvertisingAccountSchedulesBodyDraftEntitiesItemDocumentIdRegExp).optional()
+})).max(startAdvertisingAccountSchedulesBodyDraftEntitiesMax).optional()
 }),
   "permissionConfirmed": zod.boolean(),
   "idempotencyKey": zod.string().uuid()
@@ -785,6 +938,14 @@ export const startAdvertisingAccountSchedulesResponseDraftImageUrlMax = 2048;
 export const startAdvertisingAccountSchedulesResponseDraftButtonTextMax = 64;
 
 export const startAdvertisingAccountSchedulesResponseDraftButtonUrlMax = 2048;
+
+export const startAdvertisingAccountSchedulesResponseDraftEntitiesItemOffsetMin = 0;
+
+
+export const startAdvertisingAccountSchedulesResponseDraftEntitiesItemUrlMax = 2048;
+
+export const startAdvertisingAccountSchedulesResponseDraftEntitiesItemDocumentIdRegExp = new RegExp('^[1-9][0-9]{0,18}$');
+export const startAdvertisingAccountSchedulesResponseDraftEntitiesMax = 100;
 
 export const startAdvertisingAccountSchedulesResponseGroupsItemIntervalSecondsMin = 60;
 export const startAdvertisingAccountSchedulesResponseGroupsItemIntervalSecondsMax = 2592000;
@@ -830,7 +991,14 @@ export const StartAdvertisingAccountSchedulesResponse = zod.object({
   "text": zod.string().max(startAdvertisingAccountSchedulesResponseDraftTextMax),
   "imageUrl": zod.string().max(startAdvertisingAccountSchedulesResponseDraftImageUrlMax).nullable(),
   "buttonText": zod.string().max(startAdvertisingAccountSchedulesResponseDraftButtonTextMax),
-  "buttonUrl": zod.string().max(startAdvertisingAccountSchedulesResponseDraftButtonUrlMax).nullable()
+  "buttonUrl": zod.string().max(startAdvertisingAccountSchedulesResponseDraftButtonUrlMax).nullable(),
+  "entities": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'text_link', 'custom_emoji']),
+  "offset": zod.number().int().min(startAdvertisingAccountSchedulesResponseDraftEntitiesItemOffsetMin),
+  "length": zod.number().int().min(1),
+  "url": zod.string().max(startAdvertisingAccountSchedulesResponseDraftEntitiesItemUrlMax).optional(),
+  "documentId": zod.string().regex(startAdvertisingAccountSchedulesResponseDraftEntitiesItemDocumentIdRegExp).optional()
+})).max(startAdvertisingAccountSchedulesResponseDraftEntitiesMax).optional()
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
@@ -880,6 +1048,14 @@ export const stopAdvertisingAccountSchedulesResponseDraftButtonTextMax = 64;
 
 export const stopAdvertisingAccountSchedulesResponseDraftButtonUrlMax = 2048;
 
+export const stopAdvertisingAccountSchedulesResponseDraftEntitiesItemOffsetMin = 0;
+
+
+export const stopAdvertisingAccountSchedulesResponseDraftEntitiesItemUrlMax = 2048;
+
+export const stopAdvertisingAccountSchedulesResponseDraftEntitiesItemDocumentIdRegExp = new RegExp('^[1-9][0-9]{0,18}$');
+export const stopAdvertisingAccountSchedulesResponseDraftEntitiesMax = 100;
+
 export const stopAdvertisingAccountSchedulesResponseGroupsItemIntervalSecondsMin = 60;
 export const stopAdvertisingAccountSchedulesResponseGroupsItemIntervalSecondsMax = 2592000;
 
@@ -924,7 +1100,14 @@ export const StopAdvertisingAccountSchedulesResponse = zod.object({
   "text": zod.string().max(stopAdvertisingAccountSchedulesResponseDraftTextMax),
   "imageUrl": zod.string().max(stopAdvertisingAccountSchedulesResponseDraftImageUrlMax).nullable(),
   "buttonText": zod.string().max(stopAdvertisingAccountSchedulesResponseDraftButtonTextMax),
-  "buttonUrl": zod.string().max(stopAdvertisingAccountSchedulesResponseDraftButtonUrlMax).nullable()
+  "buttonUrl": zod.string().max(stopAdvertisingAccountSchedulesResponseDraftButtonUrlMax).nullable(),
+  "entities": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'text_link', 'custom_emoji']),
+  "offset": zod.number().int().min(stopAdvertisingAccountSchedulesResponseDraftEntitiesItemOffsetMin),
+  "length": zod.number().int().min(1),
+  "url": zod.string().max(stopAdvertisingAccountSchedulesResponseDraftEntitiesItemUrlMax).optional(),
+  "documentId": zod.string().regex(stopAdvertisingAccountSchedulesResponseDraftEntitiesItemDocumentIdRegExp).optional()
+})).max(stopAdvertisingAccountSchedulesResponseDraftEntitiesMax).optional()
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
@@ -965,6 +1148,14 @@ export const stopAllAdvertisingAccountSchedulesResponseDraftImageUrlMax = 2048;
 export const stopAllAdvertisingAccountSchedulesResponseDraftButtonTextMax = 64;
 
 export const stopAllAdvertisingAccountSchedulesResponseDraftButtonUrlMax = 2048;
+
+export const stopAllAdvertisingAccountSchedulesResponseDraftEntitiesItemOffsetMin = 0;
+
+
+export const stopAllAdvertisingAccountSchedulesResponseDraftEntitiesItemUrlMax = 2048;
+
+export const stopAllAdvertisingAccountSchedulesResponseDraftEntitiesItemDocumentIdRegExp = new RegExp('^[1-9][0-9]{0,18}$');
+export const stopAllAdvertisingAccountSchedulesResponseDraftEntitiesMax = 100;
 
 export const stopAllAdvertisingAccountSchedulesResponseGroupsItemIntervalSecondsMin = 60;
 export const stopAllAdvertisingAccountSchedulesResponseGroupsItemIntervalSecondsMax = 2592000;
@@ -1010,7 +1201,14 @@ export const StopAllAdvertisingAccountSchedulesResponse = zod.object({
   "text": zod.string().max(stopAllAdvertisingAccountSchedulesResponseDraftTextMax),
   "imageUrl": zod.string().max(stopAllAdvertisingAccountSchedulesResponseDraftImageUrlMax).nullable(),
   "buttonText": zod.string().max(stopAllAdvertisingAccountSchedulesResponseDraftButtonTextMax),
-  "buttonUrl": zod.string().max(stopAllAdvertisingAccountSchedulesResponseDraftButtonUrlMax).nullable()
+  "buttonUrl": zod.string().max(stopAllAdvertisingAccountSchedulesResponseDraftButtonUrlMax).nullable(),
+  "entities": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'text_link', 'custom_emoji']),
+  "offset": zod.number().int().min(stopAllAdvertisingAccountSchedulesResponseDraftEntitiesItemOffsetMin),
+  "length": zod.number().int().min(1),
+  "url": zod.string().max(stopAllAdvertisingAccountSchedulesResponseDraftEntitiesItemUrlMax).optional(),
+  "documentId": zod.string().regex(stopAllAdvertisingAccountSchedulesResponseDraftEntitiesItemDocumentIdRegExp).optional()
+})).max(stopAllAdvertisingAccountSchedulesResponseDraftEntitiesMax).optional()
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
@@ -1051,6 +1249,14 @@ export const getAdvertisingWorkspaceResponseDraftImageUrlMax = 2048;
 export const getAdvertisingWorkspaceResponseDraftButtonTextMax = 64;
 
 export const getAdvertisingWorkspaceResponseDraftButtonUrlMax = 2048;
+
+export const getAdvertisingWorkspaceResponseDraftEntitiesItemOffsetMin = 0;
+
+
+export const getAdvertisingWorkspaceResponseDraftEntitiesItemUrlMax = 2048;
+
+export const getAdvertisingWorkspaceResponseDraftEntitiesItemDocumentIdRegExp = new RegExp('^[1-9][0-9]{0,18}$');
+export const getAdvertisingWorkspaceResponseDraftEntitiesMax = 100;
 
 export const getAdvertisingWorkspaceResponseGroupsItemIntervalSecondsMin = 60;
 export const getAdvertisingWorkspaceResponseGroupsItemIntervalSecondsMax = 2592000;
@@ -1096,7 +1302,14 @@ export const GetAdvertisingWorkspaceResponse = zod.object({
   "text": zod.string().max(getAdvertisingWorkspaceResponseDraftTextMax),
   "imageUrl": zod.string().max(getAdvertisingWorkspaceResponseDraftImageUrlMax).nullable(),
   "buttonText": zod.string().max(getAdvertisingWorkspaceResponseDraftButtonTextMax),
-  "buttonUrl": zod.string().max(getAdvertisingWorkspaceResponseDraftButtonUrlMax).nullable()
+  "buttonUrl": zod.string().max(getAdvertisingWorkspaceResponseDraftButtonUrlMax).nullable(),
+  "entities": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'text_link', 'custom_emoji']),
+  "offset": zod.number().int().min(getAdvertisingWorkspaceResponseDraftEntitiesItemOffsetMin),
+  "length": zod.number().int().min(1),
+  "url": zod.string().max(getAdvertisingWorkspaceResponseDraftEntitiesItemUrlMax).optional(),
+  "documentId": zod.string().regex(getAdvertisingWorkspaceResponseDraftEntitiesItemDocumentIdRegExp).optional()
+})).max(getAdvertisingWorkspaceResponseDraftEntitiesMax).optional()
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
@@ -1147,6 +1360,14 @@ export const connectAdvertisingBotResponseDraftButtonTextMax = 64;
 
 export const connectAdvertisingBotResponseDraftButtonUrlMax = 2048;
 
+export const connectAdvertisingBotResponseDraftEntitiesItemOffsetMin = 0;
+
+
+export const connectAdvertisingBotResponseDraftEntitiesItemUrlMax = 2048;
+
+export const connectAdvertisingBotResponseDraftEntitiesItemDocumentIdRegExp = new RegExp('^[1-9][0-9]{0,18}$');
+export const connectAdvertisingBotResponseDraftEntitiesMax = 100;
+
 export const connectAdvertisingBotResponseGroupsItemIntervalSecondsMin = 60;
 export const connectAdvertisingBotResponseGroupsItemIntervalSecondsMax = 2592000;
 
@@ -1191,7 +1412,14 @@ export const ConnectAdvertisingBotResponse = zod.object({
   "text": zod.string().max(connectAdvertisingBotResponseDraftTextMax),
   "imageUrl": zod.string().max(connectAdvertisingBotResponseDraftImageUrlMax).nullable(),
   "buttonText": zod.string().max(connectAdvertisingBotResponseDraftButtonTextMax),
-  "buttonUrl": zod.string().max(connectAdvertisingBotResponseDraftButtonUrlMax).nullable()
+  "buttonUrl": zod.string().max(connectAdvertisingBotResponseDraftButtonUrlMax).nullable(),
+  "entities": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'text_link', 'custom_emoji']),
+  "offset": zod.number().int().min(connectAdvertisingBotResponseDraftEntitiesItemOffsetMin),
+  "length": zod.number().int().min(1),
+  "url": zod.string().max(connectAdvertisingBotResponseDraftEntitiesItemUrlMax).optional(),
+  "documentId": zod.string().regex(connectAdvertisingBotResponseDraftEntitiesItemDocumentIdRegExp).optional()
+})).max(connectAdvertisingBotResponseDraftEntitiesMax).optional()
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
@@ -1232,6 +1460,14 @@ export const disconnectAdvertisingBotResponseDraftImageUrlMax = 2048;
 export const disconnectAdvertisingBotResponseDraftButtonTextMax = 64;
 
 export const disconnectAdvertisingBotResponseDraftButtonUrlMax = 2048;
+
+export const disconnectAdvertisingBotResponseDraftEntitiesItemOffsetMin = 0;
+
+
+export const disconnectAdvertisingBotResponseDraftEntitiesItemUrlMax = 2048;
+
+export const disconnectAdvertisingBotResponseDraftEntitiesItemDocumentIdRegExp = new RegExp('^[1-9][0-9]{0,18}$');
+export const disconnectAdvertisingBotResponseDraftEntitiesMax = 100;
 
 export const disconnectAdvertisingBotResponseGroupsItemIntervalSecondsMin = 60;
 export const disconnectAdvertisingBotResponseGroupsItemIntervalSecondsMax = 2592000;
@@ -1277,7 +1513,14 @@ export const DisconnectAdvertisingBotResponse = zod.object({
   "text": zod.string().max(disconnectAdvertisingBotResponseDraftTextMax),
   "imageUrl": zod.string().max(disconnectAdvertisingBotResponseDraftImageUrlMax).nullable(),
   "buttonText": zod.string().max(disconnectAdvertisingBotResponseDraftButtonTextMax),
-  "buttonUrl": zod.string().max(disconnectAdvertisingBotResponseDraftButtonUrlMax).nullable()
+  "buttonUrl": zod.string().max(disconnectAdvertisingBotResponseDraftButtonUrlMax).nullable(),
+  "entities": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'text_link', 'custom_emoji']),
+  "offset": zod.number().int().min(disconnectAdvertisingBotResponseDraftEntitiesItemOffsetMin),
+  "length": zod.number().int().min(1),
+  "url": zod.string().max(disconnectAdvertisingBotResponseDraftEntitiesItemUrlMax).optional(),
+  "documentId": zod.string().regex(disconnectAdvertisingBotResponseDraftEntitiesItemDocumentIdRegExp).optional()
+})).max(disconnectAdvertisingBotResponseDraftEntitiesMax).optional()
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
@@ -1318,6 +1561,14 @@ export const checkAdvertisingBotResponseDraftImageUrlMax = 2048;
 export const checkAdvertisingBotResponseDraftButtonTextMax = 64;
 
 export const checkAdvertisingBotResponseDraftButtonUrlMax = 2048;
+
+export const checkAdvertisingBotResponseDraftEntitiesItemOffsetMin = 0;
+
+
+export const checkAdvertisingBotResponseDraftEntitiesItemUrlMax = 2048;
+
+export const checkAdvertisingBotResponseDraftEntitiesItemDocumentIdRegExp = new RegExp('^[1-9][0-9]{0,18}$');
+export const checkAdvertisingBotResponseDraftEntitiesMax = 100;
 
 export const checkAdvertisingBotResponseGroupsItemIntervalSecondsMin = 60;
 export const checkAdvertisingBotResponseGroupsItemIntervalSecondsMax = 2592000;
@@ -1363,7 +1614,14 @@ export const CheckAdvertisingBotResponse = zod.object({
   "text": zod.string().max(checkAdvertisingBotResponseDraftTextMax),
   "imageUrl": zod.string().max(checkAdvertisingBotResponseDraftImageUrlMax).nullable(),
   "buttonText": zod.string().max(checkAdvertisingBotResponseDraftButtonTextMax),
-  "buttonUrl": zod.string().max(checkAdvertisingBotResponseDraftButtonUrlMax).nullable()
+  "buttonUrl": zod.string().max(checkAdvertisingBotResponseDraftButtonUrlMax).nullable(),
+  "entities": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'text_link', 'custom_emoji']),
+  "offset": zod.number().int().min(checkAdvertisingBotResponseDraftEntitiesItemOffsetMin),
+  "length": zod.number().int().min(1),
+  "url": zod.string().max(checkAdvertisingBotResponseDraftEntitiesItemUrlMax).optional(),
+  "documentId": zod.string().regex(checkAdvertisingBotResponseDraftEntitiesItemDocumentIdRegExp).optional()
+})).max(checkAdvertisingBotResponseDraftEntitiesMax).optional()
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
@@ -1404,6 +1662,14 @@ export const discoverAdvertisingGroupsResponseDraftImageUrlMax = 2048;
 export const discoverAdvertisingGroupsResponseDraftButtonTextMax = 64;
 
 export const discoverAdvertisingGroupsResponseDraftButtonUrlMax = 2048;
+
+export const discoverAdvertisingGroupsResponseDraftEntitiesItemOffsetMin = 0;
+
+
+export const discoverAdvertisingGroupsResponseDraftEntitiesItemUrlMax = 2048;
+
+export const discoverAdvertisingGroupsResponseDraftEntitiesItemDocumentIdRegExp = new RegExp('^[1-9][0-9]{0,18}$');
+export const discoverAdvertisingGroupsResponseDraftEntitiesMax = 100;
 
 export const discoverAdvertisingGroupsResponseGroupsItemIntervalSecondsMin = 60;
 export const discoverAdvertisingGroupsResponseGroupsItemIntervalSecondsMax = 2592000;
@@ -1449,7 +1715,14 @@ export const DiscoverAdvertisingGroupsResponse = zod.object({
   "text": zod.string().max(discoverAdvertisingGroupsResponseDraftTextMax),
   "imageUrl": zod.string().max(discoverAdvertisingGroupsResponseDraftImageUrlMax).nullable(),
   "buttonText": zod.string().max(discoverAdvertisingGroupsResponseDraftButtonTextMax),
-  "buttonUrl": zod.string().max(discoverAdvertisingGroupsResponseDraftButtonUrlMax).nullable()
+  "buttonUrl": zod.string().max(discoverAdvertisingGroupsResponseDraftButtonUrlMax).nullable(),
+  "entities": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'text_link', 'custom_emoji']),
+  "offset": zod.number().int().min(discoverAdvertisingGroupsResponseDraftEntitiesItemOffsetMin),
+  "length": zod.number().int().min(1),
+  "url": zod.string().max(discoverAdvertisingGroupsResponseDraftEntitiesItemUrlMax).optional(),
+  "documentId": zod.string().regex(discoverAdvertisingGroupsResponseDraftEntitiesItemDocumentIdRegExp).optional()
+})).max(discoverAdvertisingGroupsResponseDraftEntitiesMax).optional()
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
@@ -1521,6 +1794,14 @@ export const addAdvertisingGroupsResponseDraftButtonTextMax = 64;
 
 export const addAdvertisingGroupsResponseDraftButtonUrlMax = 2048;
 
+export const addAdvertisingGroupsResponseDraftEntitiesItemOffsetMin = 0;
+
+
+export const addAdvertisingGroupsResponseDraftEntitiesItemUrlMax = 2048;
+
+export const addAdvertisingGroupsResponseDraftEntitiesItemDocumentIdRegExp = new RegExp('^[1-9][0-9]{0,18}$');
+export const addAdvertisingGroupsResponseDraftEntitiesMax = 100;
+
 export const addAdvertisingGroupsResponseGroupsItemIntervalSecondsMin = 60;
 export const addAdvertisingGroupsResponseGroupsItemIntervalSecondsMax = 2592000;
 
@@ -1565,7 +1846,14 @@ export const AddAdvertisingGroupsResponse = zod.object({
   "text": zod.string().max(addAdvertisingGroupsResponseDraftTextMax),
   "imageUrl": zod.string().max(addAdvertisingGroupsResponseDraftImageUrlMax).nullable(),
   "buttonText": zod.string().max(addAdvertisingGroupsResponseDraftButtonTextMax),
-  "buttonUrl": zod.string().max(addAdvertisingGroupsResponseDraftButtonUrlMax).nullable()
+  "buttonUrl": zod.string().max(addAdvertisingGroupsResponseDraftButtonUrlMax).nullable(),
+  "entities": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'text_link', 'custom_emoji']),
+  "offset": zod.number().int().min(addAdvertisingGroupsResponseDraftEntitiesItemOffsetMin),
+  "length": zod.number().int().min(1),
+  "url": zod.string().max(addAdvertisingGroupsResponseDraftEntitiesItemUrlMax).optional(),
+  "documentId": zod.string().regex(addAdvertisingGroupsResponseDraftEntitiesItemDocumentIdRegExp).optional()
+})).max(addAdvertisingGroupsResponseDraftEntitiesMax).optional()
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
@@ -1615,6 +1903,14 @@ export const checkAdvertisingGroupsResponseDraftButtonTextMax = 64;
 
 export const checkAdvertisingGroupsResponseDraftButtonUrlMax = 2048;
 
+export const checkAdvertisingGroupsResponseDraftEntitiesItemOffsetMin = 0;
+
+
+export const checkAdvertisingGroupsResponseDraftEntitiesItemUrlMax = 2048;
+
+export const checkAdvertisingGroupsResponseDraftEntitiesItemDocumentIdRegExp = new RegExp('^[1-9][0-9]{0,18}$');
+export const checkAdvertisingGroupsResponseDraftEntitiesMax = 100;
+
 export const checkAdvertisingGroupsResponseGroupsItemIntervalSecondsMin = 60;
 export const checkAdvertisingGroupsResponseGroupsItemIntervalSecondsMax = 2592000;
 
@@ -1659,7 +1955,14 @@ export const CheckAdvertisingGroupsResponse = zod.object({
   "text": zod.string().max(checkAdvertisingGroupsResponseDraftTextMax),
   "imageUrl": zod.string().max(checkAdvertisingGroupsResponseDraftImageUrlMax).nullable(),
   "buttonText": zod.string().max(checkAdvertisingGroupsResponseDraftButtonTextMax),
-  "buttonUrl": zod.string().max(checkAdvertisingGroupsResponseDraftButtonUrlMax).nullable()
+  "buttonUrl": zod.string().max(checkAdvertisingGroupsResponseDraftButtonUrlMax).nullable(),
+  "entities": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'text_link', 'custom_emoji']),
+  "offset": zod.number().int().min(checkAdvertisingGroupsResponseDraftEntitiesItemOffsetMin),
+  "length": zod.number().int().min(1),
+  "url": zod.string().max(checkAdvertisingGroupsResponseDraftEntitiesItemUrlMax).optional(),
+  "documentId": zod.string().regex(checkAdvertisingGroupsResponseDraftEntitiesItemDocumentIdRegExp).optional()
+})).max(checkAdvertisingGroupsResponseDraftEntitiesMax).optional()
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
@@ -1718,6 +2021,14 @@ export const updateAdvertisingGroupResponseDraftButtonTextMax = 64;
 
 export const updateAdvertisingGroupResponseDraftButtonUrlMax = 2048;
 
+export const updateAdvertisingGroupResponseDraftEntitiesItemOffsetMin = 0;
+
+
+export const updateAdvertisingGroupResponseDraftEntitiesItemUrlMax = 2048;
+
+export const updateAdvertisingGroupResponseDraftEntitiesItemDocumentIdRegExp = new RegExp('^[1-9][0-9]{0,18}$');
+export const updateAdvertisingGroupResponseDraftEntitiesMax = 100;
+
 export const updateAdvertisingGroupResponseGroupsItemIntervalSecondsMin = 60;
 export const updateAdvertisingGroupResponseGroupsItemIntervalSecondsMax = 2592000;
 
@@ -1762,7 +2073,14 @@ export const UpdateAdvertisingGroupResponse = zod.object({
   "text": zod.string().max(updateAdvertisingGroupResponseDraftTextMax),
   "imageUrl": zod.string().max(updateAdvertisingGroupResponseDraftImageUrlMax).nullable(),
   "buttonText": zod.string().max(updateAdvertisingGroupResponseDraftButtonTextMax),
-  "buttonUrl": zod.string().max(updateAdvertisingGroupResponseDraftButtonUrlMax).nullable()
+  "buttonUrl": zod.string().max(updateAdvertisingGroupResponseDraftButtonUrlMax).nullable(),
+  "entities": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'text_link', 'custom_emoji']),
+  "offset": zod.number().int().min(updateAdvertisingGroupResponseDraftEntitiesItemOffsetMin),
+  "length": zod.number().int().min(1),
+  "url": zod.string().max(updateAdvertisingGroupResponseDraftEntitiesItemUrlMax).optional(),
+  "documentId": zod.string().regex(updateAdvertisingGroupResponseDraftEntitiesItemDocumentIdRegExp).optional()
+})).max(updateAdvertisingGroupResponseDraftEntitiesMax).optional()
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
@@ -1808,6 +2126,14 @@ export const deleteAdvertisingGroupResponseDraftButtonTextMax = 64;
 
 export const deleteAdvertisingGroupResponseDraftButtonUrlMax = 2048;
 
+export const deleteAdvertisingGroupResponseDraftEntitiesItemOffsetMin = 0;
+
+
+export const deleteAdvertisingGroupResponseDraftEntitiesItemUrlMax = 2048;
+
+export const deleteAdvertisingGroupResponseDraftEntitiesItemDocumentIdRegExp = new RegExp('^[1-9][0-9]{0,18}$');
+export const deleteAdvertisingGroupResponseDraftEntitiesMax = 100;
+
 export const deleteAdvertisingGroupResponseGroupsItemIntervalSecondsMin = 60;
 export const deleteAdvertisingGroupResponseGroupsItemIntervalSecondsMax = 2592000;
 
@@ -1852,7 +2178,14 @@ export const DeleteAdvertisingGroupResponse = zod.object({
   "text": zod.string().max(deleteAdvertisingGroupResponseDraftTextMax),
   "imageUrl": zod.string().max(deleteAdvertisingGroupResponseDraftImageUrlMax).nullable(),
   "buttonText": zod.string().max(deleteAdvertisingGroupResponseDraftButtonTextMax),
-  "buttonUrl": zod.string().max(deleteAdvertisingGroupResponseDraftButtonUrlMax).nullable()
+  "buttonUrl": zod.string().max(deleteAdvertisingGroupResponseDraftButtonUrlMax).nullable(),
+  "entities": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'text_link', 'custom_emoji']),
+  "offset": zod.number().int().min(deleteAdvertisingGroupResponseDraftEntitiesItemOffsetMin),
+  "length": zod.number().int().min(1),
+  "url": zod.string().max(deleteAdvertisingGroupResponseDraftEntitiesItemUrlMax).optional(),
+  "documentId": zod.string().regex(deleteAdvertisingGroupResponseDraftEntitiesItemDocumentIdRegExp).optional()
+})).max(deleteAdvertisingGroupResponseDraftEntitiesMax).optional()
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
@@ -1894,13 +2227,28 @@ export const saveAdvertisingDraftBodyButtonTextMax = 64;
 
 export const saveAdvertisingDraftBodyButtonUrlMax = 2048;
 
+export const saveAdvertisingDraftBodyEntitiesItemOffsetMin = 0;
+
+
+export const saveAdvertisingDraftBodyEntitiesItemUrlMax = 2048;
+
+export const saveAdvertisingDraftBodyEntitiesItemDocumentIdRegExp = new RegExp('^[1-9][0-9]{0,18}$');
+export const saveAdvertisingDraftBodyEntitiesMax = 100;
+
 
 
 export const SaveAdvertisingDraftBody = zod.object({
   "text": zod.string().max(saveAdvertisingDraftBodyTextMax),
   "imageUrl": zod.string().max(saveAdvertisingDraftBodyImageUrlMax).nullable(),
   "buttonText": zod.string().max(saveAdvertisingDraftBodyButtonTextMax),
-  "buttonUrl": zod.string().max(saveAdvertisingDraftBodyButtonUrlMax).nullable()
+  "buttonUrl": zod.string().max(saveAdvertisingDraftBodyButtonUrlMax).nullable(),
+  "entities": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'text_link', 'custom_emoji']),
+  "offset": zod.number().int().min(saveAdvertisingDraftBodyEntitiesItemOffsetMin),
+  "length": zod.number().int().min(1),
+  "url": zod.string().max(saveAdvertisingDraftBodyEntitiesItemUrlMax).optional(),
+  "documentId": zod.string().regex(saveAdvertisingDraftBodyEntitiesItemDocumentIdRegExp).optional()
+})).max(saveAdvertisingDraftBodyEntitiesMax).optional()
 })
 
 export const saveAdvertisingDraftResponseDraftTextMax = 4096;
@@ -1910,6 +2258,14 @@ export const saveAdvertisingDraftResponseDraftImageUrlMax = 2048;
 export const saveAdvertisingDraftResponseDraftButtonTextMax = 64;
 
 export const saveAdvertisingDraftResponseDraftButtonUrlMax = 2048;
+
+export const saveAdvertisingDraftResponseDraftEntitiesItemOffsetMin = 0;
+
+
+export const saveAdvertisingDraftResponseDraftEntitiesItemUrlMax = 2048;
+
+export const saveAdvertisingDraftResponseDraftEntitiesItemDocumentIdRegExp = new RegExp('^[1-9][0-9]{0,18}$');
+export const saveAdvertisingDraftResponseDraftEntitiesMax = 100;
 
 export const saveAdvertisingDraftResponseGroupsItemIntervalSecondsMin = 60;
 export const saveAdvertisingDraftResponseGroupsItemIntervalSecondsMax = 2592000;
@@ -1955,7 +2311,14 @@ export const SaveAdvertisingDraftResponse = zod.object({
   "text": zod.string().max(saveAdvertisingDraftResponseDraftTextMax),
   "imageUrl": zod.string().max(saveAdvertisingDraftResponseDraftImageUrlMax).nullable(),
   "buttonText": zod.string().max(saveAdvertisingDraftResponseDraftButtonTextMax),
-  "buttonUrl": zod.string().max(saveAdvertisingDraftResponseDraftButtonUrlMax).nullable()
+  "buttonUrl": zod.string().max(saveAdvertisingDraftResponseDraftButtonUrlMax).nullable(),
+  "entities": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'text_link', 'custom_emoji']),
+  "offset": zod.number().int().min(saveAdvertisingDraftResponseDraftEntitiesItemOffsetMin),
+  "length": zod.number().int().min(1),
+  "url": zod.string().max(saveAdvertisingDraftResponseDraftEntitiesItemUrlMax).optional(),
+  "documentId": zod.string().regex(saveAdvertisingDraftResponseDraftEntitiesItemDocumentIdRegExp).optional()
+})).max(saveAdvertisingDraftResponseDraftEntitiesMax).optional()
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
@@ -1997,6 +2360,14 @@ export const startAdvertisingCampaignBodyDraftButtonTextMax = 64;
 
 export const startAdvertisingCampaignBodyDraftButtonUrlMax = 2048;
 
+export const startAdvertisingCampaignBodyDraftEntitiesItemOffsetMin = 0;
+
+
+export const startAdvertisingCampaignBodyDraftEntitiesItemUrlMax = 2048;
+
+export const startAdvertisingCampaignBodyDraftEntitiesItemDocumentIdRegExp = new RegExp('^[1-9][0-9]{0,18}$');
+export const startAdvertisingCampaignBodyDraftEntitiesMax = 100;
+
 export const startAdvertisingCampaignBodyGroupIdsMax = 500;
 
 
@@ -2006,7 +2377,14 @@ export const StartAdvertisingCampaignBody = zod.object({
   "text": zod.string().max(startAdvertisingCampaignBodyDraftTextMax),
   "imageUrl": zod.string().max(startAdvertisingCampaignBodyDraftImageUrlMax).nullable(),
   "buttonText": zod.string().max(startAdvertisingCampaignBodyDraftButtonTextMax),
-  "buttonUrl": zod.string().max(startAdvertisingCampaignBodyDraftButtonUrlMax).nullable()
+  "buttonUrl": zod.string().max(startAdvertisingCampaignBodyDraftButtonUrlMax).nullable(),
+  "entities": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'text_link', 'custom_emoji']),
+  "offset": zod.number().int().min(startAdvertisingCampaignBodyDraftEntitiesItemOffsetMin),
+  "length": zod.number().int().min(1),
+  "url": zod.string().max(startAdvertisingCampaignBodyDraftEntitiesItemUrlMax).optional(),
+  "documentId": zod.string().regex(startAdvertisingCampaignBodyDraftEntitiesItemDocumentIdRegExp).optional()
+})).max(startAdvertisingCampaignBodyDraftEntitiesMax).optional()
 }),
   "groupIds": zod.array(zod.string().uuid()).min(1).max(startAdvertisingCampaignBodyGroupIdsMax),
   "permissionConfirmed": zod.boolean(),
@@ -2066,6 +2444,14 @@ export const cancelAdvertisingCampaignResponseDraftButtonTextMax = 64;
 
 export const cancelAdvertisingCampaignResponseDraftButtonUrlMax = 2048;
 
+export const cancelAdvertisingCampaignResponseDraftEntitiesItemOffsetMin = 0;
+
+
+export const cancelAdvertisingCampaignResponseDraftEntitiesItemUrlMax = 2048;
+
+export const cancelAdvertisingCampaignResponseDraftEntitiesItemDocumentIdRegExp = new RegExp('^[1-9][0-9]{0,18}$');
+export const cancelAdvertisingCampaignResponseDraftEntitiesMax = 100;
+
 export const cancelAdvertisingCampaignResponseGroupsItemIntervalSecondsMin = 60;
 export const cancelAdvertisingCampaignResponseGroupsItemIntervalSecondsMax = 2592000;
 
@@ -2110,7 +2496,14 @@ export const CancelAdvertisingCampaignResponse = zod.object({
   "text": zod.string().max(cancelAdvertisingCampaignResponseDraftTextMax),
   "imageUrl": zod.string().max(cancelAdvertisingCampaignResponseDraftImageUrlMax).nullable(),
   "buttonText": zod.string().max(cancelAdvertisingCampaignResponseDraftButtonTextMax),
-  "buttonUrl": zod.string().max(cancelAdvertisingCampaignResponseDraftButtonUrlMax).nullable()
+  "buttonUrl": zod.string().max(cancelAdvertisingCampaignResponseDraftButtonUrlMax).nullable(),
+  "entities": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'text_link', 'custom_emoji']),
+  "offset": zod.number().int().min(cancelAdvertisingCampaignResponseDraftEntitiesItemOffsetMin),
+  "length": zod.number().int().min(1),
+  "url": zod.string().max(cancelAdvertisingCampaignResponseDraftEntitiesItemUrlMax).optional(),
+  "documentId": zod.string().regex(cancelAdvertisingCampaignResponseDraftEntitiesItemDocumentIdRegExp).optional()
+})).max(cancelAdvertisingCampaignResponseDraftEntitiesMax).optional()
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({

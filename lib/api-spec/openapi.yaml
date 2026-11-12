@@ -46,6 +46,12 @@ paths:
       operationId: checkAdvertisingAccount
       responses:
         "200": {description: Account session check, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
+  /shop/advertising/account/emoji-set:
+    post:
+      operationId: loadAdvertisingEmojiSet
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingEmojiSetInput"}}}}
+      responses:
+        "200": {description: Read-only custom emoji pack lookup, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingEmojiSet"}}}}
   /shop/advertising/account:
     delete:
       operationId: disconnectAdvertisingAccount
@@ -704,6 +710,34 @@ components:
         imageUrl: {type: [string, "null"], maxLength: 2048}
         buttonText: {type: string, maxLength: 64}
         buttonUrl: {type: [string, "null"], maxLength: 2048}
+        entities: {type: array, maxItems: 100, items: {$ref: "#/components/schemas/AdvertisingTextEntity"}}
+    AdvertisingTextEntity:
+      type: object
+      required: [type, offset, length]
+      properties:
+        type: {type: string, enum: [bold, italic, text_link, custom_emoji]}
+        offset: {type: integer, minimum: 0}
+        length: {type: integer, minimum: 1}
+        url: {type: string, maxLength: 2048}
+        documentId: {type: string, pattern: '^[1-9][0-9]{0,18}$'}
+    AdvertisingEmojiSetInput:
+      type: object
+      required: [link]
+      properties:
+        link: {type: string, minLength: 1, maxLength: 512}
+    AdvertisingEmojiSet:
+      type: object
+      required: [title, emojis]
+      properties:
+        title: {type: string}
+        emojis: {type: array, items: {$ref: "#/components/schemas/AdvertisingEmoji"}}
+    AdvertisingEmoji:
+      type: object
+      required: [documentId, emoji, available]
+      properties:
+        documentId: {type: string}
+        emoji: {type: string}
+        available: {type: boolean}
     AdvertisingConnectionInput:
       type: object
       required: [token]

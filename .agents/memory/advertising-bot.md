@@ -3,11 +3,17 @@ name: Separate advertising account
 description: Merchant-required Telegram personal-account advertising, independent of the shop bot, with explicit recurring group controls.
 ---
 
-The user explicitly requires advertising through their own Telegram client account, not an advertising bot, inside the same dashboard. Support both phone plus login code and QR login, Telegram two-step verification, selected destination groups, individual group intervals, and Start/Stop controls. Keep advertisement editing, `.txt` group-link segregation and manual group entry.
+The user explicitly requires advertising through their own Telegram client account, not an advertising bot, inside the same dashboard. Support both phone plus login code and QR login, Telegram two-step verification, selected destination groups, individual group intervals, and Start/Stop controls. Keep `.txt` group-link segregation and manual group entry.
 
 **Why:** The user explicitly replaced the earlier separate-bot approach with an account that can chat in groups. They were concerned about advertisements interfering with customers using the shop bot.
 
 **How to apply:** Keep the personal-account approach when diagnosing authentication or Telegram security notifications; do not propose replacing it with an advertising bot. Never reuse or change the shop bot credentials/sending path for advertisements. Keep advertising independent of shop maintenance. Stop legacy advertising-bot jobs during the switch, preserve history, and require explicit selected-group confirmation before any account posting.
+
+Advertising content should be selected from the user's Telegram Saved Messages and forwarded to the chosen groups, rather than recreated in an advertisement editor.
+
+**Why:** The user clarified: “all we need is to select the message” saved in Saved Messages and forward it to the groups.
+
+**How to apply:** Treat the custom-formatting editor approach as superseded for the primary workflow. Use native forwarding, retain selected-group and interval controls, and respect Telegram's forwarding restrictions rather than silently copying or rebuilding unsupported content.
 
 Account authorization belongs in the protected dashboard, never chat. Explain the API app ID/hash requirement and full-account access, and allow checking connection and revoking the saved session.
 
@@ -92,3 +98,15 @@ Treat posting success as evidence captured at send time, not as proof that a mes
 **Why:** The user reported a successful activity entry with no visible group message, followed by a disconnect. Previously, an RPC resolving without throwing was enough to claim success; that does not establish a usable message receipt or continued visibility.
 
 **How to apply:** Require a correlated receipt and exact-group read-back before success. Never resend merely because confirmation/read-back failed, and never retroactively certify historical records that lack evidence. Keep connection loss separate from message verification: a later disconnection neither disproves an earlier verified post nor explains whether moderators removed it.
+
+Keep advertisement fingerprints independent of PostgreSQL JSON object-key order.
+
+**Why:** JSONB can reorder entity fields across a save or portable ZIP restore. Comparing serialized raw objects can report a change even when text and formatting are identical, undermining dirty tracking and duplicate-start protection.
+
+**How to apply:** Canonicalize formatting ranges and field order before fingerprinting; compare restored metadata structurally in tests rather than comparing raw JSON strings. Preserve exact message text when formatting offsets are present.
+
+Message and emoji previews must not broaden account activity just to display artwork.
+
+**Why:** The account has experienced security notifications and authorization resets. Additional media downloads and data-centre authorizations need a separate containment review.
+
+**How to apply:** Keep pack lookup explicitly requested and read-only, without installing packs or posting. Any future artwork preview must preserve the main session's containment guarantees; do not silently enable SDK reconnects or use the shop bot as a substitute.

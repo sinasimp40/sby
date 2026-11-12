@@ -38,6 +38,8 @@ import type {
   AdvertisingCampaignInput,
   AdvertisingConnectionInput,
   AdvertisingDraft,
+  AdvertisingEmojiSet,
+  AdvertisingEmojiSetInput,
   AdvertisingGroupSelection,
   AdvertisingGroupUpdate,
   AdvertisingGroupsInput,
@@ -638,6 +640,88 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getCheckAdvertisingAccountMutationOptions(options), queryClient);
+    }
+
+export const getLoadAdvertisingEmojiSetUrl = () => {
+
+
+
+
+  return `/api/shop/advertising/account/emoji-set`
+}
+
+export const loadAdvertisingEmojiSet = async (advertisingEmojiSetInput: AdvertisingEmojiSetInput, options?: Parameters<typeof customFetch>[1]): Promise<AdvertisingEmojiSet> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdvertisingEmojiSet>(getLoadAdvertisingEmojiSetUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(advertisingEmojiSetInput)
+  }
+);}
+
+
+
+
+
+export const getLoadAdvertisingEmojiSetMutationKey = () => ['loadAdvertisingEmojiSet'] as const;
+
+export const getLoadAdvertisingEmojiSetMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof loadAdvertisingEmojiSet>>, TError,LoadAdvertisingEmojiSetMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof loadAdvertisingEmojiSet>>, TError,LoadAdvertisingEmojiSetMutationVariables, TContext> => {
+
+const mutationKey = getLoadAdvertisingEmojiSetMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof loadAdvertisingEmojiSet>>, LoadAdvertisingEmojiSetMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  loadAdvertisingEmojiSet(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LoadAdvertisingEmojiSetMutationResult = NonNullable<Awaited<ReturnType<typeof loadAdvertisingEmojiSet>>>
+    export type LoadAdvertisingEmojiSetMutationBody = BodyType<AdvertisingEmojiSetInput>
+    export type LoadAdvertisingEmojiSetMutationError = ErrorType<unknown>
+    export type LoadAdvertisingEmojiSetMutationVariables = {data: BodyType<AdvertisingEmojiSetInput>}
+
+    export const useLoadAdvertisingEmojiSet = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof loadAdvertisingEmojiSet>>, TError,LoadAdvertisingEmojiSetMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof loadAdvertisingEmojiSet>>,
+        TError,
+        LoadAdvertisingEmojiSetMutationVariables,
+        TContext
+      > => {
+      return useMutation(getLoadAdvertisingEmojiSetMutationOptions(options), queryClient);
     }
 
 export const getDisconnectAdvertisingAccountUrl = () => {

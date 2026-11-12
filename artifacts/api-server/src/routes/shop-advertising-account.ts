@@ -4,14 +4,35 @@ import {
   BeginAdvertisingAccountLoginBody, VerifyAdvertisingAccountLoginBody, PollAdvertisingAccountLoginBody,
   StartAdvertisingAccountSchedulesBody, StopAdvertisingAccountSchedulesBody,
   SaveAdvertisingAppCredentialsBody,
+  LoadAdvertisingEmojiSetBody, LoadAdvertisingEmojiSetResponse,
 } from "@workspace/api-zod";
 import { getShopAuth } from "../lib/admin-auth";
 import { CommerceError } from "../lib/commerce-providers";
 import { advertisingWorkspace } from "../lib/advertising-store";
 import { beginAccountLogin, advanceAccountLogin, cancelAccountLogin, checkAccountConnection, disconnectAccount, saveAccountApp } from "../lib/advertising-account-auth";
 import { startAccountSchedules, stopSelectedAccountSchedules } from "../lib/advertising-account-schedules";
+import { withAdvertisingLock } from "../lib/advertising-store";
+import { withAccountDriver } from "../lib/advertising-account-auth";
+import { emojiPackName } from "../lib/advertising-account-emoji";
+import { AccountError } from "../lib/advertising-account-errors";
 
 const router: IRouter = Router();
+router.post("/advertising/account/emoji-set", async (req: Request, res: Response): Promise<void> => {
+  const owner = getShopAuth(req).userId;
+  if (!owner) { res.status(401).json({ error: "Sign in to load emoji packs." }); return; }
+  try {
+    const name = emojiPackName(LoadAdvertisingEmojiSetBody.parse(req.body).link);
+    const result = await withAdvertisingLock(owner, client => withAccountDriver(owner, client, driver => {
+      if (!driver.emojiSet) throw new AccountError("This account client does not support emoji packs.");
+      return driver.emojiSet(name);
+    }, undefined, "emoji_set"));
+    res.json(LoadAdvertisingEmojiSetResponse.parse(result));
+  } catch (error) {
+    res.status(error instanceof CommerceError ? error.status : error instanceof z.ZodError ? 400 : 500).json({
+      error: error instanceof CommerceError ? error.message : "The emoji pack could not be loaded. Check the link and account connection.",
+    });
+  }
+});
 const run = (fn: (owner: string, req: Request) => Promise<unknown>) => async (req: Request, res: Response) => {
   const owner = getShopAuth(req).userId;
   if (!owner) { res.status(401).json({ error: "Sign in to manage account advertising." }); return; }

@@ -2,7 +2,9 @@ import { Api, TelegramClient, utils } from "telegram";
 import { StringSession } from "telegram/sessions/index.js";
 import { Logger, LogLevel } from "telegram/extensions/Logger.js";
 import bigInt from "big-integer";
-import type { AdvertisingDraft } from "@workspace/api-zod";
+import type { AdvertisingDraft, AdvertisingEmojiSet } from "@workspace/api-zod";
+import { loadAccountEmojiSet, verifyAccountEmoji } from "./advertising-account-emoji";
+import { telegramAdEntities } from "./advertising-formatting";
 import { validateAdvertisingDraft } from "./advertising-telegram";
 import { AccountError, safeAccountError, reportAccountError, type AccountOperation } from "./advertising-account-errors";
 import { confirmAccountPost, type AccountPostReceipt } from "./advertising-account-receipt";
@@ -34,6 +36,7 @@ export interface AccountDriver {
   qr(): Promise<{ authorized: boolean; url?: string; expires?: number }>;
   groups(): Promise<AccountGroup[]>;
   inspect(target: string, draft?: AdvertisingDraft): Promise<AccountGroup>;
+  emojiSet?(name: string): Promise<AdvertisingEmojiSet>;
   send(chatId: string, draft: AdvertisingDraft, randomId: string): Promise<AccountPostReceipt>;
   logout(): Promise<void>;
 }
@@ -265,12 +268,16 @@ export const createAccountDriver: AccountFactory = ({ apiId, apiHash, session = 
       return (await joined()).map(d => ({ chatId: d.id!.toString(), target: d.id!.toString(), title: d.title ?? d.id!.toString() }));
     }),
     inspect,
+    emojiSet: name => run("emoji_set", () => loadAccountEmojiSet(client, name)),
     send: (chatId, draft, randomId) => run("send", async () => {
       await inspect(chatId, draft);
       available(); // A timed-out/disposed preflight must never dispatch a late post.
       const entity = resolvedGroups.get(chatId)!;
       const message = accountMessage(draft);
-      const common = { peer: utils.getInputPeer(entity), message: message.text, randomId: bigInt(randomId) };
+      await verifyAccountEmoji(client, message.text, message.entities ?? []);
+      available();
+      const common = { peer: utils.getInputPeer(entity), message: message.text, randomId: bigInt(randomId),
+        ...(message.entities?.length ? { entities: telegramAdEntities(message.entities) } : {}) };
       let result: Api.TypeUpdates;
       if (message.imageUrl) {
         const gif = new URL(message.imageUrl).pathname.toLowerCase().endsWith(".gif");

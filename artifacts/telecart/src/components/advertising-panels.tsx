@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useDiscoverAdvertisingGroups,
@@ -7,7 +7,9 @@ import {
   getGetAdvertisingCampaignQueryKey, getGetAdvertisingWorkspaceQueryKey, useCancelAdvertisingCampaign,
   type AdvertisingWorkspace, type AdvertisingGroup, type AdvertisingImportRow, type AdvertisingDraft,
 } from "@workspace/api-client-react";
-import { Loader2, FileUp, Search, Trash2, Pencil, ShieldCheck, Send, Ban, Megaphone, Radar, X, Timer, Link2 } from "lucide-react";
+import { Loader2, FileUp, Search, Trash2, Pencil, ShieldCheck, Send, Ban, Megaphone, Radar, X, Timer, Link2, Bold, Italic, Unlink, Sparkles } from "lucide-react";
+import { adjustForEdit, covered, entitiesProblem, insertEmoji, linkAt, normalize, safeHttps, segments, setLink, snapSelection, toggleStyle, type Entity } from "@/lib/ad-entities";
+import { EmojiSetPicker } from "@/components/advertising/emoji-set-picker";
 import { Panel, EmptyState, ErrorState, RowsSkeleton } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,8 +53,12 @@ export function fmtInterval(sec: number): string {
 
 
 /* ---------------- Draft ---------------- */
-export type DraftState = { text: string; imageUrl: string; buttonText: string; buttonUrl: string };
-export const toDraft = (s: DraftState): AdvertisingDraft => ({ text: s.text, imageUrl: s.imageUrl.trim() || null, buttonText: s.buttonText.trim(), buttonUrl: s.buttonUrl.trim() || null });
+export type DraftState = { text: string; imageUrl: string; buttonText: string; buttonUrl: string; entities?: Entity[] };
+export const toDraft = (s: DraftState): AdvertisingDraft => {
+  const entities = normalize(s.text, s.entities ?? []);
+  const base: AdvertisingDraft = { text: s.text, imageUrl: s.imageUrl.trim() || null, buttonText: s.buttonText.trim(), buttonUrl: s.buttonUrl.trim() || null };
+  return entities.length ? { ...base, entities } : base;
+};
 /** Account messages cannot carry inline bot buttons; the optional link is appended to the text. */
 export function composeText(d: DraftState): string {
   const url = d.buttonUrl.trim();
@@ -70,44 +76,98 @@ export function draftProblem(d: DraftState): string {
   if (d.buttonUrl.trim()) {
     if (!d.buttonText.trim()) return "Give the shop link a label.";
     if (d.buttonText.trim().length > 64) return "Link label is over 64 characters.";
-    try {
-      const url = new URL(d.buttonUrl.trim());
-      if (url.protocol !== "https:" || url.username || url.password) throw new Error();
-    } catch { return "Shop link must be a valid public HTTPS link."; }
+    if (!safeHttps(d.buttonUrl)) return "Shop link must be a valid public HTTPS link.";
   }
-  return "";
+  return entitiesProblem(d.text, d.entities ?? []);
 }
 
 function linkify(text: string) {
   return text.split(/(https:\/\/[^\s]+)/g).map((part, i) => /^https:\/\//.test(part) ? <span key={i} className="text-[#2a8bd0] underline underline-offset-2">{part}</span> : part);
 }
 
+function FormattedText({ text, entities }: { text: string; entities: Entity[] }) {
+  return <>{segments(text, normalize(text, entities)).map((g, i) => {
+    let node: ReactNode = g.emojiId ? <span className="rounded-sm bg-primary/10 outline-dashed outline-1 outline-primary/40" title={`Custom emoji ${g.emojiId}; fallback shown`} data-testid={`preview-custom-emoji-${i}`}>{g.text}</span> : g.text;
+    if (g.bold) node = <strong className="font-semibold">{node}</strong>;
+    if (g.italic) node = <em>{node}</em>;
+    if (g.url) node = <a href={g.url} target="_blank" rel="noopener noreferrer nofollow" className="text-[#2a8bd0] underline underline-offset-2">{node}</a>;
+    return <span key={i}>{node}</span>;
+  })}</>;
+}
+
 export function MessagePreview({ d }: { d: DraftState }) {
-  const full = composeText(d);
+  const tail = composeText(d).slice(d.text.length);
+  const hasEmoji = (d.entities ?? []).some(e => e.type === "custom_emoji");
   return (
-    <div className="overflow-hidden rounded-[22px] border-[5px] border-ink bg-ink shadow-lg" data-testid="preview-ad">
-      <div className="bg-[#f6f8fa] px-3 py-2 text-[12px] font-semibold text-[#1b2433]">Group chat · posted from your account</div>
-      <div className="tg-wall max-h-[420px] overflow-y-auto p-3 text-[13px] text-[#1b2433]">
-        <div className="max-w-[92%] overflow-hidden rounded-2xl rounded-bl-md bg-white shadow-sm">
-          {d.imageUrl.trim() && <ProductMediaPreview url={d.imageUrl.trim()} name="Ad image" className="rounded-none border-0" />}
-          <div className="whitespace-pre-wrap break-words px-3 py-2">{d.text ? linkify(full) : <span className="opacity-50">Your ad text appears here</span>}</div>
+    <div>
+      <div className="overflow-hidden rounded-[22px] border-[5px] border-ink bg-ink shadow-lg" data-testid="preview-ad">
+        <div className="bg-[#f6f8fa] px-3 py-2 text-[12px] font-semibold text-[#1b2433]">Group chat · posted from your account</div>
+        <div className="tg-wall max-h-[420px] overflow-y-auto p-3 text-[13px] text-[#1b2433]">
+          <div className="max-w-[92%] overflow-hidden rounded-2xl rounded-bl-md bg-white shadow-sm">
+            {d.imageUrl.trim() && <ProductMediaPreview url={d.imageUrl.trim()} name="Ad image" className="rounded-none border-0" />}
+            <div className="whitespace-pre-wrap break-words px-3 py-2">{d.text ? <><FormattedText text={d.text} entities={d.entities ?? []} />{linkify(tail)}</> : <span className="opacity-50">Your ad text appears here</span>}</div>
+          </div>
         </div>
       </div>
+      {hasEmoji && <p className="mt-2 text-center text-[11px] text-muted-foreground" data-testid="text-preview-emoji-note">Outlined characters are ordinary fallbacks. Telegram renders the custom emoji you chose.</p>}
     </div>
   );
 }
 
-export function DraftPanel({ d, setD, dirty, onSave, saving, shopBotUrl }: { d: DraftState; setD: (d: DraftState) => void; dirty: boolean; onSave: () => void; saving: boolean; shopBotUrl: string | null }) {
+function ToolBtn({ on, disabled, onClick, label, testId, children }: { on?: boolean; disabled?: boolean; onClick: () => void; label: string; testId: string; children: ReactNode }) {
+  return <button type="button" aria-label={label} title={label} aria-pressed={on} disabled={disabled} onMouseDown={e => e.preventDefault()} onClick={onClick} data-testid={testId}
+    className={cn("inline-flex h-8 items-center gap-1 rounded-md px-2 text-xs font-medium transition-colors disabled:opacity-40", on ? "bg-ink text-white" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>{children}</button>;
+}
+
+export function DraftPanel({ d, setD, dirty, onSave, saving, shopBotUrl, connected = false }: { d: DraftState; setD: (d: DraftState) => void; dirty: boolean; onSave: () => void; saving: boolean; shopBotUrl: string | null; connected?: boolean }) {
   const problem = draftProblem(d);
   const limit = d.imageUrl.trim() ? 1024 : 4096;
   const total = composeText(d).length;
+  const ents = d.entities ?? [];
+  const taRef = useRef<HTMLTextAreaElement>(null);
+  const [sel, setSel] = useState<[number, number]>([0, 0]);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("");
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [s0, e0] = snapSelection(d.text, sel[0], sel[1]);
+  const hasSel = e0 > s0;
+  const curLink = hasSel ? linkAt(ents, s0, e0) : undefined;
+  const readSel = () => { const t = taRef.current; if (t) setSel([t.selectionStart, t.selectionEnd]); };
+  const restore = (a: number, b: number) => requestAnimationFrame(() => { const t = taRef.current; if (t) { t.focus(); t.setSelectionRange(a, b); setSel([a, b]); } });
+  const setEnts = (entities: Entity[]) => setD({ ...d, entities });
+  const style = (t: "bold" | "italic") => { setEnts(toggleStyle(d.text, ents, t, s0, e0)); restore(s0, e0); };
+  const linkValid = safeHttps(linkUrl);
+  const applyLink = () => { if (!linkValid) return; setEnts(setLink(d.text, ents, s0, e0, linkUrl.trim())); setLinkOpen(false); restore(s0, e0); };
+  useEffect(() => { if (!hasSel) setLinkOpen(false); }, [hasSel]);
   return (
     <Panel title="Advertisement" meta={dirty ? <span className="text-signal">unsaved</span> : "saved"}>
       <div className="space-y-4">
-        <label className="block space-y-1.5 text-sm font-medium">Text
-          <Textarea rows={7} value={d.text} onChange={e => setD({ ...d, text: e.target.value })} data-testid="input-ad-text" />
-          <span className={cn("block text-right font-mono text-[11px]", total > limit ? "text-destructive" : "text-muted-foreground")} data-testid="text-ad-count">{total} / {limit}{d.buttonUrl.trim() ? " incl. link" : ""}</span>
-        </label>
+        <div className="space-y-1.5 text-sm font-medium">
+          <label htmlFor="ad-text">Text</label>
+          <div className="overflow-hidden rounded-md border border-input focus-within:ring-1 focus-within:ring-ring">
+            <div className="flex flex-wrap items-center gap-0.5 border-b bg-muted/40 px-1.5 py-1" role="toolbar" aria-label="Formatting">
+              <ToolBtn label="Bold selection" testId="button-format-bold" disabled={!hasSel} on={hasSel && covered(ents, "bold", s0, e0)} onClick={() => style("bold")}><Bold className="h-3.5 w-3.5" /></ToolBtn>
+              <ToolBtn label="Italic selection" testId="button-format-italic" disabled={!hasSel} on={hasSel && covered(ents, "italic", s0, e0)} onClick={() => style("italic")}><Italic className="h-3.5 w-3.5" /></ToolBtn>
+              <ToolBtn label="Link selection" testId="button-format-link" disabled={!hasSel} on={linkOpen || !!curLink} onClick={() => { setLinkUrl(curLink?.url ?? "https://"); setLinkOpen(o => !o); }}><Link2 className="h-3.5 w-3.5" />Link</ToolBtn>
+              {curLink && <ToolBtn label="Remove link" testId="button-format-unlink" onClick={() => { setEnts(setLink(d.text, ents, s0, e0, null)); restore(s0, e0); }}><Unlink className="h-3.5 w-3.5" /></ToolBtn>}
+              <span className="mx-1 h-4 w-px bg-border" />
+              <ToolBtn label="Custom emoji" testId="button-toggle-emoji" on={emojiOpen} onClick={() => setEmojiOpen(o => !o)}><Sparkles className="h-3.5 w-3.5" />Custom emoji</ToolBtn>
+              {ents.length > 0 && <ToolBtn label="Clear all formatting" testId="button-format-clear" onClick={() => setEnts([])}>Clear</ToolBtn>}
+              <span className="ml-auto pr-1 font-mono text-[10px] font-normal text-muted-foreground">{hasSel ? `${e0 - s0} selected` : "select text to format"}</span>
+            </div>
+            {linkOpen && hasSel && <div className="flex gap-2 border-b bg-accent/40 p-2">
+              <Input autoFocus value={linkUrl} onChange={e => setLinkUrl(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); applyLink(); } if (e.key === "Escape") setLinkOpen(false); }} className="h-8 font-mono text-xs" placeholder="https://" data-testid="input-format-link-url" />
+              <Button size="sm" className="h-8" disabled={!linkValid} onClick={applyLink} data-testid="button-apply-link">Apply</Button>
+            </div>}
+            {linkOpen && hasSel && linkUrl.trim() && linkUrl.trim() !== "https://" && !linkValid && <p className="border-b px-2 py-1 text-xs font-normal text-destructive" data-testid="error-format-link">Use a public HTTPS link without a username or password.</p>}
+            <Textarea id="ad-text" ref={taRef} rows={7} value={d.text} className="rounded-none border-0 focus-visible:ring-0"
+              onSelect={readSel} onKeyUp={readSel} onMouseUp={readSel}
+              onChange={e => { const t = e.target.value; setD({ ...d, text: t, entities: adjustForEdit(d.text, t, ents) }); setSel([e.target.selectionStart, e.target.selectionEnd]); }} data-testid="input-ad-text" />
+          </div>
+          <span className="flex justify-between font-mono text-[11px] font-normal text-muted-foreground"><span data-testid="text-ad-entity-count">{ents.length ? `${ents.length} formatted span${ents.length === 1 ? "" : "s"}` : "plain text"}</span><span className={cn(total > limit && "text-destructive")} data-testid="text-ad-count">{total} / {limit}{d.buttonUrl.trim() ? " incl. link" : ""}</span></span>
+          {emojiOpen && <EmojiSetPicker connected={connected} onPick={em => { const r = insertEmoji(d.text, ents, s0, e0, em.emoji, em.documentId); setD({ ...d, ...r }); const at = s0 + em.emoji.length; restore(at, at); }} />}
+          <p className="text-[11px] font-normal text-muted-foreground">Bold, italic, text links and custom emoji are sent as Telegram formatting. The text itself stays plain; no HTML or Markdown is interpreted.</p>
+        </div>
         <label className="block space-y-1.5 text-sm font-medium">Image or GIF link <span className="font-normal text-muted-foreground">optional, caption limit 1,024</span>
           <Input type="url" value={d.imageUrl} onChange={e => setD({ ...d, imageUrl: e.target.value })} placeholder="https://example.com/promo.gif" data-testid="input-ad-image-url" />
         </label>

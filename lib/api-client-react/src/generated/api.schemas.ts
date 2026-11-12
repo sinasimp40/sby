@@ -5,6 +5,28 @@
  * Telecart shop administration. Live Telegram and payments are not connected.
  * OpenAPI spec version: 0.1.0
  */
+export type AdvertisingTextEntityType = typeof AdvertisingTextEntityType[keyof typeof AdvertisingTextEntityType];
+
+
+export const AdvertisingTextEntityType = {
+  bold: 'bold',
+  italic: 'italic',
+  text_link: 'text_link',
+  custom_emoji: 'custom_emoji',
+} as const;
+
+export interface AdvertisingTextEntity {
+  type: AdvertisingTextEntityType;
+  /** @minimum 0 */
+  offset: number;
+  /** @minimum 1 */
+  length: number;
+  /** @maxLength 2048 */
+  url?: string;
+  /** @pattern ^[1-9][0-9]{0,18}$ */
+  documentId?: string;
+}
+
 export interface AdvertisingDraft {
   /** @maxLength 4096 */
   text: string;
@@ -20,6 +42,27 @@ export interface AdvertisingDraft {
      * @nullable
      */
   buttonUrl: string | null;
+  /** @maxItems 100 */
+  entities?: AdvertisingTextEntity[];
+}
+
+export interface AdvertisingEmojiSetInput {
+  /**
+     * @minLength 1
+     * @maxLength 512
+     */
+  link: string;
+}
+
+export interface AdvertisingEmoji {
+  documentId: string;
+  emoji: string;
+  available: boolean;
+}
+
+export interface AdvertisingEmojiSet {
+  title: string;
+  emojis: AdvertisingEmoji[];
 }
 
 export interface AdvertisingConnectionInput {

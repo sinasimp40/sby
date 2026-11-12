@@ -35,7 +35,7 @@ test("account sign-in, selected-group schedules and transfers are safe without r
   const identity = { id: "900000009", username: "TEST_ONLY_account", displayName: "TEST_ONLY account" };
   const api = { apiId: 12345, apiHash: "a".repeat(32) };
   let needPassword = true, qrApproved = false, sendMode = "ok", revoked = false, logouts = 0;
-  const posts: { chatId: string; text: string; randomId: string }[] = [];
+  const posts: { chatId: string; text: string; randomId: string; entities?: unknown }[] = [];
   const joined = [
     { chatId: "-100111111111", target: "-100111111111", title: "TEST_ONLY first group" },
     { chatId: "-100222222222", target: "-100222222222", title: "TEST_ONLY second group" },
@@ -65,7 +65,7 @@ test("account sign-in, selected-group schedules and transfers are safe without r
       groups: async () => joined,
       inspect: async target => { const group = joined.find(group => group.chatId === target); if (!group) throw new AccountError("Not a member of this group."); return group; },
       send: async (chatId, draft, randomId) => {
-        posts.push({ chatId, text: accountMessage(draft).text, randomId });
+        posts.push({ chatId, text: accountMessage(draft).text, randomId, entities: accountMessage(draft).entities });
         if (sendMode === "flood") throw new AccountError("Wait for Telegram.", "rate_limit", 120);
         if (sendMode === "unknown") throw new AccountError("Unconfirmed send.", "network");
         if (sendMode === "transport") throw new AccountError("TEST_ONLY lost transport", "network", 0, "CONNECTION_LOST");
@@ -143,7 +143,16 @@ test("account sign-in, selected-group schedules and transfers are safe without r
       assert.equal((await accountStatus(owner)).connected, true);
     });
     let groups: { id: string; chatId: string }[] = [];
-    const draft = { text: "TEST_ONLY confirmed recurring message", imageUrl: null, buttonText: "Visit shop", buttonUrl: "https://t.me/TEST_ONLY_shop_bot" };
+    const draft = { text: "TEST_ONLY confirmed recurring message ⭐", imageUrl: null, buttonText: "Visit shop", buttonUrl: "https://t.me/TEST_ONLY_shop_bot",
+      entities: [{ type: "bold" as const, offset: 0, length: 9 }, { type: "custom_emoji" as const, offset: 38, length: 1, documentId: "123456789" }] };
+    await t.test("formatted drafts persist across reloads and bad entities/pack lookups fail safely", async () => {
+      assert.equal((await request("/account/emoji-set", "POST", { link: "TEST_ONLY" }, "")).status, 401);
+      assert.equal((await request("/account/emoji-set", "POST", { link: "https://example.invalid/addemoji/TEST_ONLY" })).status, 400);
+      assert.equal((await request("/draft", "PUT", draft)).status, 200);
+      assert.deepEqual((await request()).data.draft.entities, draft.entities);
+      assert.equal((await request("/draft", "PUT", { ...draft, entities: [{ type: "bold", offset: 9999, length: 1 }] })).status, 400);
+      assert.deepEqual((await request()).data.draft.entities, draft.entities, "invalid changes cannot erase saved formatting");
+    });
     const start = async (ids: string[], key = randomUUID(), message = draft) => {
       const current = (await request()).data;
       return request("/schedules/start", "POST", {
@@ -198,9 +207,11 @@ test("account sign-in, selected-group schedules and transfers are safe without r
     });
     await t.test("message snapshots, account waits and uncertain sends never create catch-up spam", async () => {
       const group = groups[0]!;
-      await start([group.id]); await request("/draft", "PUT", { ...draft, text: "TEST_ONLY edited after start" });
+      await start([group.id]);
+      assert.equal((await request("/draft", "PUT", { ...draft, text: "TEST_ONLY edited after start", entities: [draft.entities[0]] })).status, 200);
       await resetGlobalWait(); await processAccountSchedules(owner, factory);
       assert.equal(posts.at(-1)!.text, accountMessage(draft).text);
+      assert.deepEqual(posts.at(-1)!.entities, draft.entities, "running schedules keep the original formatted snapshot");
       const count = posts.length;
       await processAccountSchedules(owner, factory); assert.equal(posts.length, count, "interval prevents an immediate repeat");
       await pool.query("UPDATE advertising_schedules SET next_send_at=now()-interval '1 day' WHERE owner_id=$1 AND group_id=$2", [owner, group.id]);
@@ -275,12 +286,17 @@ test("account sign-in, selected-group schedules and transfers are safe without r
       const exported = await exportShopTransfer(owner);
       const decoded = decodeShopArchive(exported.zip);
       assert.ok(decoded.data.advertisingAccountSchedules.length > 0 && decoded.data.advertisingAccountRuns.length > 0);
+      const rawDraft = decoded.data.advertisingAccountSchedules[0]!.draft;
+      assert.deepEqual((typeof rawDraft === "string" ? JSON.parse(rawDraft) : rawDraft).entities, draft.entities);
       assert.ok(!("advertisingAccounts" in decoded.data));
       assert.ok(!JSON.stringify(decoded.data).includes(api.apiHash));
       validateShopRelationships(decoded.data, owner);
       const preview = await previewShopTransfer(destination, exported.zip);
       assert.equal(preview.canImport, true);
       await importShopTransfer(destination, exported.zip, preview.confirmationToken);
+      const restored = (await pool.query("SELECT draft FROM advertising_schedules WHERE owner_id=$1", [destination])).rows;
+      assert.deepEqual(restored.find(row => row.draft?.text === draft.text)?.draft.entities, draft.entities,
+        "portable ZIP restores formatting independently of PostgreSQL JSON object-key order");
       assert.equal((await pool.query("SELECT count(*)::integer AS n FROM advertising_schedules WHERE owner_id=$1 AND running=true", [destination])).rows[0].n, 0);
       assert.equal((await accountStatus(destination)).configured, false);
     });

@@ -11,6 +11,7 @@ const codes = new Set([
   "CHAT_ADMIN_REQUIRED", "CHANNEL_PRIVATE", "CHAT_SEND_PLAIN_FORBIDDEN", "CHAT_SEND_MEDIA_FORBIDDEN",
   "CONNECTION_LEASE_LOST", "CONNECTION_CLOSED", "CONNECTION_LOST", "ACCOUNT_IDENTITY_UNVERIFIED", "REQUEST_TIMEOUT", "POST_NOT_CONFIRMED",
   "NETWORK_RECOVERY_EXHAUSTED", "TRANSPORT_UNAVAILABLE",
+  "CUSTOM_EMOJI_INVALID", "PREMIUM_ACCOUNT_REQUIRED", "STICKERSET_INVALID",
 ]);
 export function diagnosticCode(value: unknown): string {
   if (typeof value !== "string") return "UNKNOWN";
@@ -40,6 +41,7 @@ export function safeAccountError(error: unknown): AccountError {
   if (["PHONE_CODE_EXPIRED", "AUTH_TOKEN_EXPIRED", "AUTH_TOKEN_INVALID"].includes(code)) return make("This sign-in challenge expired. Cancel it and start again.", "expired");
   if (["API_ID_INVALID", "API_ID_PUBLISHED_FLOOD"].includes(code)) return make("Telegram rejected these API app credentials. Check your API ID and API hash.");
   if (code === "PHONE_NUMBER_INVALID") return make("Use your phone number in international +country-code format.");
+  if (code === "STICKERSET_INVALID") return make("Telegram could not find that emoji pack. Check its addemoji link.");
   if (code === "USER_NOT_PARTICIPANT") return make("The Telegram account connected in Advertising is not a member of this group. Check that it is the same account you used to join.");
   if (["AUTH_KEY_UNREGISTERED", "AUTH_KEY_DUPLICATED", "AUTH_KEY_INVALID", "AUTH_KEY_PERM_EMPTY", "SESSION_REVOKED", "SESSION_EXPIRED"].includes(code))
     return make("Telegram invalidated or revoked this session. Advertising has stopped. Review Telegram Settings → Devices and any security notice before starting another login. Never run the same session on multiple servers.", "auth");
@@ -50,7 +52,7 @@ export function safeAccountError(error: unknown): AccountError {
 }
 export type AccountOperation = "connect" | "identity" | "send_code" | "verify_code" | "verify_password" | "qr_login" |
   "groups" | "inspect_group" | "send" | "logout" | "account_operation" | "discover_groups" | "check_groups" |
-  "check_account" | "post_ad" | "begin_login" | "verify_login" | "qr_poll" | "lease_lost" | "background" | "recover_connection";
+  "check_account" | "post_ad" | "begin_login" | "verify_login" | "qr_poll" | "lease_lost" | "background" | "recover_connection" | "emoji_set";
 export const isTransportFailure = (error: AccountError) => error.kind === "network" &&
   ["CONNECTION_LOST", "REQUEST_TIMEOUT", "TRANSPORT_UNAVAILABLE"].includes(error.telegramCode);
 export function reportAccountError(operation: AccountOperation, error: unknown): AccountError {
