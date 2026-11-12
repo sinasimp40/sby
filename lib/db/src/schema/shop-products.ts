@@ -13,6 +13,7 @@ export const shopProducts = pgTable("shop_products", {
   deliveryFormat: text("delivery_format").$type<"email:pass" | "user:pass">().notNull(),
   buttonEmoji: text("button_emoji").notNull().default("🛍"),
   buttonCustomEmojiId: text("button_custom_emoji_id"),
+  stockAnnouncedAt: timestamp("stock_announced_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
   index("shop_products_owner_idx").on(table.ownerId),

@@ -19,18 +19,18 @@ interface AnnouncementProduct {
   stock: number;
 }
 
-export function newStockAnnouncement(product: AnnouncementProduct, newlyAdded: number) {
+export function newStockAnnouncement(product: AnnouncementProduct, newlyAdded: number, isNewProduct = false) {
   const name = escapeHtml(customerMessageText(product.name).slice(0, 120));
   const description = customerMessageText(product.description).slice(0, 400);
   const text = [
-    "✨ <b>NEW IN STOCK</b>",
+    isNewProduct ? "✨ <b>NEW PRODUCT</b>" : "📦 <b>ADDED STOCK</b>",
     "",
     `${escapeHtml(product.buttonEmoji)} <b>${name}</b>`,
     ...(description ? ["", escapeHtml(description)] : []),
     "",
     `💵 <b>$${(product.priceCents / 100).toFixed(2)}</b>`,
     `📦 <b>${product.stock} in stock</b>`,
-    ...(newlyAdded > 0 ? [`🆕 ${newlyAdded} ${newlyAdded === 1 ? "account" : "accounts"} just added`] : []),
+    ...(newlyAdded > 0 ? [`➕ ${newlyAdded} ${newlyAdded === 1 ? "account" : "accounts"} just added`] : []),
     "",
     "<i>Tap below to choose your quantity.</i>",
   ].join("\n");
@@ -44,6 +44,23 @@ export function newStockAnnouncement(product: AnnouncementProduct, newlyAdded: n
 
 const pause = () => new Promise<void>(resolve => setTimeout(resolve, SEND_INTERVAL_MS));
 
+export async function claimProductAnnouncement(ownerId: string, productId: number) {
+  return db.transaction(async tx => {
+    // Serialize the first announcement, including concurrent stock imports.
+    const [product] = await tx.select().from(shopProducts)
+      .where(and(eq(shopProducts.id, productId), eq(shopProducts.ownerId, ownerId))).for("update");
+    if (!product || product.status !== "active") return null;
+    const [inventory] = await tx.select({ stock: sql<number>`count(*)::integer` }).from(shopInventory)
+      .where(and(eq(shopInventory.productId, productId), eq(shopInventory.ownerId, ownerId), eq(shopInventory.status, "available")));
+    const stock = inventory?.stock ?? 0;
+    if (stock < 1) return null;
+    const isNewProduct = !product.stockAnnouncedAt;
+    if (isNewProduct) await tx.update(shopProducts).set({ stockAnnouncedAt: new Date() })
+      .where(eq(shopProducts.id, productId));
+    return { product: { ...product, stock }, isNewProduct };
+  });
+}
+
 /**
  * Announces newly available stock to customers who have already messaged this bot.
  * Each page is read just before sending, and each customer is attempted independently.
@@ -53,21 +70,9 @@ export async function announceProductAvailability(ownerId: string, productId: nu
     .from(botConnections).where(eq(botConnections.id, "primary"));
   if (connection?.ownerId !== ownerId || !(await getBotRuntime(ownerId)).enabled) return;
 
-  const [product] = await db.select({
-    id: shopProducts.id,
-    name: shopProducts.name,
-    description: shopProducts.description,
-    priceCents: shopProducts.priceCents,
-    buttonEmoji: shopProducts.buttonEmoji,
-    status: shopProducts.status,
-    stock: sql<number>`count(${shopInventory.id}) filter (where ${shopInventory.status} = 'available')::integer`,
-  }).from(shopProducts)
-    .leftJoin(shopInventory, eq(shopInventory.productId, shopProducts.id))
-    .where(and(eq(shopProducts.id, productId), eq(shopProducts.ownerId, ownerId)))
-    .groupBy(shopProducts.id);
-  if (!product || product.status !== "active" || product.stock < 1) return;
-
-  const message = newStockAnnouncement(product, newlyAdded);
+  const announcement = await claimProductAnnouncement(ownerId, productId);
+  if (!announcement) return;
+  const message = newStockAnnouncement(announcement.product, newlyAdded, announcement.isNewProduct);
   let after: string | undefined;
   let sent = 0;
   let failed = 0;

@@ -8,7 +8,7 @@ import { is } from "drizzle-orm";
 import { PgTable, getTableConfig } from "drizzle-orm/pg-core";
 import { exportShopTransfer, importShopTransfer, previewShopTransfer, shopTransferStatus, reviewShopTransfer } from "../src/lib/shop-transfer";
 import { decodeShopArchive, encodeShopArchive, previewToken, verifyPreviewToken } from "../src/lib/shop-transfer-archive";
-import { tableKeys, transferTables, singleItemTransferSchemaHash, quantityTransferSchemaHash, productEmojiTransferSchemaHash } from "../src/lib/shop-transfer-tables";
+import { tableKeys, transferTables, singleItemTransferSchemaHash, quantityTransferSchemaHash, productEmojiTransferSchemaHash, customEmojiTransferSchemaHash } from "../src/lib/shop-transfer-tables";
 import { assignedInventoryIds } from "../src/lib/payment-inventory";
 import { validateShopRelationships } from "../src/lib/shop-transfer-validation";
 import { decryptCredential } from "../src/lib/inventory-encryption";
@@ -70,7 +70,7 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
     await t.test("authenticated ZIPs from before quantity support upgrade single-item orders safely",()=>{
       const legacyData = structuredClone(decoded.data);
       legacyData.products = legacyData.products.map(product => {
-        const row = { ...product }; delete row.buttonEmoji; delete row.buttonCustomEmojiId; return row;
+        const row = { ...product }; delete row.buttonEmoji; delete row.buttonCustomEmojiId; delete row.stockAnnouncedAt; return row;
       });
       legacyData.payments = legacyData.payments.filter(p=>p.quantity===1).map(p=>{
         const row = {...p}; delete row.quantity; delete row.inventoryIds; return row;
@@ -94,7 +94,7 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
     await t.test("authenticated quantity-order ZIPs from before product emojis retain all orders", () => {
       const legacyData = structuredClone(decoded.data);
       legacyData.products = legacyData.products.map(product => {
-        const row = { ...product }; delete row.buttonEmoji; delete row.buttonCustomEmojiId; return row;
+        const row = { ...product }; delete row.buttonEmoji; delete row.buttonCustomEmojiId; delete row.stockAnnouncedAt; return row;
       });
       delete (legacyData as Partial<typeof legacyData>).customEmojis;
       const bytes = strToU8(JSON.stringify(legacyData));
@@ -114,7 +114,7 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
     await t.test("authenticated plain-emoji ZIPs upgrade without inventing custom icons", () => {
       const legacyData = structuredClone(decoded.data);
       legacyData.products = legacyData.products.map(product => {
-        const row = { ...product }; delete row.buttonCustomEmojiId; return row;
+        const row = { ...product }; delete row.buttonCustomEmojiId; delete row.stockAnnouncedAt; return row;
       });
       delete (legacyData as Partial<typeof legacyData>).customEmojis;
       const bytes = strToU8(JSON.stringify(legacyData));
@@ -129,6 +129,27 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
       const upgraded = decodeShopArchive(Buffer.from(zipSync(files)));
       assert.ok(upgraded.data.products.every(product => product.buttonEmoji === "🔑" && product.buttonCustomEmojiId === null));
       assert.deepEqual(upgraded.data.customEmojis, []);
+      validateShopRelationships(upgraded.data, source);
+    });
+    await t.test("authenticated existing-shop ZIPs retain the new-versus-restock distinction", () => {
+      const oldData = structuredClone(decoded.data);
+      oldData.products = oldData.products.map(product => {
+        const row = { ...product }; delete row.stockAnnouncedAt; return row;
+      });
+      const bytes = strToU8(JSON.stringify(oldData));
+      const { signature: _, ...core } = decoded.manifest;
+      core.schemaHash = customEmojiTransferSchemaHash;
+      core.dataSha256 = createHash("sha256").update(bytes).digest("hex");
+      const signature = createHmac("sha256", process.env.SESSION_SECRET!).update(JSON.stringify(core)).digest("hex");
+      const files = unzipSync(exported.zip);
+      files["shop-data.json"] = bytes;
+      files["manifest.json"] = strToU8(JSON.stringify({ ...core, signature }));
+      const upgraded = decodeShopArchive(Buffer.from(zipSync(files)));
+      for (const product of upgraded.data.products) {
+        const stocked = upgraded.data.inventory.some(item => item.productId === product.id);
+        assert.equal(product.stockAnnouncedAt, stocked ? product.createdAt : null);
+      }
+      assert.deepEqual(upgraded.data.payments, decoded.data.payments);
       validateShopRelationships(upgraded.data, source);
     });
     await t.test("corruption, unsafe ZIP paths, modification and incompatible encryption keys fail before writes", () => {
