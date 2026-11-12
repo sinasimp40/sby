@@ -276,7 +276,8 @@ export function ImportPanel({ ws }: { ws: AdvertisingWorkspace }) {
 }
 
 /* ---------------- Group list ---------------- */
-export function GroupsPanel({ ws, selected, setSelected }: { ws: AdvertisingWorkspace; selected: Set<string>; setSelected: (s: Set<string>) => void }) {
+export function GroupsPanel({ ws, selected, setSelected, sequential = false }: { ws: AdvertisingWorkspace; selected: Set<string>; setSelected: (s: Set<string>) => void; sequential?: boolean }) {
+  const queuePos = useMemo(() => { const m = new Map<string, number>(); let i = 0; for (const g of ws.groups) if (selected.has(g.id) && g.enabled && g.status === "ready" && g.chatId) m.set(g.id, ++i); return m; }, [ws.groups, selected]);
   const sync = useWorkspaceSync();
   const { toast } = useToast();
   const check = useCheckAdvertisingGroups();
@@ -319,20 +320,23 @@ export function GroupsPanel({ ws, selected, setSelected }: { ws: AdvertisingWork
           <span data-testid="text-selected-count">{selected.size} selected</span>
           <Button size="sm" variant="outline" className="ml-auto" disabled={!selected.size || check.isPending || !ws.account.connected} onClick={checkPerms} data-testid="button-check-permissions">{check.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="mr-1 h-3.5 w-3.5" />}{progress ? `Checking ${progress}` : "Check permissions"}</Button>
         </div>
+        {sequential && <p className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs leading-relaxed text-muted-foreground" data-testid="text-sequential-explainer">Queue order follows this list from top to bottom. Selected ready groups receive the forward one at a time, separated by the single shared delay, then the queue repeats. Numbers show each group's place in the queue.</p>}
         {ws.groups.length === 0 ? <EmptyState icon={Megaphone} title="No groups yet" body="Paste links, import a .txt file, or discover groups your account has already joined." /> :
           list.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">No groups match.</p> :
           <ul className="divide-y rounded-lg border">
             {list.map(g => (
               <li key={g.id} className="flex items-start gap-3 p-3" data-testid={`row-group-${g.id}`}>
+                {sequential && <span className={cn("mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full font-mono text-[10px] font-semibold", queuePos.has(g.id) ? "bg-ink text-white" : "border border-dashed text-muted-foreground")} data-testid={`text-queue-pos-${g.id}`}>{queuePos.get(g.id) ?? "-"}</span>}
                 <Checkbox className="mt-1" checked={selected.has(g.id)} onCheckedChange={() => toggle(g.id)} data-testid={`checkbox-group-${g.id}`} />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2"><span className="truncate text-sm font-medium">{g.title || g.target}</span><Tag s={g.status} testId={`status-group-${g.id}`} /></div>
                   <div className="truncate font-mono text-[11px] text-muted-foreground">{g.target}{g.chatId && g.chatId !== g.target ? ` · ${g.chatId}` : ""}</div>
                   {g.note && <div className="mt-0.5 text-xs text-muted-foreground">{g.note}</div>}
                   <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px]">
-                    <Tag s={g.running ? "running" : "stopped"} testId={`status-schedule-${g.id}`} />
-                    <button type="button" onClick={() => { setIntervalFor(g); setIvValue(String(g.intervalSeconds % 3600 === 0 ? g.intervalSeconds / 3600 : Math.round(g.intervalSeconds / 60))); setIvUnit(g.intervalSeconds % 3600 === 0 ? "h" : "m"); }} className="inline-flex items-center gap-1 text-primary hover:underline" data-testid={`button-interval-group-${g.id}`}><Timer className="h-3 w-3" />every {fmtInterval(g.intervalSeconds)}</button>
-                    {g.running && g.nextSendAt && <span className="text-muted-foreground" data-testid={`text-next-send-${g.id}`}>next {dateTime(g.nextSendAt)}</span>}
+                    {!sequential && <Tag s={g.running ? "running" : "stopped"} testId={`status-schedule-${g.id}`} />}
+                    {sequential && g.running && <Tag s="running" testId={`status-schedule-${g.id}`} />}
+                    {!sequential && <button type="button" onClick={() => { setIntervalFor(g); setIvValue(String(g.intervalSeconds % 3600 === 0 ? g.intervalSeconds / 3600 : Math.round(g.intervalSeconds / 60))); setIvUnit(g.intervalSeconds % 3600 === 0 ? "h" : "m"); }} className="inline-flex items-center gap-1 text-primary hover:underline" data-testid={`button-interval-group-${g.id}`}><Timer className="h-3 w-3" />every {fmtInterval(g.intervalSeconds)}</button>}
+                    {!sequential && g.running && g.nextSendAt && <span className="text-muted-foreground" data-testid={`text-next-send-${g.id}`}>next {dateTime(g.nextSendAt)}</span>}
                     {g.lastStatus && <span className="text-muted-foreground">last: {g.lastStatus.replace("_", " ")}</span>}
                   </div>
                   {g.scheduleNote && <div className={cn("mt-0.5 text-xs", g.lastStatus === "uncertain" ? "text-amber-800" : "text-muted-foreground")} data-testid={`text-schedule-note-${g.id}`}>{g.scheduleNote}</div>}

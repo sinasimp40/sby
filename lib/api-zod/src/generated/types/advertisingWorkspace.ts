@@ -10,9 +10,11 @@ import type { AdvertisingAccountRun } from './advertisingAccountRun';
 import type { AdvertisingBot } from './advertisingBot';
 import type { AdvertisingCampaign } from './advertisingCampaign';
 import type { AdvertisingDraft } from './advertisingDraft';
+import type { AdvertisingForwardLoop } from './advertisingForwardLoop';
 import type { AdvertisingGroup } from './advertisingGroup';
 
 export interface AdvertisingWorkspace {
+  forwarding?: AdvertisingForwardLoop;
   account: AdvertisingAccount;
   accountRuns: AdvertisingAccountRun[];
   bot: AdvertisingBot;

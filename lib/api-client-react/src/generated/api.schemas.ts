@@ -27,6 +27,55 @@ export interface AdvertisingTextEntity {
   documentId?: string;
 }
 
+export type AdvertisingSavedMessageMediaKind = typeof AdvertisingSavedMessageMediaKind[keyof typeof AdvertisingSavedMessageMediaKind];
+
+
+export const AdvertisingSavedMessageMediaKind = {
+  text: 'text',
+  photo: 'photo',
+  video: 'video',
+  animation: 'animation',
+  document: 'document',
+  audio: 'audio',
+  voice: 'voice',
+  sticker: 'sticker',
+  other: 'other',
+} as const;
+
+export interface AdvertisingSavedMessage {
+  /**
+     * @minimum 1
+     * @maximum 2147483647
+     */
+  id: number;
+  /** @pattern ^[0-9]+$ */
+  accountId: string;
+  date: string;
+  /** @maxLength 4096 */
+  text: string;
+  mediaKind: AdvertisingSavedMessageMediaKind;
+  canForward: boolean;
+  /** @nullable */
+  reason: string | null;
+  /** @pattern ^[a-f0-9]{64}$ */
+  fingerprint: string;
+}
+
+export interface AdvertisingForwardSnapshot {
+  source: AdvertisingSavedMessage;
+  /**
+     * @minimum 60
+     * @maximum 2592000
+     */
+  intervalSeconds: number;
+  planId: string;
+  /**
+     * @minimum 0
+     * @maximum 499
+     */
+  order: number;
+}
+
 export interface AdvertisingDraft {
   /** @maxLength 4096 */
   text: string;
@@ -44,6 +93,72 @@ export interface AdvertisingDraft {
   buttonUrl: string | null;
   /** @maxItems 100 */
   entities?: AdvertisingTextEntity[];
+  forward?: AdvertisingForwardSnapshot;
+}
+
+export interface AdvertisingSavedMessagesInput {
+  /**
+     * @minimum 0
+     * @maximum 2147483647
+     */
+  offsetId?: number;
+}
+
+export interface AdvertisingSavedMessagesPage {
+  /** @pattern ^[0-9]+$ */
+  accountId: string;
+  messages: AdvertisingSavedMessage[];
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  nextOffsetId: number | null;
+}
+
+export interface AdvertisingForwardLoop {
+  source: AdvertisingSavedMessage | null;
+  intervalSeconds: number;
+  running: boolean;
+  groupIds: string[];
+  /** @nullable */
+  nextGroupId: string | null;
+  /** @nullable */
+  nextSendAt: string | null;
+}
+
+export type AdvertisingForwardStartInputExpectedGroupsItem = {
+  id: string;
+  /** @pattern ^-[1-9][0-9]{5,15}$ */
+  chatId: string;
+};
+
+export interface AdvertisingForwardStartInput {
+  /** @pattern ^[0-9]+$ */
+  accountId: string;
+  /**
+     * @minimum 1
+     * @maximum 2147483647
+     */
+  messageId: number;
+  /** @pattern ^[a-f0-9]{64}$ */
+  sourceFingerprint: string;
+  /**
+     * @minItems 1
+     * @maxItems 500
+     */
+  groupIds: string[];
+  /**
+     * @minItems 1
+     * @maxItems 500
+     */
+  expectedGroups: AdvertisingForwardStartInputExpectedGroupsItem[];
+  /**
+     * @minimum 60
+     * @maximum 2592000
+     */
+  intervalSeconds: number;
+  permissionConfirmed: boolean;
+  idempotencyKey: string;
 }
 
 export interface AdvertisingEmojiSetInput {
@@ -329,6 +444,7 @@ export interface AdvertisingAccountRun {
 }
 
 export interface AdvertisingWorkspace {
+  forwarding?: AdvertisingForwardLoop;
   account: AdvertisingAccount;
   accountRuns: AdvertisingAccountRun[];
   bot: AdvertisingBot;

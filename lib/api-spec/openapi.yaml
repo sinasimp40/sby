@@ -46,6 +46,18 @@ paths:
       operationId: checkAdvertisingAccount
       responses:
         "200": {description: Account session check, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
+  /shop/advertising/account/saved-messages:
+    post:
+      operationId: loadAdvertisingSavedMessages
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingSavedMessagesInput"}}}}
+      responses:
+        "200": {description: Read-only page from the connected account's Saved Messages, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingSavedMessagesPage"}}}}
+  /shop/advertising/forwarding/start:
+    post:
+      operationId: startAdvertisingForwardLoop
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingForwardStartInput"}}}}
+      responses:
+        "200": {description: Confirmed sequential forwarding loop, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
   /shop/advertising/account/emoji-set:
     post:
       operationId: loadAdvertisingEmojiSet
@@ -711,6 +723,69 @@ components:
         buttonText: {type: string, maxLength: 64}
         buttonUrl: {type: [string, "null"], maxLength: 2048}
         entities: {type: array, maxItems: 100, items: {$ref: "#/components/schemas/AdvertisingTextEntity"}}
+        forward: {$ref: "#/components/schemas/AdvertisingForwardSnapshot"}
+    AdvertisingSavedMessagesInput:
+      type: object
+      properties:
+        offsetId: {type: integer, minimum: 0, maximum: 2147483647}
+    AdvertisingSavedMessage:
+      type: object
+      required: [id, accountId, date, text, mediaKind, canForward, reason, fingerprint]
+      properties:
+        id: {type: integer, minimum: 1, maximum: 2147483647}
+        accountId: {type: string, pattern: '^[0-9]+$'}
+        date: {type: string, format: date-time}
+        text: {type: string, maxLength: 4096}
+        mediaKind: {type: string, enum: [text, photo, video, animation, document, audio, voice, sticker, other]}
+        canForward: {type: boolean}
+        reason: {type: [string, "null"]}
+        fingerprint: {type: string, pattern: '^[a-f0-9]{64}$'}
+    AdvertisingSavedMessagesPage:
+      type: object
+      required: [accountId, messages, nextOffsetId]
+      properties:
+        accountId: {type: string, pattern: '^[0-9]+$'}
+        messages: {type: array, items: {$ref: "#/components/schemas/AdvertisingSavedMessage"}}
+        nextOffsetId: {type: [integer, "null"], minimum: 1}
+    AdvertisingForwardSnapshot:
+      type: object
+      required: [source, intervalSeconds, planId, order]
+      properties:
+        source: {$ref: "#/components/schemas/AdvertisingSavedMessage"}
+        intervalSeconds: {type: integer, minimum: 60, maximum: 2592000}
+        planId: {type: string, format: uuid}
+        order: {type: integer, minimum: 0, maximum: 499}
+    AdvertisingForwardLoop:
+      type: object
+      required: [source, intervalSeconds, running, groupIds, nextGroupId, nextSendAt]
+      properties:
+        source: {anyOf: [{$ref: "#/components/schemas/AdvertisingSavedMessage"}, {type: "null"}]}
+        intervalSeconds: {type: integer}
+        running: {type: boolean}
+        groupIds: {type: array, items: {type: string, format: uuid}}
+        nextGroupId: {type: [string, "null"], format: uuid}
+        nextSendAt: {type: [string, "null"], format: date-time}
+    AdvertisingForwardStartInput:
+      type: object
+      required: [accountId, messageId, sourceFingerprint, groupIds, expectedGroups, intervalSeconds, permissionConfirmed, idempotencyKey]
+      properties:
+        accountId: {type: string, pattern: '^[0-9]+$'}
+        messageId: {type: integer, minimum: 1, maximum: 2147483647}
+        sourceFingerprint: {type: string, pattern: '^[a-f0-9]{64}$'}
+        groupIds: {type: array, minItems: 1, maxItems: 500, uniqueItems: true, items: {type: string, format: uuid}}
+        expectedGroups:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            type: object
+            required: [id, chatId]
+            properties:
+              id: {type: string, format: uuid}
+              chatId: {type: string, pattern: '^-[1-9][0-9]{5,15}$'}
+        intervalSeconds: {type: integer, minimum: 60, maximum: 2592000}
+        permissionConfirmed: {type: boolean}
+        idempotencyKey: {type: string, format: uuid}
     AdvertisingTextEntity:
       type: object
       required: [type, offset, length]
@@ -848,6 +923,7 @@ components:
       type: object
       required: [bot, draft, shopBotUrl, groups, campaigns, account, accountRuns]
       properties:
+        forwarding: {$ref: "#/components/schemas/AdvertisingForwardLoop"}
         account: {$ref: "#/components/schemas/AdvertisingAccount"}
         accountRuns: {type: array, items: {$ref: "#/components/schemas/AdvertisingAccountRun"}}
         bot: {$ref: "#/components/schemas/AdvertisingBot"}

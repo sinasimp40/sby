@@ -118,6 +118,8 @@ router.delete("/advertising/groups/:id", run(async req => {
 router.put("/advertising/draft", run(async req => {
   const draft = validateAdvertisingDraft(SaveAdvertisingDraftBody.parse(req.body));
   await withAdvertisingLock(owner(req), async client => {
+    const current = (await client.query("SELECT draft FROM advertising_bots WHERE owner_id=$1", [owner(req)])).rows[0];
+    if (draft.forward || current?.draft?.forward) throw new CommerceError("Choose a message from Saved Messages and confirm its forwarding loop instead.", 410);
     await client.query("INSERT INTO advertising_bots(owner_id,draft) VALUES($1,$2::jsonb) ON CONFLICT(owner_id) DO UPDATE SET draft=EXCLUDED.draft", [owner(req), JSON.stringify(draft)]);
   });
   return advertisingWorkspace(owner(req));

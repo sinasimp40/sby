@@ -5,6 +5,7 @@ import {
   StartAdvertisingAccountSchedulesBody, StopAdvertisingAccountSchedulesBody,
   SaveAdvertisingAppCredentialsBody,
   LoadAdvertisingEmojiSetBody, LoadAdvertisingEmojiSetResponse,
+  LoadAdvertisingSavedMessagesBody, LoadAdvertisingSavedMessagesResponse, StartAdvertisingForwardLoopBody,
 } from "@workspace/api-zod";
 import { getShopAuth } from "../lib/admin-auth";
 import { CommerceError } from "../lib/commerce-providers";
@@ -15,6 +16,7 @@ import { withAdvertisingLock } from "../lib/advertising-store";
 import { withAccountDriver } from "../lib/advertising-account-auth";
 import { emojiPackName } from "../lib/advertising-account-emoji";
 import { AccountError } from "../lib/advertising-account-errors";
+import { loadOwnerSavedMessages, startForwardLoop } from "../lib/advertising-forward-loop";
 
 const router: IRouter = Router();
 router.post("/advertising/account/emoji-set", async (req: Request, res: Response): Promise<void> => {
@@ -33,16 +35,23 @@ router.post("/advertising/account/emoji-set", async (req: Request, res: Response
     });
   }
 });
-const run = (fn: (owner: string, req: Request) => Promise<unknown>) => async (req: Request, res: Response) => {
+const jsonRun = (fn: (owner: string, req: Request) => Promise<unknown>) => async (req: Request, res: Response) => {
   const owner = getShopAuth(req).userId;
   if (!owner) { res.status(401).json({ error: "Sign in to manage account advertising." }); return; }
-  try { await fn(owner, req); res.json(await advertisingWorkspace(owner)); }
+  try { res.json(await fn(owner, req)); }
   catch (error) {
     res.status(error instanceof CommerceError ? error.status : error instanceof z.ZodError ? 400 : 500).json({
       error: error instanceof CommerceError ? error.message : error instanceof z.ZodError ? "Check the account sign-in fields, intervals and selected groups." : "Account operation could not be completed. Credentials were not exposed.",
     });
   }
 };
+const run = (fn: (owner: string, req: Request) => Promise<unknown>) => jsonRun(async (owner, req) => {
+  await fn(owner, req);
+  return advertisingWorkspace(owner);
+});
+router.post("/advertising/account/saved-messages", jsonRun(async (owner, req) =>
+  LoadAdvertisingSavedMessagesResponse.parse(await loadOwnerSavedMessages(owner, LoadAdvertisingSavedMessagesBody.parse(req.body)))));
+router.post("/advertising/forwarding/start", run((owner, req) => startForwardLoop(owner, StartAdvertisingForwardLoopBody.parse(req.body))));
 router.post("/advertising/account/login", run((owner, req) => beginAccountLogin(owner, BeginAdvertisingAccountLoginBody.parse(req.body))));
 router.put("/advertising/account/app", run((owner, req) => saveAccountApp(owner, SaveAdvertisingAppCredentialsBody.parse(req.body))));
 router.delete("/advertising/account/app", run(owner => disconnectAccount(owner, undefined, true)));

@@ -2,6 +2,7 @@ import { CommerceError } from "./commerce-providers";
 import { validProductMediaUrl } from "./product-media";
 import type { AdvertisingDraft } from "@workspace/api-zod";
 import { validateAdEntities } from "./advertising-formatting";
+import { validateForwardSnapshot } from "./advertising-saved-messages";
 
 export class AdvertisingTelegramError extends CommerceError {
   constructor(public providerCode: number, public retryAfter = 0) {
@@ -42,10 +43,12 @@ export function validateAdvertisingDraft(draft: AdvertisingDraft, sending = fals
     catch { throw new CommerceError("The shop button needs a valid HTTPS link."); }
     if (!clean.buttonText || clean.buttonText.length > 64) throw new CommerceError("Give the shop button a label of 1–64 characters.");
   }
-  return { ...clean, ...(entities.length ? { entities } : {}) };
+  return { ...clean, ...(entities.length ? { entities } : {}),
+    ...(draft.forward ? { forward: validateForwardSnapshot(draft.forward) } : {}) };
 }
 export async function sendAdvertisingMessage(token: string, chatId: string, draft: AdvertisingDraft, call: AdvertisingCaller = advertisingTelegram) {
   const message = validateAdvertisingDraft(draft, true);
+  if (message.forward) throw new CommerceError("Saved Messages must be forwarded by the connected personal account, not rebuilt or sent by a bot.");
   const entities = message.entities?.map(({ documentId, ...e }) => ({ ...e, ...(documentId ? { custom_emoji_id: documentId } : {}) }));
   const body = {
     chat_id: chatId,

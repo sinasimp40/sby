@@ -2,7 +2,8 @@ import { Api, TelegramClient, utils } from "telegram";
 import { StringSession } from "telegram/sessions/index.js";
 import { Logger, LogLevel } from "telegram/extensions/Logger.js";
 import bigInt from "big-integer";
-import type { AdvertisingDraft, AdvertisingEmojiSet } from "@workspace/api-zod";
+import type { AdvertisingDraft, AdvertisingEmojiSet, AdvertisingSavedMessage, AdvertisingSavedMessagesPage, AdvertisingForwardSnapshot } from "@workspace/api-zod";
+import { readSavedMessages, readSavedMessage } from "./advertising-saved-messages";
 import { loadAccountEmojiSet, verifyAccountEmoji } from "./advertising-account-emoji";
 import { telegramAdEntities } from "./advertising-formatting";
 import { validateAdvertisingDraft } from "./advertising-telegram";
@@ -37,6 +38,9 @@ export interface AccountDriver {
   groups(): Promise<AccountGroup[]>;
   inspect(target: string, draft?: AdvertisingDraft): Promise<AccountGroup>;
   emojiSet?(name: string): Promise<AdvertisingEmojiSet>;
+  savedMessages?(offsetId: number): Promise<AdvertisingSavedMessagesPage>;
+  savedMessage?(id: number): Promise<AdvertisingSavedMessage>;
+  forward?(chatId: string, source: AdvertisingForwardSnapshot, randomId: string): Promise<AccountPostReceipt>;
   send(chatId: string, draft: AdvertisingDraft, randomId: string): Promise<AccountPostReceipt>;
   logout(): Promise<void>;
 }
@@ -195,8 +199,13 @@ export const createAccountDriver: AccountFactory = ({ apiId, apiHash, session = 
         throw new AccountError("Could not verify that the connected Telegram account is a member of this group.");
     }
     const restrictions = [personalBan, ...(admin ? [] : [entity.defaultBannedRights])];
-    const media = draft?.imageUrl;
-    if (restrictions.some(r => r?.sendMessages || r?.sendPlain || (media && (r?.sendMedia || r?.sendPhotos || r?.sendGifs))))
+    const kind = draft?.forward?.source.mediaKind;
+    const media = draft?.imageUrl || (kind && kind !== "text");
+    if (restrictions.some(r => r?.sendMessages || r?.sendPlain || (media && r?.sendMedia) ||
+      (draft?.imageUrl && (r?.sendPhotos || r?.sendGifs)) || (kind === "photo" && r?.sendPhotos) ||
+      (kind === "animation" && r?.sendGifs) || (kind === "video" && r?.sendVideos) ||
+      (kind === "document" && r?.sendDocs) || (kind === "audio" && r?.sendAudios) ||
+      (kind === "voice" && r?.sendVoices) || (kind === "sticker" && r?.sendStickers)))
       throw new AccountError("This account lacks permission to send this message/media in the group.");
     const chatId = utils.getPeerId(entity).toString();
     resolvedGroups.set(chatId, entity);
@@ -269,6 +278,25 @@ export const createAccountDriver: AccountFactory = ({ apiId, apiHash, session = 
     }),
     inspect,
     emojiSet: name => run("emoji_set", () => loadAccountEmojiSet(client, name)),
+    savedMessages: offsetId => run("saved_messages", () => readSavedMessages(client, offsetId)),
+    savedMessage: id => run("saved_messages", () => readSavedMessage(client, id)),
+    forward: (chatId, snapshot, randomId) => run("send", async () => {
+      const source = await readSavedMessage(client, snapshot.source.id);
+      available();
+      if (source.accountId !== snapshot.source.accountId || source.fingerprint !== snapshot.source.fingerprint)
+        throw new AccountError("The selected saved message changed. Advertising stopped; refresh and select it again.", "validation", 0, "SAVED_MESSAGE_CHANGED");
+      await inspect(chatId, { text: source.text, imageUrl: null, buttonText: "", buttonUrl: null, forward: snapshot });
+      available();
+      const entity = resolvedGroups.get(chatId)!;
+      const id = bigInt(randomId);
+      const result = await client.invoke(new Api.messages.ForwardMessages({
+        fromPeer: new Api.InputPeerSelf(), id: [source.id], randomId: [id], toPeer: utils.getInputPeer(entity),
+      }));
+      available();
+      const receipt = await confirmAccountPost(client, entity, id, result);
+      available();
+      return receipt;
+    }),
     send: (chatId, draft, randomId) => run("send", async () => {
       await inspect(chatId, draft);
       available(); // A timed-out/disposed preflight must never dispatch a late post.

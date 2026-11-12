@@ -40,11 +40,14 @@ import type {
   AdvertisingDraft,
   AdvertisingEmojiSet,
   AdvertisingEmojiSetInput,
+  AdvertisingForwardStartInput,
   AdvertisingGroupSelection,
   AdvertisingGroupUpdate,
   AdvertisingGroupsInput,
   AdvertisingImportInput,
   AdvertisingImportPreview,
+  AdvertisingSavedMessagesInput,
+  AdvertisingSavedMessagesPage,
   AdvertisingScheduleSelection,
   AdvertisingWorkspace,
   CustomEmojiLibrary,
@@ -640,6 +643,170 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getCheckAdvertisingAccountMutationOptions(options), queryClient);
+    }
+
+export const getLoadAdvertisingSavedMessagesUrl = () => {
+
+
+
+
+  return `/api/shop/advertising/account/saved-messages`
+}
+
+export const loadAdvertisingSavedMessages = async (advertisingSavedMessagesInput: AdvertisingSavedMessagesInput, options?: Parameters<typeof customFetch>[1]): Promise<AdvertisingSavedMessagesPage> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdvertisingSavedMessagesPage>(getLoadAdvertisingSavedMessagesUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(advertisingSavedMessagesInput)
+  }
+);}
+
+
+
+
+
+export const getLoadAdvertisingSavedMessagesMutationKey = () => ['loadAdvertisingSavedMessages'] as const;
+
+export const getLoadAdvertisingSavedMessagesMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof loadAdvertisingSavedMessages>>, TError,LoadAdvertisingSavedMessagesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof loadAdvertisingSavedMessages>>, TError,LoadAdvertisingSavedMessagesMutationVariables, TContext> => {
+
+const mutationKey = getLoadAdvertisingSavedMessagesMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof loadAdvertisingSavedMessages>>, LoadAdvertisingSavedMessagesMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  loadAdvertisingSavedMessages(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LoadAdvertisingSavedMessagesMutationResult = NonNullable<Awaited<ReturnType<typeof loadAdvertisingSavedMessages>>>
+    export type LoadAdvertisingSavedMessagesMutationBody = BodyType<AdvertisingSavedMessagesInput>
+    export type LoadAdvertisingSavedMessagesMutationError = ErrorType<unknown>
+    export type LoadAdvertisingSavedMessagesMutationVariables = {data: BodyType<AdvertisingSavedMessagesInput>}
+
+    export const useLoadAdvertisingSavedMessages = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof loadAdvertisingSavedMessages>>, TError,LoadAdvertisingSavedMessagesMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof loadAdvertisingSavedMessages>>,
+        TError,
+        LoadAdvertisingSavedMessagesMutationVariables,
+        TContext
+      > => {
+      return useMutation(getLoadAdvertisingSavedMessagesMutationOptions(options), queryClient);
+    }
+
+export const getStartAdvertisingForwardLoopUrl = () => {
+
+
+
+
+  return `/api/shop/advertising/forwarding/start`
+}
+
+export const startAdvertisingForwardLoop = async (advertisingForwardStartInput: AdvertisingForwardStartInput, options?: Parameters<typeof customFetch>[1]): Promise<AdvertisingWorkspace> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdvertisingWorkspace>(getStartAdvertisingForwardLoopUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(advertisingForwardStartInput)
+  }
+);}
+
+
+
+
+
+export const getStartAdvertisingForwardLoopMutationKey = () => ['startAdvertisingForwardLoop'] as const;
+
+export const getStartAdvertisingForwardLoopMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startAdvertisingForwardLoop>>, TError,StartAdvertisingForwardLoopMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startAdvertisingForwardLoop>>, TError,StartAdvertisingForwardLoopMutationVariables, TContext> => {
+
+const mutationKey = getStartAdvertisingForwardLoopMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startAdvertisingForwardLoop>>, StartAdvertisingForwardLoopMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  startAdvertisingForwardLoop(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartAdvertisingForwardLoopMutationResult = NonNullable<Awaited<ReturnType<typeof startAdvertisingForwardLoop>>>
+    export type StartAdvertisingForwardLoopMutationBody = BodyType<AdvertisingForwardStartInput>
+    export type StartAdvertisingForwardLoopMutationError = ErrorType<unknown>
+    export type StartAdvertisingForwardLoopMutationVariables = {data: BodyType<AdvertisingForwardStartInput>}
+
+    export const useStartAdvertisingForwardLoop = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startAdvertisingForwardLoop>>, TError,StartAdvertisingForwardLoopMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof startAdvertisingForwardLoop>>,
+        TError,
+        StartAdvertisingForwardLoopMutationVariables,
+        TContext
+      > => {
+      return useMutation(getStartAdvertisingForwardLoopMutationOptions(options), queryClient);
     }
 
 export const getLoadAdvertisingEmojiSetUrl = () => {

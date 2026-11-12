@@ -1,61 +1,85 @@
 import { useEffect, useRef, useState } from "react";
-import { useGetAdvertisingWorkspace, getGetAdvertisingWorkspaceQueryKey, useSaveAdvertisingDraft } from "@workspace/api-client-react";
+import { useGetAdvertisingWorkspace, getGetAdvertisingWorkspaceQueryKey, type AdvertisingSavedMessage } from "@workspace/api-client-react";
+import { Play } from "lucide-react";
 import { PageHeader, ErrorState, RowsSkeleton } from "@/components/shared";
-import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
 import { errMsg } from "@/lib/format";
-import { DraftPanel, ImportPanel, GroupsPanel, HistoryPanel, MessagePreview, draftProblem, toDraft, useWorkspaceSync, type DraftState } from "@/components/advertising-panels";
+import { ImportPanel, GroupsPanel, HistoryPanel } from "@/components/advertising-panels";
 import { AccountPanel } from "@/components/advertising/account-panel";
-import { ScheduleBar, StartDialog, RunsPanel } from "@/components/advertising/schedule-panels";
+import { RunsPanel } from "@/components/advertising/schedule-panels";
+import { SavedMessagePicker, SavedMessageCard } from "@/components/advertising/saved-message-picker";
+import { ForwardingStatus, ForwardStartDialog, IntervalPanel, intervalOk, queueGroups, splitInterval, toSeconds, type IntervalUnit } from "@/components/advertising/forwarding-panels";
 
 export default function AdvertisingPage() {
   const ws = useGetAdvertisingWorkspace({ query: { queryKey: getGetAdvertisingWorkspaceQueryKey(), refetchInterval: 5000 } });
-  const save = useSaveAdvertisingDraft();
-  const sync = useWorkspaceSync();
-  const { toast } = useToast();
-  const [d, setD] = useState<DraftState>({ text: "", imageUrl: "", buttonText: "", buttonUrl: "" });
-  const [dirty, setDirty] = useState(false);
-  const inited = useRef(false);
-  const dRef = useRef(d);
-  dRef.current = d;
-  const markSavedIf = (fp: string) => { if (JSON.stringify(toDraft(dRef.current)) === fp) setDirty(false); };
+  const [source, setSource] = useState<AdvertisingSavedMessage | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [ivValue, setIvValue] = useState("30");
+  const [ivUnit, setIvUnit] = useState<IntervalUnit>("m");
   const [startOpen, setStartOpen] = useState(false);
   const [campaignId, setCampaignId] = useState<string | null>(null);
-  const server = ws.data?.draft;
+  const touched = useRef(false);
+  const boundTo = useRef<string | null | undefined>(undefined);
+  // A transport drop is not an identity change. Keep unsent choices while the
+  // same saved account recovers; readiness separately blocks reads and Start.
+  const accountId = ws.data?.account.accountId ?? null;
+  const fwd = ws.data?.forwarding;
+
+  // Identity binding: clear choices whenever the connected account changes; restore prior plan once per account.
   useEffect(() => {
-    if (server && (!inited.current || !dirty)) {
-      inited.current = true;
-      setD({ text: server.text, imageUrl: server.imageUrl ?? "", buttonText: server.buttonText, buttonUrl: server.buttonUrl ?? "", entities: server.entities ?? [] });
+    if (!ws.data) return;
+    if (boundTo.current !== accountId) {
+      boundTo.current = accountId; touched.current = false;
+      setSource(null); setSelected(new Set());
     }
-  }, [server, dirty]);
+    if (touched.current || !accountId || !fwd) return;
+    if (fwd.source && fwd.source.accountId === accountId) setSource(fwd.source);
+    if (intervalOk(fwd.intervalSeconds)) { const [v, u] = splitInterval(fwd.intervalSeconds); setIvValue(v); setIvUnit(u); }
+    if (fwd.groupIds.length) setSelected(new Set(fwd.groupIds));
+    touched.current = true;
+  }, [ws.data, accountId, fwd]);
+
   if (ws.isLoading) return <div><PageHeader eyebrow="Growth" title="Advertising" /><RowsSkeleton rows={8} /></div>;
   if (ws.isError || !ws.data) return <div><PageHeader eyebrow="Growth" title="Advertising" /><ErrorState message={errMsg(ws.error) || "Failed to load advertising"} onRetry={() => ws.refetch()} /></div>;
   const w = ws.data;
-  const problem = draftProblem(d);
-  async function saveDraft() {
-    const frozen = toDraft(d);
-    try { sync(await save.mutateAsync({ data: frozen })); markSavedIf(JSON.stringify(frozen)); toast({ title: "Draft saved" }); }
-    catch (x) { toast({ title: "Save failed", description: errMsg(x), variant: "destructive" }); }
-  }
+  const signingIn = !!w.account.login;
+  const ready = w.account.connected && !signingIn && !!w.account.accountId;
+  const blocked = signingIn ? "Finish or cancel account sign-in first." : !w.account.connected ? "Connect your Telegram account first." : "";
+  const touch = () => { touched.current = true; };
+  const intervalSeconds = toSeconds(ivValue, ivUnit);
+  const queue = queueGroups(w, selected);
+  const skipped = selected.size - queue.length;
+  const reason = blocked || (!source ? "Choose a source message." : !source.canForward ? "This message cannot be forwarded." : source.accountId !== w.account.accountId ? "Source belongs to a different account. Load Saved Messages again." : !queue.length ? "Select at least one ready, enabled group." : !intervalOk(intervalSeconds) ? "Set a delay between 1 minute and 30 days." : "");
+
   return (
     <div>
-      <PageHeader eyebrow="Growth" title="Advertising" description="Your personal Telegram account posts your ad to the groups you pick, each on its own interval. It never touches orders, payments, or the shop bot." />
-      <ScheduleBar ws={w} selected={selected} problem={problem} onStart={() => setStartOpen(true)} />
+      <PageHeader eyebrow="Growth" title="Advertising" description="Forward one message from your Saved Messages through your groups, one at a time with a shared delay. Nothing starts until you confirm, and it never touches orders, payments or the shop bot." />
+      <ForwardingStatus ws={w} />
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <div className="min-w-0 space-y-5">
           <AccountPanel ws={w} />
-          <DraftPanel d={d} setD={v => { setD(v); setDirty(true); }} dirty={dirty} onSave={saveDraft} saving={save.isPending} shopBotUrl={w.shopBotUrl} connected={w.account.connected && !w.account.login} />
+          <SavedMessagePicker key={accountId ?? "none"} accountId={accountId} ready={ready} blockedReason={blocked} value={source} onChange={m => { touch(); setSource(m); }} />
+          <IntervalPanel value={ivValue} unit={ivUnit} onChange={(v, u) => { touch(); setIvValue(v); setIvUnit(u); }} />
           <ImportPanel ws={w} />
-          <GroupsPanel ws={w} selected={selected} setSelected={setSelected} />
+          <GroupsPanel ws={w} selected={selected} setSelected={s => { touch(); setSelected(s); }} sequential />
           <RunsPanel ws={w} />
           {w.campaigns.length > 0 && <HistoryPanel ws={w} selectedId={campaignId} setSelectedId={setCampaignId} />}
         </div>
-        <div className="lg:sticky lg:top-6 lg:self-start">
-          <MessagePreview d={d} />
-          <p className="mt-2 text-center text-[11px] text-muted-foreground">Local preview. Nothing is posted until you confirm Start.</p>
-        </div>
+        <aside className="lg:sticky lg:top-6 lg:self-start">
+          <div className="rounded-xl border bg-card p-4" data-testid="panel-forward-summary">
+            <div className="mb-3 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Ready to start</div>
+            {source ? <SavedMessageCard m={source} compact /> : <p className="text-sm text-muted-foreground">No source message chosen.</p>}
+            <dl className="mt-4 grid grid-cols-2 gap-3 border-t pt-3 text-xs">
+              <div><dt className="text-muted-foreground">Queue</dt><dd className="font-mono text-base font-semibold" data-testid="text-queue-size">{queue.length}</dd></div>
+              <div><dt className="text-muted-foreground">Delay</dt><dd className="font-mono text-base font-semibold">{intervalOk(intervalSeconds) ? `${ivValue}${ivUnit === "m" ? " min" : " h"}` : "-"}</dd></div>
+            </dl>
+            {skipped > 0 && <p className="mt-2 text-xs text-signal" data-testid="text-skipped-groups">{skipped} selected {skipped === 1 ? "group is" : "groups are"} not ready or disabled and will be left out.</p>}
+            <Button className="mt-4 w-full" disabled={!!reason} onClick={() => setStartOpen(true)} data-testid="button-open-start"><Play className="mr-1.5 h-4 w-4" />Review and start</Button>
+            {reason && <p className="mt-2 text-center text-xs text-muted-foreground" data-testid="text-start-blocked">{reason}</p>}
+          </div>
+        </aside>
       </div>
-      <StartDialog open={startOpen} onOpenChange={setStartOpen} ws={w} d={d} toDraft={toDraft} selected={selected} onStarted={markSavedIf} />
+      <ForwardStartDialog open={startOpen} onOpenChange={setStartOpen} ws={w} source={source} selected={selected} intervalSeconds={intervalSeconds} />
     </div>
   );
 }

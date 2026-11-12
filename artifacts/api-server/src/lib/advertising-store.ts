@@ -4,6 +4,7 @@ import type { PoolClient } from "pg";
 import { CommerceError } from "./commerce-providers";
 import { decryptProviderSecret } from "./provider-credentials";
 import { accountStatus } from "./advertising-account-auth";
+import { ownerForwardLoop } from "./advertising-forward-loop";
 
 export type AdvertisingClient = PoolClient;
 export async function withAdvertisingLock<T>(owner: string, fn: (client: AdvertisingClient) => Promise<T>): Promise<T> {
@@ -50,6 +51,7 @@ export async function advertisingWorkspace(owner: string): Promise<AdvertisingWo
   const runs = (await pool.query(`SELECT id,group_id AS "groupId",target,status,note,started_at AS "startedAt",sent_at AS "sentAt"
     FROM advertising_account_runs WHERE owner_id=$1 ORDER BY started_at DESC LIMIT 100`, [owner])).rows;
   return {
+    forwarding: await ownerForwardLoop(owner, draftRow?.draft ?? { text: "", imageUrl: null, buttonText: "", buttonUrl: null }),
     account: await accountStatus(owner),
     accountRuns: runs.map(row => ({ ...row, startedAt: row.startedAt.toISOString(), sentAt: row.sentAt?.toISOString() ?? null })),
     bot: { configured: Boolean(bot?.configured), connected: Boolean(bot?.configured && bot.checked_at && !bot.last_error),

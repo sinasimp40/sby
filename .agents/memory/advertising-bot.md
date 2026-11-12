@@ -3,17 +3,17 @@ name: Separate advertising account
 description: Merchant-required Telegram personal-account advertising, independent of the shop bot, with explicit recurring group controls.
 ---
 
-The user explicitly requires advertising through their own Telegram client account, not an advertising bot, inside the same dashboard. Support both phone plus login code and QR login, Telegram two-step verification, selected destination groups, individual group intervals, and Start/Stop controls. Keep `.txt` group-link segregation and manual group entry.
+The user explicitly requires advertising through their own Telegram client account, not an advertising bot, inside the same dashboard. Support both phone plus login code and QR login, Telegram two-step verification, selected destination groups, one shared interval between sequential group forwards, and Start/Stop controls. Keep `.txt` group-link segregation and manual group entry.
 
 **Why:** The user explicitly replaced the earlier separate-bot approach with an account that can chat in groups. They were concerned about advertisements interfering with customers using the shop bot.
 
 **How to apply:** Keep the personal-account approach when diagnosing authentication or Telegram security notifications; do not propose replacing it with an advertising bot. Never reuse or change the shop bot credentials/sending path for advertisements. Keep advertising independent of shop maintenance. Stop legacy advertising-bot jobs during the switch, preserve history, and require explicit selected-group confirmation before any account posting.
 
-Advertising content should be selected from the user's Telegram Saved Messages and forwarded to the chosen groups, rather than recreated in an advertisement editor.
+Select exactly one existing message from the connected account's Telegram Saved Messages and forward it to the chosen groups, rather than recreating it in an advertisement editor.
 
-**Why:** The user clarified: “all we need is to select the message” saved in Saved Messages and forward it to the groups.
+**Why:** The user clarified: “all we need is to select the message” saved in Saved Messages and then chose “Select only one message.” They explicitly said the interval is “not individual” and described sending to the first group, waiting, then sending to the second.
 
-**How to apply:** Treat the custom-formatting editor approach as superseded for the primary workflow. Use native forwarding, retain selected-group and interval controls, and respect Telegram's forwarding restrictions rather than silently copying or rebuilding unsupported content.
+**How to apply:** Treat the custom-formatting editor approach as superseded for the primary workflow. Use native forwarding with one source and a confirmed group order: group 1, shared wait, group 2, shared wait, and repeat after the final group's wait. Do not expose independent group timers or rotate multiple source messages. Respect forwarding restrictions rather than silently copying or rebuilding unsupported content.
 
 Account authorization belongs in the protected dashboard, never chat. Explain the API app ID/hash requirement and full-account access, and allow checking connection and revoking the saved session.
 
@@ -45,7 +45,7 @@ The installed GramJS `ignoreMigrated` option incorrectly excludes channels and s
 
 **How to apply:** Fetch unfiltered dialogs and exclude obsolete/left groups explicitly. Retain a regression test through the real SDK dialog iterator, not only a mocked group list, when upgrading GramJS.
 
-Freeze the exact confirmed message, account, recipients and intervals. Never automatically retry an unconfirmed send, catch up missed intervals in a burst, or resume imported advertising jobs.
+Freeze the exact confirmed message, account, recipient order and shared interval. Never automatically retry an unconfirmed send, catch up missed intervals in a burst, or resume imported advertising jobs.
 
 **Why:** Advertising is an external action that cannot reliably be undone, and a network timeout can occur after Telegram accepted a message.
 
