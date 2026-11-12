@@ -5,12 +5,12 @@ import { advertisingBotForOwner, withAdvertisingLock, type AdvertisingClient } f
 import { advertisingTelegram, AdvertisingTelegramError, inspectAdvertisingGroup, type AdvertisingCaller } from "./advertising-telegram";
 import { parseAdvertisingTarget } from "./advertising-targets";
 
-export async function connectAdvertising(owner: string, botLink: string, token: string, call: AdvertisingCaller = advertisingTelegram) {
-  const target = parseAdvertisingTarget(botLink);
-  if (target.kind !== "public" || !/^\d{5,20}:[A-Za-z0-9_-]{20,150}$/.test(token)) throw new CommerceError("Enter the advertising bot's Telegram link and its BotFather token.");
+export async function connectAdvertising(owner: string, token: string, call: AdvertisingCaller = advertisingTelegram) {
+  if (!/^\d{5,20}:[A-Za-z0-9_-]{20,150}$/.test(token)) throw new CommerceError("Paste the full advertising bot token from BotFather.");
   return withAdvertisingLock(owner, async client => {
     const me = await call<{ id: number; username: string; is_bot: boolean }>(token, "getMe");
-    if (!me.is_bot || !me.username || target.target !== `@${me.username.toLowerCase()}`) throw new CommerceError("The bot link does not match this token. Nothing was changed.");
+    if (!me.is_bot || !Number.isSafeInteger(me.id) || me.id <= 0 || !/^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(me.username ?? ""))
+      throw new CommerceError("Telegram did not return a valid bot identity. Nothing was changed.");
     if (String(me.id) !== token.split(":")[0]) throw new CommerceError("Telegram bot identity could not be verified.");
     await client.query("BEGIN");
     try {

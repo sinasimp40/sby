@@ -60,16 +60,12 @@ export const GetAdvertisingWorkspaceResponse = zod.object({
 })
 
 
-export const connectAdvertisingBotBodyBotLinkMin = 5;
-export const connectAdvertisingBotBodyBotLinkMax = 150;
-
 export const connectAdvertisingBotBodyTokenMin = 20;
 export const connectAdvertisingBotBodyTokenMax = 200;
 
 
 
 export const ConnectAdvertisingBotBody = zod.object({
-  "botLink": zod.string().min(connectAdvertisingBotBodyBotLinkMin).max(connectAdvertisingBotBodyBotLinkMax),
   "token": zod.string().min(connectAdvertisingBotBodyTokenMin).max(connectAdvertisingBotBodyTokenMax)
 })
 

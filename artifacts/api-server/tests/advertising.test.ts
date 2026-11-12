@@ -91,15 +91,18 @@ test("advertising API and durable sender isolate credentials, require approval, 
     assert.equal((await request("/draft", "PUT", {}, "https://wrong.invalid")).status, 403);
     await pool.query("INSERT INTO provider_credentials(owner_id,telegram_bot_username,telegram_token_encrypted) VALUES($1,'TEST_ONLY_shop_bot',$2)",
       [owner, encryptProviderSecret(shopToken, owner, "telegram")]);
-    assert.equal((await request("/connection", "POST", { botLink: "@TEST_ONLY_shop_bot", token: shopToken })).status, 400);
-    assert.equal((await request("/connection", "POST", { botLink: "@wrong_bot", token })).status, 400);
-    const connected = await request("/connection", "POST", { botLink: "https://t.me/TEST_ONLY_ad_bot", token });
+    assert.equal((await request("/connection", "POST", { token: shopToken })).status, 400);
+    assert.equal((await request("/connection", "POST", { token: "malformed-token-placeholder" })).status, 400);
+    const connected = await request("/connection", "POST", { token });
     assert.equal(connected.status, 200); assert.equal(connected.data.bot.connected, true);
+    assert.equal(connected.data.bot.botLink, "https://t.me/TEST_ONLY_ad_bot");
+    assert.equal((await request()).data.bot.connected, true, "connection survives a fresh workspace read");
     assert.ok(!JSON.stringify(connected.data).includes(token));
     await assert.rejects(saveTelegramCredential(owner, token, "TEST_ONLY_ad_bot"), /assigned to advertising/);
     botRejected = true;
+    assert.equal((await request("/connection", "POST", { token })).status, 502);
+    assert.equal((await request()).data.bot.connected, true, "a failed replacement must preserve the saved connection");
     assert.equal((await request("/connection/check", "POST")).data.bot.connected, false);
-    assert.equal((await request("/connection", "POST", { botLink: "@TEST_ONLY_ad_bot", token })).status, 502);
     botRejected = false;
     assert.equal((await request("/connection/check", "POST")).data.bot.connected, true);
     const text = "https://t.me/test_only_group\n@test_only_group\n-100222222222\nhttps://t.me/+TestOnlyInvite";

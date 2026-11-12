@@ -9,6 +9,12 @@ The user requires a separate advertising bot controlled from the same dashboard,
 
 **How to apply:** Never reuse the shop bot identity or shop sending path for advertisements. Authorize the new bot with its own protected BotFather token; a public bot link alone cannot connect it. Shop maintenance must not implicitly control this independent sender.
 
+Advertising connection requires only the BotFather token. Automatically obtain the bot username and link from Telegram instead of asking the merchant to enter a redundant bot link.
+
+**Why:** The user corrected the connection form and asked for clear verification and connected/disconnected feedback after entering a token.
+
+**How to apply:** Keep an explicit Verify and connect action, show verification progress and the saved connection state, and allow reconnecting from the same panel. Validate identity and reject the shop bot on the server.
+
 A group link does not grant membership or posting permission, and private invite links cannot make a Bot API bot join a group.
 
 **Why:** The requested import is a list of destinations, not permission to join or advertise. Assuming otherwise would mislead the merchant and risk unsolicited posts.

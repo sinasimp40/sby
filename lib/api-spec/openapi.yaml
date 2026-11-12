@@ -647,9 +647,8 @@ components:
         buttonUrl: {type: [string, "null"], maxLength: 2048}
     AdvertisingConnectionInput:
       type: object
-      required: [botLink, token]
+      required: [token]
       properties:
-        botLink: {type: string, minLength: 5, maxLength: 150}
         token: {type: string, minLength: 20, maxLength: 200}
     AdvertisingBot:
       type: object

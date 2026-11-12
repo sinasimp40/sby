@@ -24,11 +24,6 @@ export interface AdvertisingDraft {
 
 export interface AdvertisingConnectionInput {
   /**
-     * @minLength 5
-     * @maxLength 150
-     */
-  botLink: string;
-  /**
      * @minLength 20
      * @maxLength 200
      */

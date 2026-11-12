@@ -31,8 +31,6 @@ function useWorkspaceSync() {
   };
 }
 
-const handleOf = (s: string | null | undefined) => (s ?? "").trim().replace(/^https?:\/\//i, "").replace(/^(t\.me|telegram\.me)\//i, "").replace(/^@/, "").split(/[/?]/)[0]!.toLowerCase();
-
 const tone: Record<string, string> = {
   ready: "bg-ok/10 text-ok border-ok/25", sent: "bg-ok/10 text-ok border-ok/25", completed: "bg-ok/10 text-ok border-ok/25", new: "bg-ok/10 text-ok border-ok/25",
   pending: "bg-muted text-muted-foreground border-border", queued: "bg-muted text-muted-foreground border-border", sending: "bg-primary/10 text-primary border-primary/25",
@@ -51,22 +49,23 @@ export function ConnectionPanel({ ws }: { ws: AdvertisingWorkspace }) {
   const connect = useConnectAdvertisingBot({ mutation: { gcTime: 0 } });
   const disconnect = useDisconnectAdvertisingBot();
   const check = useCheckAdvertisingBot();
-  const [botLink, setBotLink] = useState(ws.bot.botLink ?? "");
   const [token, setToken] = useState("");
   const [err, setErr] = useState("");
   const [confirmOff, setConfirmOff] = useState(false);
-  const sameAsShop = !!ws.shopBotUrl && !!botLink && handleOf(botLink) === handleOf(ws.shopBotUrl);
   const b = ws.bot;
+  const verifying = connect.isPending || check.isPending;
+  const busy = verifying || disconnect.isPending;
   async function submit(e: React.FormEvent) {
-    e.preventDefault(); setErr("");
-    if (sameAsShop) { setErr("This is your shop bot. Create a separate advertising bot in BotFather."); return; }
-    if (token.trim().length < 20) { setErr("Paste the full BotFather token. A bot link alone cannot authorize."); return; }
-    try { const ws2 = await connect.mutateAsync({ data: { botLink: botLink.trim(), token: token.trim() } }); setToken(""); sync(ws2); toast({ title: "Advertising bot connected" }); }
-    catch (x) { setErr(errMsg(x)); }
+    e.preventDefault();
+    if (busy) return;
+    setErr("");
+    if (token.trim().length < 20) { setErr("Paste the full advertising bot token from BotFather."); return; }
+    try { const ws2 = await connect.mutateAsync({ data: { token: token.trim() } }); setToken(""); sync(ws2); toast({ title: "Verified and connected", description: `Advertising bot: @${ws2.bot.username}` }); }
+    catch (x) { setErr(`${errMsg(x)}${b.configured ? " Your saved bot connection was not changed." : ""}`); }
     finally { connect.reset(); }
   }
   return (
-    <Panel title="Advertising bot" meta={<span className={cn("inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider", b.connected ? "text-ok" : "text-signal")} data-testid="status-ad-bot"><span className={cn("h-1.5 w-1.5 rounded-full", b.connected ? "bg-ok" : "bg-signal")} />{b.connected ? "connected" : b.configured ? "check failed" : "not connected"}</span>}>
+    <Panel title="Advertising bot" meta={<span role="status" aria-live="polite" className={cn("inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider", b.connected && !verifying ? "text-ok" : "text-signal")} data-testid="status-ad-bot"><span className={cn("h-1.5 w-1.5 rounded-full", b.connected && !verifying ? "bg-ok" : "bg-signal")} />{verifying ? "Verifying…" : b.connected ? "Verified · Connected" : "Disconnected"}</span>}>
       {b.configured ? (
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/40 p-3">
@@ -75,24 +74,21 @@ export function ConnectionPanel({ ws }: { ws: AdvertisingWorkspace }) {
               <div className="truncate font-mono text-sm font-semibold" data-testid="text-ad-bot-username">@{b.username}</div>
               <div className="text-xs text-muted-foreground">{b.checkedAt ? `Checked ${ago(b.checkedAt)}` : "Not checked yet"} · separate from your shop bot</div>
             </div>
-            <Button size="sm" variant="outline" disabled={check.isPending} onClick={async () => { setErr(""); try { sync(await check.mutateAsync()); } catch (x) { setErr(errMsg(x)); } }} data-testid="button-check-ad-bot">{check.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-1 h-3.5 w-3.5" />}Check</Button>
-            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setConfirmOff(true)} data-testid="button-disconnect-ad-bot"><Unplug className="mr-1 h-3.5 w-3.5" />Disconnect</Button>
+            <Button size="sm" variant="outline" disabled={busy} onClick={async () => { setErr(""); try { const result = await check.mutateAsync(); sync(result); toast({ title: result.bot.connected ? "Verified and connected" : "Connection check failed", variant: result.bot.connected ? "default" : "destructive" }); } catch (x) { setErr(errMsg(x)); } }} data-testid="button-check-ad-bot">{check.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-1 h-3.5 w-3.5" />}{check.isPending ? "Verifying…" : "Check connection"}</Button>
+            <Button size="sm" variant="ghost" disabled={busy} className="text-destructive" onClick={() => setConfirmOff(true)} data-testid="button-disconnect-ad-bot"><Unplug className="mr-1 h-3.5 w-3.5" />Disconnect</Button>
           </div>
           {b.error && <p role="alert" className="text-sm text-destructive" data-testid="error-ad-bot">{b.error}</p>}
-          {err && <p role="alert" className="text-sm text-destructive">{err}</p>}
         </div>
-      ) : (
-        <form onSubmit={submit} className="space-y-3" data-testid="form-connect-ad-bot" autoComplete="off">
-          <p className="text-sm text-muted-foreground">Create a second bot in BotFather just for posting ads. Your shop bot keeps taking orders untouched.</p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="space-y-1.5 text-sm font-medium">Bot link<Input value={botLink} onChange={e => setBotLink(e.target.value)} placeholder="https://t.me/yourads_bot" className="font-mono" maxLength={150} required data-testid="input-ad-bot-link" /></label>
-            <label className="space-y-1.5 text-sm font-medium">BotFather token<Input type="password" autoComplete="new-password" value={token} onChange={e => setToken(e.target.value)} placeholder="123456:ABC..." className="font-mono" maxLength={200} required data-testid="input-ad-bot-token" /></label>
+      ) : null}
+        <form onSubmit={submit} className={cn("space-y-3", b.configured && "mt-4 border-t pt-4")} data-testid="form-connect-ad-bot" autoComplete="off">
+          <p className="text-sm text-muted-foreground">{b.configured ? "Paste a new token to reconnect or replace the advertising bot. Your saved token is never displayed." : "Only the BotFather token is needed. We automatically identify the bot and create its Telegram link."} Your shop bot stays separate.</p>
+          <div>
+            <label className="space-y-1.5 text-sm font-medium">Advertising bot token<Input type="password" autoComplete="new-password" value={token} onChange={e => { setToken(e.target.value); setErr(""); }} placeholder="Paste your BotFather token" className="font-mono" maxLength={200} disabled={busy} required data-testid="input-ad-bot-token" /></label>
           </div>
-          {sameAsShop && <p className="text-sm text-signal" data-testid="warning-same-bot">This link matches your shop bot. Use a different bot.</p>}
           {err && <p role="alert" className="text-sm text-destructive" data-testid="error-connect-ad-bot">{err}</p>}
-          <div className="flex justify-end"><Button type="submit" disabled={connect.isPending || sameAsShop} data-testid="button-connect-ad-bot">{connect.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <PlugZap className="mr-1.5 h-4 w-4" />}Verify and connect</Button></div>
+          <p className="text-xs text-muted-foreground">Click Verify and connect after pasting. The status changes only after Telegram verifies the token.</p>
+          <div className="flex justify-end"><Button type="submit" disabled={busy} data-testid="button-connect-ad-bot">{connect.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <PlugZap className="mr-1.5 h-4 w-4" />}{connect.isPending ? "Verifying…" : "Verify and connect"}</Button></div>
         </form>
-      )}
       <AlertDialog open={confirmOff} onOpenChange={setConfirmOff}>
         <AlertDialogContent>
           <AlertDialogHeader><AlertDialogTitle>Disconnect advertising bot?</AlertDialogTitle><AlertDialogDescription>The stored token is removed. Groups, draft and history stay. Your shop bot is not affected.</AlertDialogDescription></AlertDialogHeader>

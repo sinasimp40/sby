@@ -30,7 +30,7 @@ const run = (fn: (req: Request, res: Response) => Promise<unknown>) => async (re
 router.get("/advertising", run(async req => advertisingWorkspace(owner(req))));
 router.post("/advertising/connection", run(async req => {
   const input = ConnectAdvertisingBotBody.parse(req.body);
-  await connectAdvertising(owner(req), input.botLink.trim(), input.token.trim());
+  await connectAdvertising(owner(req), input.token.trim());
   return advertisingWorkspace(owner(req));
 }));
 router.delete("/advertising/connection", run(async req => {
