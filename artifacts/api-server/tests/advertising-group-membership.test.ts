@@ -77,11 +77,14 @@ test("public groups absent from dialogs are verified directly before checking or
       if (mode === "outsider") throw { errorMessage: "USER_NOT_PARTICIPANT" };
       return { participant: new Api.ChannelParticipant({ userId: bigInt(99), date: 0 }) } as any;
     }
+    if (request instanceof Api.channels.GetMessages) return {
+      messages: [new Api.Message({ id: 42, peerId: new Api.PeerChannel({ channelId: channel.id }), date: 0, message: "TEST_ONLY ad", out: true })],
+    } as any;
     assert.ok(request instanceof Api.messages.SendMessage);
     assert.ok(request.peer instanceof Api.InputPeerChannel);
     assert.equal(request.peer.channelId.toString(), "12345");
     sends++;
-    return {} as any;
+    return new Api.UpdateShortSentMessage({ id: 42, pts: 1, ptsCount: 1, date: 0, out: true }) as any;
   };
   const factory = () => createAccountDriver({ apiId: 12345, apiHash: "a".repeat(32) });
   const draft = { text: "TEST_ONLY ad", imageUrl: null, buttonText: "Visit shop", buttonUrl: null };

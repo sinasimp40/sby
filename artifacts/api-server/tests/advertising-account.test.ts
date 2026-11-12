@@ -66,6 +66,8 @@ test("account sign-in, selected-group schedules and transfers are safe without r
         posts.push({ chatId, text: accountMessage(draft).text, randomId });
         if (sendMode === "flood") throw new AccountError("Wait for Telegram.", "rate_limit", 120);
         if (sendMode === "unknown") throw new AccountError("Unconfirmed send.", "network");
+        if (sendMode === "missing_receipt") return undefined as any;
+        return { chatId, messageId: posts.length };
       },
       logout: async () => { logouts++; state.authorized = false; },
     };
@@ -176,6 +178,11 @@ test("account sign-in, selected-group schedules and transfers are safe without r
       assert.deepEqual(new Set(posts.map(post => post.chatId)), new Set(groups.slice(0, 2).map(group => group.chatId)));
       assert.ok(posts.every(post => post.text === accountMessage(draft).text));
       let current = (await request()).data;
+      assert.ok(current.accountRuns.every((run: { status: string; note: string }) =>
+        run.status === "sent" && run.note.startsWith("Verified in selected group: message #")));
+      const afterVerifiedSend = (await pool.query("SELECT running,next_send_at FROM advertising_schedules WHERE owner_id=$1", [owner])).rows;
+      assert.ok(afterVerifiedSend.every(row => row.running && new Date(row.next_send_at).getTime() > Date.now()),
+        "a verified send leaves schedules running for the next interval");
       assert.equal(current.groups.find((group: { id: string }) => group.id === groups[2]!.id).running, false);
       assert.equal(current.groups.find((group: { id: string }) => group.id === groups[0]!.id).intervalSeconds, 60);
       assert.equal((await request("/schedules/stop", "POST", { groupIds: [groups[0]!.id] })).status, 200);
@@ -207,6 +214,20 @@ test("account sign-in, selected-group schedules and transfers are safe without r
       assert.equal(current.accountRuns[0].status, "uncertain"); assert.equal(posts.length, afterUnknown);
       assert.equal(current.account.connected, false, "uncertain network outcomes stop the account instead of reconnecting");
       assert.equal((await start([group.id])).status, 400);
+      sendMode = "ok";
+      await explicitlyAuthorizeAgain();
+    });
+    await t.test("a completed send without a receipt is uncertain, stops the account and never repeats", async () => {
+      sendMode = "missing_receipt";
+      await start([groups[0]!.id]); await resetGlobalWait();
+      await processAccountSchedules(owner, factory);
+      const current = (await request()).data;
+      assert.equal(current.accountRuns[0].status, "uncertain");
+      assert.equal(current.account.connected, false);
+      assert.match(current.account.error, /POST_NOT_CONFIRMED/);
+      const before = posts.length;
+      await resetGlobalWait(); await processAccountSchedules(owner, factory);
+      assert.equal(posts.length, before);
       sendMode = "ok";
       await explicitlyAuthorizeAgain();
     });

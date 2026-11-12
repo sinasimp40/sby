@@ -5,6 +5,7 @@ import bigInt from "big-integer";
 import type { AdvertisingDraft } from "@workspace/api-zod";
 import { validateAdvertisingDraft } from "./advertising-telegram";
 import { AccountError, safeAccountError, reportAccountError, type AccountOperation } from "./advertising-account-errors";
+import { confirmAccountPost, type AccountPostReceipt } from "./advertising-account-receipt";
 export { AccountError, safeAccountError } from "./advertising-account-errors";
 async function bounded<T>(fn: () => Promise<T>): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -33,7 +34,7 @@ export interface AccountDriver {
   qr(): Promise<{ authorized: boolean; url?: string; expires?: number }>;
   groups(): Promise<AccountGroup[]>;
   inspect(target: string, draft?: AdvertisingDraft): Promise<AccountGroup>;
-  send(chatId: string, draft: AdvertisingDraft, randomId: string): Promise<void>;
+  send(chatId: string, draft: AdvertisingDraft, randomId: string): Promise<AccountPostReceipt>;
   logout(): Promise<void>;
 }
 export type AccountFactory = (input: { apiId: number; apiHash: string; session?: string }) => AccountDriver;
@@ -247,11 +248,16 @@ export const createAccountDriver: AccountFactory = ({ apiId, apiHash, session = 
       const entity = resolvedGroups.get(chatId)!;
       const message = accountMessage(draft);
       const common = { peer: utils.getInputPeer(entity), message: message.text, randomId: bigInt(randomId) };
+      let result: Api.TypeUpdates;
       if (message.imageUrl) {
         const gif = new URL(message.imageUrl).pathname.toLowerCase().endsWith(".gif");
         const media = gif ? new Api.InputMediaDocumentExternal({ url: message.imageUrl }) : new Api.InputMediaPhotoExternal({ url: message.imageUrl });
-        await client.invoke(new Api.messages.SendMedia({ ...common, media }));
-      } else await client.invoke(new Api.messages.SendMessage({ ...common, noWebpage: true }));
+        result = await client.invoke(new Api.messages.SendMedia({ ...common, media }));
+      } else result = await client.invoke(new Api.messages.SendMessage({ ...common, noWebpage: true }));
+      available();
+      const receipt = await confirmAccountPost(client, entity, common.randomId, result);
+      available();
+      return receipt;
     }),
     logout: () => run("logout", async () => { await client.invoke(new Api.auth.LogOut()); }),
   };

@@ -80,3 +80,9 @@ Advertising browser tests must fail closed on unmocked external-capable requests
 **Why:** A synthetic workspace response alone does not isolate the real saved API app credentials. If browser interception misses the begin-login POST, the live backend can still create a real pending Telegram challenge.
 
 **How to apply:** Prove mutation interception or use a fully isolated fake server before clicking login, verification, discovery, channel checks or posting. An interception miss is a reason to stop and clean up the exact test-created challenge, not retry the live flow.
+
+Treat posting success as evidence captured at send time, not as proof that a message remains visible.
+
+**Why:** The user reported a successful activity entry with no visible group message, followed by a disconnect. Previously, an RPC resolving without throwing was enough to claim success; that does not establish a usable message receipt or continued visibility.
+
+**How to apply:** Require a correlated receipt and exact-group read-back before success. Never resend merely because confirmation/read-back failed, and never retroactively certify historical records that lack evidence. Keep connection loss separate from message verification: a later disconnection neither disproves an earlier verified post nor explains whether moderators removed it.

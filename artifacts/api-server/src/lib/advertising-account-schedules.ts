@@ -91,15 +91,19 @@ export async function processAccountSchedules(owner: string, factory: AccountFac
     await client.query("UPDATE advertising_schedules SET last_status='sending',note='Waiting for Telegram confirmation.' WHERE owner_id=$1 AND group_id=$2", [owner, group.id]);
     let dispatched = false;
     try {
-      await withAccountDriver(owner, client, async driver => {
+      const receipt = await withAccountDriver(owner, client, async driver => {
         const me = await driver.me();
         if (!me || me.id !== account.account_id) throw new AccountError("The Telegram account identity could not be verified. Review Telegram Devices before another login.", "auth", 0, "ACCOUNT_IDENTITY_UNVERIFIED");
         const checked = await driver.inspect(group.target, schedule.draft);
         if (checked.chatId !== group.chat_id) throw new AccountError("Group identity changed. Check it again.");
         dispatched = true;
-        await driver.send(group.chat_id, schedule.draft, randomId);
+        const receipt = await driver.send(group.chat_id, schedule.draft, randomId);
+        if (receipt?.chatId !== group.chat_id || !Number.isSafeInteger(receipt.messageId) || receipt.messageId <= 0)
+          throw new AccountError("Telegram did not provide a verified message receipt. Check the group before restarting; no automatic retry.", "network", 0, "POST_NOT_CONFIRMED");
+        return receipt;
       }, factory, "post_ad");
-      await client.query("UPDATE advertising_account_runs SET status='sent',sent_at=now(),note='Telegram confirmed the post.' WHERE id=$1", [run.id]);
+      await client.query("UPDATE advertising_account_runs SET status='sent',sent_at=now(),note=$2 WHERE id=$1",
+        [run.id, `Verified in selected group: message #${receipt.messageId}. It was readable at send time; later removal is possible.`]);
       await client.query(`UPDATE advertising_schedules SET next_send_at=now()+interval_seconds*interval '1 second',
         last_status='sent',note='Posted. Next post follows this group interval.' WHERE owner_id=$1 AND group_id=$2`, [owner, group.id]);
       await client.query("UPDATE advertising_groups SET last_sent_at=now() WHERE owner_id=$1 AND id=$2", [owner, group.id]);

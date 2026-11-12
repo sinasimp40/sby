@@ -122,14 +122,16 @@ export function StartDialog({ open, onOpenChange, ws, d, toDraft, selected, onSt
 export function RunsPanel({ ws }: { ws: AdvertisingWorkspace }) {
   const runs = [...ws.accountRuns].sort((a, b) => b.startedAt.localeCompare(a.startedAt)).slice(0, 60);
   const uncertain = ws.accountRuns.filter(r => r.status === "uncertain").length;
+  const legacySent = runs.some(r => r.status === "sent" && !r.note?.startsWith("Verified in selected group: message #"));
   return (
     <Panel title="Posting activity" meta={<span data-testid="text-run-count">{ws.accountRuns.length} posts</span>}>
+      {legacySent && <p className="mb-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">Older “sent” records were not checked by reading the message back from the group. They are not proof the message was visible.</p>}
       {uncertain > 0 && <p className="mb-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900" data-testid="banner-uncertain">{uncertain} uncertain {uncertain === 1 ? "result" : "results"}: Telegram may have posted. Those groups are stopped until you check them and start again. No automatic retry.</p>}
       {runs.length === 0 ? <EmptyState icon={Activity} title="No posts yet" body="Each scheduled post appears here with its outcome." /> :
         <ul className="divide-y rounded-lg border">{runs.map(r => (
           <li key={r.id} className="p-3" data-testid={`row-run-${r.id}`}>
-            <div className="flex flex-wrap items-center gap-2"><Tag s={r.status} testId={`status-run-${r.id}`} /><span className="min-w-0 flex-1 truncate font-mono text-xs">{r.target}</span><span className="text-[11px] text-muted-foreground">{dateTime(r.sentAt ?? r.startedAt)}</span></div>
-            {r.note && <div className="mt-1 text-xs text-muted-foreground">{r.note}</div>}
+            <div className="flex flex-wrap items-center gap-2"><Tag s={r.status === "sent" && !r.note?.startsWith("Verified in selected group: message #") ? "unverified" : r.status} testId={`status-run-${r.id}`} /><span className="min-w-0 flex-1 truncate font-mono text-xs">{r.target}</span><span className="text-[11px] text-muted-foreground">{dateTime(r.sentAt ?? r.startedAt)}</span></div>
+            {r.note && <div className="mt-1 text-xs text-muted-foreground">{r.status === "sent" && !r.note.startsWith("Verified in selected group: message #") ? "Legacy send result; no saved message receipt or group read-back verification." : r.note}</div>}
           </li>
         ))}</ul>}
     </Panel>

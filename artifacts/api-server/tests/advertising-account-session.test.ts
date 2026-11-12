@@ -114,7 +114,7 @@ test("personal-account connection ownership, login promotion, failure stops and 
         },
         groups: async () => [{ chatId: "-100999999999", target: "-100999999999", title: "TEST_ONLY group" }],
         inspect: async target => ({ chatId: target, target, title: "TEST_ONLY group" }),
-        send: async () => { stats.posts++; },
+        send: async chatId => { stats.posts++; return { chatId, messageId: stats.posts }; },
         logout: async () => { stats.logouts++; state.authorized = false; },
       };
     };
