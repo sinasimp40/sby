@@ -22,8 +22,8 @@ router.get("/products", async (req, res): Promise<void> => {
 
 router.post("/products", async (req, res): Promise<void> => {
   const parsed = CreateProductBody.safeParse(req.body);
-  if (!parsed.success || !parsed.data.name.trim() || !parsed.data.category.trim()) {
-    res.status(400).json({ error: "Enter a product name, category, valid price and delivery format." });
+  if (!parsed.success || !parsed.data.name.trim()) {
+    res.status(400).json({ error: "Enter a product name, valid price and delivery format." });
     return;
   }
   const ownerId = getAuth(req).userId!;
@@ -33,7 +33,7 @@ router.post("/products", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Choose or paste one ordinary emoji for the product button." }); return;
   }
   const [product] = await db.insert(shopProducts).values({
-    ...input, name: input.name.trim(), category: input.category.trim(), priceCents: Math.round(price * 100), ownerId,
+    ...input, name: input.name.trim(), category: input.category?.trim() ?? "", priceCents: Math.round(price * 100), ownerId,
   }).returning();
   await recordActivity(ownerId, "Product created", input.name.trim(), "product");
   const rows = await productsForOwner(ownerId);
@@ -43,7 +43,7 @@ router.post("/products", async (req, res): Promise<void> => {
 router.patch("/products/:id", async (req, res): Promise<void> => {
   const params = UpdateProductParams.safeParse(req.params);
   const body = UpdateProductBody.safeParse(req.body);
-  if (!params.success || !body.success || !body.data.name.trim() || !body.data.category.trim()) {
+  if (!params.success || !body.success || !body.data.name.trim()) {
     res.status(400).json({ error: "Invalid product details." });
     return;
   }
@@ -56,7 +56,7 @@ router.patch("/products/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Choose or paste one ordinary emoji for the product button." }); return;
   }
   const [product] = await db.update(shopProducts).set({
-    ...input, name: input.name.trim(), category: input.category.trim(), priceCents: Math.round(price * 100),
+    ...input, name: input.name.trim(), category: input.category?.trim(), priceCents: Math.round(price * 100),
   }).where(and(eq(shopProducts.ownerId, ownerId), eq(shopProducts.id, params.data.id))).returning();
   if (!product) { res.status(404).json({ error: "Product not found." }); return; }
   await recordActivity(ownerId, "Product updated", input.name.trim(), "product");

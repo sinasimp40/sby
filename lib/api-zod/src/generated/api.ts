@@ -174,7 +174,7 @@ export const createProductBodyButtonCustomEmojiIdRegExp = new RegExp('^[0-9]{1,3
 export const CreateProductBody = zod.object({
   "name": zod.string().min(1).max(createProductBodyNameMax),
   "description": zod.string().max(createProductBodyDescriptionMax),
-  "category": zod.string().min(1).max(createProductBodyCategoryMax),
+  "category": zod.string().max(createProductBodyCategoryMax).optional().describe('Legacy field; not required or shown in the dashboard.'),
   "price": zod.number().min(createProductBodyPriceMin).max(createProductBodyPriceMax),
   "status": zod.enum(['active', 'draft', 'archived']),
   "deliveryFormat": zod.enum(['email:pass', 'user:pass']),
@@ -222,7 +222,7 @@ export const updateProductBodyButtonCustomEmojiIdRegExp = new RegExp('^[0-9]{1,3
 export const UpdateProductBody = zod.object({
   "name": zod.string().min(1).max(updateProductBodyNameMax),
   "description": zod.string().max(updateProductBodyDescriptionMax),
-  "category": zod.string().min(1).max(updateProductBodyCategoryMax),
+  "category": zod.string().max(updateProductBodyCategoryMax).optional().describe('Legacy field; not required or shown in the dashboard.'),
   "price": zod.number().min(updateProductBodyPriceMin).max(updateProductBodyPriceMax),
   "status": zod.enum(['active', 'draft', 'archived']),
   "deliveryFormat": zod.enum(['email:pass', 'user:pass']),

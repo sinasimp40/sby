@@ -141,10 +141,10 @@ export interface ProductInput {
   /** @maxLength 2000 */
   description: string;
   /**
-     * @minLength 1
+     * Legacy field; not required or shown in the dashboard.
      * @maxLength 80
      */
-  category: string;
+  category?: string;
   /**
      * @minimum 0.01
      * @maximum 100000

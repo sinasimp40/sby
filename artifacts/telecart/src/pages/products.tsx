@@ -23,7 +23,6 @@ import { CustomEmojiPicker } from "@/components/custom-emoji-picker";
 const schema = z.object({
   name: z.string().trim().min(1, "Name is required").max(120),
   description: z.string().max(2000),
-  category: z.string().trim().min(1, "Category is required").max(80),
   price: z.coerce.number({ invalid_type_error: "Enter a price" }).min(0.01, "Minimum $0.01").max(100000, "Maximum $100,000"),
   status: z.enum(["active", "draft", "archived"]),
   deliveryFormat: z.enum(["email:pass", "user:pass"]),
@@ -32,7 +31,7 @@ const schema = z.object({
   buttonCustomEmojiId: z.string().regex(/^[0-9]{1,30}$/).nullable(),
 });
 type FormValues = z.infer<typeof schema>;
-const blank: FormValues = { name: "", description: "", category: "", price: 0, status: "draft", deliveryFormat: "email:pass", buttonEmoji: "🛍", buttonCustomEmojiId: null };
+const blank: FormValues = { name: "", description: "", price: 0, status: "draft", deliveryFormat: "email:pass", buttonEmoji: "🛍", buttonCustomEmojiId: null };
 const selectClassName = "h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
 
 function useInvalidate() {
@@ -51,7 +50,7 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
   const { toast } = useToast();
   const form = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: blank });
   useEffect(() => {
-    if (open) form.reset(product ? { name: product.name, description: product.description, category: product.category, price: product.price, status: product.status, deliveryFormat: product.deliveryFormat, buttonEmoji: product.buttonEmoji ?? "🛍", buttonCustomEmojiId: product.buttonCustomEmojiId ?? null } : blank);
+    if (open) form.reset(product ? { name: product.name, description: product.description, price: product.price, status: product.status, deliveryFormat: product.deliveryFormat, buttonEmoji: product.buttonEmoji ?? "🛍", buttonCustomEmojiId: product.buttonCustomEmojiId ?? null } : blank);
   }, [open, product, form]);
   const pending = create.isPending || update.isPending;
   const onSubmit = (v: FormValues) => {
@@ -98,10 +97,7 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
               <CustomEmojiPicker open={open} value={field.value} disabled={pending} fallbackEmoji={form.watch("buttonEmoji") || "🛍"}
                 onChange={id => form.setValue("buttonCustomEmojiId", id, { shouldDirty: true })} />
             )} />
-            <div className="grid grid-cols-2 gap-3">
-              <FormField control={form.control} name="category" render={({ field }) => (
-                <FormItem><FormLabel>Category</FormLabel><FormControl><Input placeholder="Streaming" {...field} data-testid="input-product-category" /></FormControl><FormMessage /></FormItem>
-              )} />
+            <div>
               <FormField control={form.control} name="price" render={({ field }) => (
                 <FormItem><FormLabel>Price (USD)</FormLabel><FormControl><Input type="number" step="0.01" min="0.01" {...field} data-testid="input-product-price" /></FormControl><FormMessage /></FormItem>
               )} />
@@ -152,7 +148,7 @@ export default function ProductsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState<Product | null>(null);
 
-  const rows = useMemo(() => (data ?? []).filter((p) => (filter === "all" || p.status === filter) && (p.name + p.category).toLowerCase().includes(q.toLowerCase())), [data, q, filter]);
+  const rows = useMemo(() => (data ?? []).filter((p) => (filter === "all" || p.status === filter) && p.name.toLowerCase().includes(q.toLowerCase())), [data, q, filter]);
   const openNew = () => { if (requireAuth("create products")) { setEditing(null); setDialogOpen(true); } };
   const openEdit = (p: Product) => { if (requireAuth("edit products")) { setEditing(p); setDialogOpen(true); } };
   const askDelete = (p: Product) => { if (requireAuth("delete products")) setDeleting(p); };
@@ -164,7 +160,7 @@ export default function ProductsPage() {
       {!isSignedIn && <div className="mb-4 rounded-lg border border-signal/25 bg-signal-soft px-3 py-2 text-xs text-foreground/80">These are <b>labelled sample products</b> for the preview. Your own shop starts empty.</div>}
       <Panel bodyClassName="p-0">
         <div className="flex flex-col gap-2 border-b border-border/70 p-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1"><Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name or category" className="pl-8" data-testid="input-search-products" /></div>
+          <div className="relative flex-1"><Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search product name" className="pl-8" data-testid="input-search-products" /></div>
           <div className="flex gap-1 rounded-lg bg-muted p-1">
             {(["all", "active", "draft", "archived"] as const).map((f) => (
               <button key={f} onClick={() => setFilter(f)} data-testid={`button-filter-${f}`} className={cn("rounded-md px-2.5 py-1 text-xs font-medium capitalize transition-colors", filter === f ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>{f}</button>
@@ -181,7 +177,7 @@ export default function ProductsPage() {
               <tbody className="divide-y divide-border/60">
                 {rows.map((p) => (
                   <tr key={p.id} className="group transition-colors hover:bg-muted/40" data-testid={`row-product-${p.id}`}>
-                    <td className="max-w-[320px] px-4 py-3"><div className="truncate font-medium">{p.buttonEmoji ?? "🛍"} {p.name}</div><div className="truncate text-xs text-muted-foreground">{p.category} · added {shortDate(p.createdAt)}</div></td>
+                    <td className="max-w-[320px] px-4 py-3"><div className="truncate font-medium">{p.buttonEmoji ?? "🛍"} {p.name}</div><div className="truncate text-xs text-muted-foreground">Added {shortDate(p.createdAt)}</div></td>
                     <td className="px-3 py-3"><StatusPill status={p.status} /></td>
                     <td className="px-3 py-3 font-mono text-xs text-muted-foreground">{p.deliveryFormat}</td>
                     <td className={cn("tabular px-3 py-3 text-right font-mono", p.stock === 0 && "text-signal")}>{p.stock}</td>

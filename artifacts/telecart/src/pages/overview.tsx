@@ -56,7 +56,7 @@ export default function OverviewPage() {
                     {data.topProducts.map((p, i) => (
                       <li key={p.id} className="flex items-center gap-3 px-4 py-3 text-sm" data-testid={`row-top-product-${p.id}`}>
                         <span className="w-5 font-mono text-xs text-muted-foreground">{String(i + 1).padStart(2, "0")}</span>
-                        <div className="min-w-0 flex-1"><div className="truncate font-medium">{p.name}</div><div className="text-xs text-muted-foreground">{p.category} · {p.stock} in stock</div></div>
+                        <div className="min-w-0 flex-1"><div className="truncate font-medium">{p.name}</div><div className="text-xs text-muted-foreground">{p.stock} in stock</div></div>
                         <span className="tabular font-mono text-xs text-muted-foreground">{p.sold} sold</span>
                         <span className="tabular w-20 text-right font-mono">{money(p.price)}</span>
                       </li>

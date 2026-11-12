@@ -4,3 +4,4 @@
 - [Dashboard sign-in requirement](admin-access.md) — user explicitly requires admin-and-password dashboard access without OTP.
 - [Self-hosting and portable transfers](self-hosting.md) — Dashboard-managed controls and complete portable shop-data ZIPs support the planned move to localhost.
 - [Telegram icon eligibility](telegram-button-icons.md) — Keep deposit symbols static; user-requested custom product emojis need bot-owner eligibility and a normal fallback.
+- [Product organization](product-organization.md) — The user wants product names without category fields or category requirements.
