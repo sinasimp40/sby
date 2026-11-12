@@ -11,6 +11,8 @@ import { productsForOwner, ownedProduct, recordActivity } from "../lib/shop-stor
 import { encryptCredential, credentialFingerprint } from "../lib/inventory-encryption";
 import { isProductEmoji } from "../lib/product-emoji";
 import { assertOwnedCustomEmoji } from "../lib/custom-emoji-library";
+import { announceProductAvailability } from "../lib/product-announcements";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
@@ -46,6 +48,8 @@ router.patch("/products/:id", async (req, res): Promise<void> => {
     return;
   }
   const ownerId = getAuth(req).userId!;
+  const previousProduct = await ownedProduct(ownerId, params.data.id);
+  if (!previousProduct) { res.status(404).json({ error: "Product not found." }); return; }
   const { price, ...input } = body.data;
   await assertOwnedCustomEmoji(ownerId, input.buttonCustomEmojiId);
   if (input.buttonEmoji !== undefined && !isProductEmoji(input.buttonEmoji)) {
@@ -58,6 +62,11 @@ router.patch("/products/:id", async (req, res): Promise<void> => {
   await recordActivity(ownerId, "Product updated", input.name.trim(), "product");
   const rows = await productsForOwner(ownerId);
   res.json(UpdateProductResponse.parse(rows.find((row) => row.id === product.id)));
+  if (previousProduct.status !== "active" && product.status === "active") {
+    void announceProductAvailability(ownerId, product.id, 0).catch(error => {
+      logger.error({ ownerId, productId: product.id, errorType: error instanceof Error ? error.name : "Error" }, "Could not announce newly active product.");
+    });
+  }
 });
 
 router.delete("/products/:id", async (req, res): Promise<void> => {
@@ -114,6 +123,11 @@ router.post("/products/:id/inventory", async (req, res): Promise<void> => {
     return inserted.length;
   });
   res.status(201).json(ImportInventoryResponse.parse({ imported: result, skipped: lines.length - result }));
+  if (result > 0) {
+    void announceProductAvailability(ownerId, productId, result).catch(error => {
+      logger.error({ ownerId, productId, errorType: error instanceof Error ? error.name : "Error" }, "Could not announce newly stocked product.");
+    });
+  }
 });
 
 router.delete("/inventory/:id", async (req, res): Promise<void> => {

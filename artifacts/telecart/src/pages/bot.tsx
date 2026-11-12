@@ -3,7 +3,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useListProducts } from "@workspace/api-client-react";
-import { Bot, Loader2, RotateCcw, ShoppingBag, LifeBuoy, Wallet, History, ChevronLeft, MoreVertical, PlugZap } from "lucide-react";
+import { Bot, Loader2, RotateCcw, ShoppingBag, LifeBuoy, Wallet, History, ChevronLeft, MoreVertical, PlugZap, Sparkles } from "lucide-react";
 import { PageHeader, Panel, ErrorState, RowsSkeleton } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,27 @@ export default function BotPage() {
 
   const push = (userText: string, reply: ReactNode) => setChat((c) => [...c, { id: idRef.current++, from: "user", body: userText }, { id: idRef.current++, from: "bot", body: reply }]);
   const active = (products.data ?? []).filter((p) => p.status === "active");
+  const stocked = active.filter((p) => p.stock > 0);
+  const previewStockAnnouncement = () => {
+    const product = stocked[0];
+    if (!product) return;
+    setChat((current) => [...current, {
+      id: idRef.current++,
+      from: "bot",
+      body: (
+        <div className="-m-1 space-y-2">
+          <div className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#16835d]">✨ New in stock</div>
+          <div className="font-semibold">{product.buttonEmoji ?? "🛍"} {product.name}</div>
+          {product.description && <div className="whitespace-pre-wrap text-[12px] text-[#566273]">{product.description}</div>}
+          <div className="flex items-center justify-between gap-2 text-[12px]">
+            <span className="font-mono font-semibold">{money(product.price)}</span>
+            <span className="rounded-full bg-[#eaf6ef] px-2 py-0.5 text-[11px] font-medium text-[#16835d]">{product.stock} in stock</span>
+          </div>
+          <button onClick={() => push("Buy now", <div>🔢 Choose your quantity to continue.</div>)} className="w-full rounded-lg bg-[#16835d] px-3 py-2 text-center text-[12px] font-semibold text-white shadow-sm transition-colors hover:bg-[#116d4c]">🛒 Buy now</button>
+        </div>
+      ),
+    }]);
+  };
   const tap = (k: "products" | "support" | "wallet" | "orders") => {
     if (k === "products") push(v.productsLabel, active.length ? (
       <div><div className="mb-1.5 font-semibold">Available now</div>{active.map((p) => (
@@ -83,13 +104,25 @@ export default function BotPage() {
                   ))}
                 </div>
               </Panel>
+              <Panel title="New-stock announcements" meta={<span className="inline-flex items-center gap-1 text-ok"><Sparkles className="h-3 w-3" />automatic</span>}>
+                <div className="flex gap-3 rounded-md border border-ok/20 bg-ok/5 p-3">
+                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ok/10 text-ok"><ShoppingBag className="h-4 w-4" /></div>
+                  <div>
+                    <p className="text-sm font-medium">Let customers know when stock is ready</p>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">When an active product gets new stock, the bot sends its name, price and availability to customers who have already messaged your bot, with a Buy now button. Telegram must be enabled; blocked or unreachable accounts may not receive it.</p>
+                  </div>
+                </div>
+              </Panel>
               <div className="flex justify-end"><Button type="submit" disabled={saving} data-testid="button-save-bot">{saving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}Save bot messages</Button></div>
             </form>
           </Form>
 
           <div className="lg:sticky lg:top-6 lg:self-start">
             <div className="mb-2 flex items-center justify-between">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-signal px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-white" data-testid="badge-preview-not-connected"><PlugZap className="h-3 w-3" />Preview · not connected</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-signal px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-white" data-testid="badge-preview-not-connected"><PlugZap className="h-3 w-3" />Preview · not connected</span>
+                <Button size="sm" variant="outline" disabled={!stocked.length} onClick={previewStockAnnouncement} data-testid="button-preview-stock-announcement"><Sparkles className="mr-1 h-3 w-3" />Preview stock alert</Button>
+              </div>
               <button onClick={() => setChat([])} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground" data-testid="button-reset-preview"><RotateCcw className="h-3 w-3" />Reset</button>
             </div>
             <div className="overflow-hidden rounded-[28px] border-[6px] border-ink bg-ink shadow-xl">

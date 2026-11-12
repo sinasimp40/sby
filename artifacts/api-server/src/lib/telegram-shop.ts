@@ -268,6 +268,12 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         await send(text === "/cancel" ? "Cancelled. Choose an option below." : settings.welcomeMessage, {
           keyboard: labels.map(row => row.map(label => ({ text: label }))), resize_keyboard: true, is_persistent: true,
         });
+        if (text !== "/cancel") {
+          const catalog = productCatalogMenu(await productsForOwner(connection.ownerId), 0);
+          if (catalog.text !== "📦 <b>No stock available</b>\n\nPlease check back soon.") {
+            await send(catalog.text, catalog.reply_markup, "HTML");
+          }
+        }
       } else if (data === "products" || data.startsWith("products:") || [settings.productsLabel, labels[0]![0], "/products"].includes(text)) {
         const page = data.startsWith("products:") && /^products:\d{1,9}$/.test(data)
           ? Number(data.split(":")[1]) : 0;
