@@ -17,6 +17,7 @@ import { sendDepositCoinMenu } from "./deposit-coin-buttons";
 import { customerDeliveredInventory } from "./order-delivery";
 import { quantityPrompt, quantityKeyboard, purchaseConfirmation } from "./purchase-copy";
 import { MAX_PURCHASE_QUANTITY } from "./checkout-allocation";
+import { productCatalogMenu } from "./telegram-catalog";
 
 interface TelegramMessage {
   message_id?: number;
@@ -107,7 +108,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
       const menu = pendingPaymentsMenu(await customerPendingPayments(connection.ownerId, customer!.id));
       await send(menu.text, menu.reply_markup, "HTML");
     };
-    const showHistoryView = async (view: HistoryView) => {
+    const showMenuView = async (view: HistoryView) => {
       const body = { chat_id: customer!.chatId, text: view.text, parse_mode: "HTML", reply_markup: view.reply_markup };
       if (update.callback_query && Number.isSafeInteger(message.message_id) && !message.photo?.length) {
         await telegram("editMessageText", { ...body, message_id: message.message_id }).catch(error => {
@@ -136,12 +137,12 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         const now = new Date();
         const summary = await customerHistorySummary(connection.ownerId, customer!.id, now);
         if (scope === "t") {
-          await showHistoryView(topupCategoryMenu(summary.topups));
+          await showMenuView(topupCategoryMenu(summary.topups));
         } else {
           if (!isHistoryScope(scope)) throw new CommerceError("This history selection is no longer available. Open Order History again.");
           const total = scope === "o" ? summary.orders : summary.topups[scope];
           const list = await customerHistoryPage(connection.ownerId, customer!.id, scope, Number(rawPage), total, now);
-          await showHistoryView(scope === "o"
+          await showMenuView(scope === "o"
             ? historyMenu(list, Object.values(summary.topups).reduce((sum, count) => sum + count, 0), now.getTime())
             : topupListMenu(list, scope, now.getTime()));
         }
@@ -156,7 +157,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         const inventory = delivered ? await customerDeliveredInventory(connection.ownerId, customer!.id, order.id) : undefined;
         const scope = isHistoryScope(rawScope) ? rawScope : "o";
         const listPage = /^\d{1,6}$/.test(rawListPage) ? Number(rawListPage) : 0;
-        await showHistoryView(historyOrderView(order, inventory?.credential, Number(rawPage ?? 0), Date.now(), scope, listPage));
+        await showMenuView(historyOrderView(order, inventory?.credential, Number(rawPage ?? 0), Date.now(), scope, listPage));
       } else if (data === "pending" || text === "/pending") {
         await showPending();
       } else if (data.startsWith("pending_view:") || data.startsWith("pending_cancel:")) {
@@ -251,13 +252,10 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         await send(text === "/cancel" ? "Cancelled. Choose an option below." : settings.welcomeMessage, {
           keyboard: labels.map(row => row.map(label => ({ text: label }))), resize_keyboard: true, is_persistent: true,
         });
-      } else if (data === "products" || [settings.productsLabel, labels[0]![0], "/products"].includes(text)) {
-        const products = (await productsForOwner(connection.ownerId)).filter(p => p.status === "active" && p.stock > 0).slice(0, 25);
-        await send(products.length
-          ? "🛍 <b>Browse products</b>\n\n💵 Unit prices · 📦 Available stock\nTap a product, then choose how many you want."
-          : "📦 <b>No stock available</b>\n\nPlease check back soon.", products.length ? {
-          inline_keyboard: products.map(p => [{ text: `🛍 ${p.name.slice(0, 30)} · $${p.price.toFixed(2)} · 📦 ${p.stock}`, callback_data: `buy:${p.id}` }]),
-        } : undefined, "HTML");
+      } else if (data === "products" || data.startsWith("products:") || [settings.productsLabel, labels[0]![0], "/products"].includes(text)) {
+        const page = data.startsWith("products:") && /^products:\d{1,9}$/.test(data)
+          ? Number(data.split(":")[1]) : 0;
+        await showMenuView(productCatalogMenu(await productsForOwner(connection.ownerId), page));
       } else if ([settings.supportLabel, labels[0]![1], "/support"].includes(text)) {
         await send(`${settings.supportMessage}${settings.supportUsername ? `\n@${settings.supportUsername.replace(/^@/, "")}` : ""}`);
       } else if ([settings.walletLabel, labels[1]![0], "/wallet"].includes(text)) {
