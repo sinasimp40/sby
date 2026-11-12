@@ -57,6 +57,12 @@ Treat Telegram security notifications and session revocations as a reason to sto
 
 **How to apply:** Keep pending QR ownership exclusive across servers, never automatically retry a failed login indefinitely, and preserve read-only group checks. Diagnose with synthetic RPC/browser responses unless a real account action is explicitly authorized. Do not claim app fixes can reverse Telegram restrictions or prove what caused a security notification.
 
+Check upstream maintenance and distinguish logout reports from verified fixes before changing Telegram client libraries.
+
+**Why:** On 2026-11-12, the GramJS GitHub repository displayed an archived status dated 2026-07-14. Its cloud-hosted logout reports describe similar symptoms even with static IPs, but do not establish a cause or reliable remedy for this shop.
+
+**How to apply:** Recheck current maintenance before upgrades or migrations. Do not present a library switch, geographic match, changed client metadata or hosting change as a guaranteed solution to security notifications.
+
 Advertising browser tests must fail closed on unmocked external-capable requests.
 
 **Why:** A synthetic workspace response alone does not isolate the real saved API app credentials. If browser interception misses the begin-login POST, the live backend can still create a real pending Telegram challenge.
