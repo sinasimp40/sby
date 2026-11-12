@@ -14,7 +14,8 @@ export function safeAccountError(error: unknown): AccountError {
   const e = error as { errorMessage?: string; seconds?: number };
   const code = e?.errorMessage ?? "";
   if (/^(FLOOD|SLOWMODE)/.test(code)) return new AccountError("Telegram requested a waiting period. Posting will wait; do not try to bypass this limit.", "rate_limit", Math.max(1, Math.ceil(Number(e.seconds) || 60)));
-  if (code === "PEER_FLOOD") return new AccountError("Telegram restricted this account's posting. All advertising has stopped. Review the restriction in Telegram.", "restricted");
+  if (["PEER_FLOOD", "USER_DEACTIVATED", "USER_DEACTIVATED_BAN", "USER_RESTRICTED"].includes(code))
+    return new AccountError("Telegram restricted or disabled this account. Advertising has stopped. Review the notice in Telegram; do not repeatedly log in or try to bypass the restriction.", "restricted");
   if (code === "SESSION_PASSWORD_NEEDED") return new AccountError("Enter your Telegram two-step verification password.", "password");
   if (code === "PASSWORD_HASH_INVALID") return new AccountError("The two-step verification password was not accepted.");
   if (["PHONE_CODE_INVALID", "PHONE_CODE_EMPTY"].includes(code)) return new AccountError("The login code was not accepted. Check the code and try again.");
@@ -22,8 +23,8 @@ export function safeAccountError(error: unknown): AccountError {
   if (["API_ID_INVALID", "API_ID_PUBLISHED_FLOOD"].includes(code)) return new AccountError("Telegram rejected these API app credentials. Check your API ID and API hash.");
   if (code === "PHONE_NUMBER_INVALID") return new AccountError("Use your phone number in international +country-code format.");
   if (code === "USER_NOT_PARTICIPANT") return new AccountError("The Telegram account connected in Advertising is not a member of this group. Check that it is the same account you used to join.");
-  if (["AUTH_KEY_UNREGISTERED", "AUTH_KEY_DUPLICATED", "SESSION_REVOKED", "SESSION_EXPIRED", "USER_DEACTIVATED", "USER_DEACTIVATED_BAN"].includes(code))
-    return new AccountError("The Telegram account session is no longer valid. Posting has stopped; sign in again.", "auth");
+  if (["AUTH_KEY_UNREGISTERED", "AUTH_KEY_DUPLICATED", "SESSION_REVOKED", "SESSION_EXPIRED"].includes(code))
+    return new AccountError("Telegram invalidated or revoked this session. Advertising has stopped. Review Telegram Settings → Devices and any security notice before starting another login. Never run the same session on multiple servers.", "auth");
   if (["CHAT_WRITE_FORBIDDEN", "USER_BANNED_IN_CHANNEL", "CHAT_ADMIN_REQUIRED", "CHANNEL_PRIVATE", "USER_NOT_PARTICIPANT", "CHAT_SEND_PLAIN_FORBIDDEN", "CHAT_SEND_MEDIA_FORBIDDEN"].includes(code))
     return new AccountError("This account is not allowed to post this message in the selected group.");
   if (code) return new AccountError("Telegram rejected the request. Check account access, group permissions and the message.");
@@ -67,6 +68,11 @@ export const createAccountDriver: AccountFactory = ({ apiId, apiHash, session = 
     deviceModel: "Telecart Advertising", appVersion: "1.0",
   });
   let dialogs: Awaited<ReturnType<typeof client.getDialogs>> | null = null;
+  let qrAccepted = false;
+  let cachedQr: { authorized: false; url: string; expires: number } | undefined;
+  client.addEventHandler(update => {
+    if (update instanceof Api.UpdateLoginToken) qrAccepted = true;
+  });
   const resolvedGroups = new Map<string, Api.Chat | Api.Channel>();
   const joined = async () => {
     if (!dialogs) dialogs = await client.getDialogs({ limit: 1000, ignoreMigrated: true });
@@ -118,8 +124,14 @@ export const createAccountDriver: AccountFactory = ({ apiId, apiHash, session = 
     disconnect: async () => { await client.disconnect().catch(() => {}); },
     session: () => store.save(),
     me: () => bounded(async () => {
-      if (!(await client.checkAuthorization())) return null;
-      const user = await client.getMe();
+      // checkAuthorization swallows all RPC failures, including security
+      // revocations. Only an unauthorised pending key means "not signed in".
+      let user;
+      try { user = await client.getMe(); }
+      catch (error) {
+        if ((error as { errorMessage?: string })?.errorMessage === "AUTH_KEY_UNREGISTERED") return null;
+        throw error;
+      }
       if (!(user instanceof Api.User) || user.bot) throw new AccountError("Sign in with a personal Telegram account, not a bot.");
       return { id: user.id.toString(), username: user.username ?? "", displayName: [user.firstName, user.lastName].filter(Boolean).join(" ").slice(0, 200) };
     }),
@@ -138,14 +150,28 @@ export const createAccountDriver: AccountFactory = ({ apiId, apiHash, session = 
     }),
     password: password => bounded(async () => { await client.signInWithPassword({ apiId, apiHash }, { password: async () => password, onError: error => { throw error; } }); }),
     qr: () => bounded(async () => {
-      let result = await client.invoke(new Api.auth.ExportLoginToken({ apiId, apiHash, exceptIds: [] }));
-      if (result instanceof Api.auth.LoginTokenMigrateTo) {
-        await client._switchDC(result.dcId);
-        result = await client.invoke(new Api.auth.ImportLoginToken({ token: result.token }));
+      if (cachedQr && !qrAccepted && cachedQr.expires * 1000 > Date.now()) return cachedQr;
+      qrAccepted = false;
+      cachedQr = undefined;
+      // Like phone login, QR login may redirect to another data centre.
+      // Scope retries to authentication, never to advertising sends.
+      const attempts = client._requestRetries;
+      client._requestRetries = 3;
+      try {
+        let result = await client.invoke(new Api.auth.ExportLoginToken({ apiId, apiHash, exceptIds: [] }));
+        if (result instanceof Api.auth.LoginTokenMigrateTo) {
+          await client._switchDC(result.dcId);
+          result = await client.invoke(new Api.auth.ImportLoginToken({ token: result.token }));
+        }
+        if (result instanceof Api.auth.LoginTokenSuccess) return { authorized: true };
+        if (result instanceof Api.auth.LoginToken && result.expires * 1000 > Date.now()) {
+          cachedQr = { authorized: false, url: `tg://login?token=${result.token.toString("base64url")}`, expires: result.expires };
+          return cachedQr;
+        }
+        throw new AccountError("Telegram returned an expired or unsupported QR challenge. Cancel this attempt before trying again.", "expired");
+      } finally {
+        client._requestRetries = attempts;
       }
-      if (result instanceof Api.auth.LoginTokenSuccess) return { authorized: true };
-      if (result instanceof Api.auth.LoginToken) return { authorized: false, url: `tg://login?token=${result.token.toString("base64url")}`, expires: result.expires };
-      throw new AccountError("Telegram returned an unsupported login challenge.");
     }),
     groups: () => bounded(async () => (await joined()).map(d => ({ chatId: d.id!.toString(), target: d.id!.toString(), title: d.title ?? d.id!.toString() }))),
     inspect,

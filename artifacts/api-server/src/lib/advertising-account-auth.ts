@@ -6,6 +6,7 @@ import { encryptProviderSecret, decryptProviderSecret } from "./provider-credent
 import { withAdvertisingLock, type AdvertisingClient } from "./advertising-store";
 import { stopAdvertising } from "./advertising-management";
 import { AccountError, safeAccountError, createAccountDriver, type AccountFactory, type AccountDriver } from "./advertising-account-driver";
+import { connectedQrDriver, closeQrDriver } from "./advertising-account-qr";
 
 export type PendingAccountLogin = { id: string; method: "qr" | "phone"; step: "qr" | "code" | "password"; apiId: number; apiHash: string; session: string; phone?: string; hash?: string; qrUrl?: string; expires: number };
 const seal = (value: string, owner: string) => encryptProviderSecret(value, owner, "advertising-account");
@@ -51,13 +52,18 @@ async function revokePending(owner: string, client: AdvertisingClient, factory: 
   let driver: AccountDriver | undefined;
   try {
     const pending = JSON.parse(open(row.login_encrypted, owner)) as PendingAccountLogin;
-    driver = factory(pending);
-    await driver.connect();
+    const isQr = pending.method === "qr" && pending.step === "qr";
+    driver = isQr ? await connectedQrDriver(owner, pending, factory) : factory(pending);
+    if (!isQr) await driver.connect();
     await driver.logout();
   } catch {
     // A pending, unauthorised session may reject logout. Never retain its key.
     // The owner can terminate any already-approved device from Telegram.
-  } finally { await driver?.disconnect(); }
+  } finally {
+    await closeQrDriver(owner);
+    // closeQrDriver already closes a live QR client; disconnect is idempotent.
+    await driver?.disconnect();
+  }
 }
 async function finishLogin(owner: string, pending: PendingAccountLogin, driver: AccountDriver, client: AdvertisingClient, factory: AccountFactory) {
   const me = await driver.me();
@@ -91,11 +97,14 @@ export async function beginAccountLogin(owner: string, input: AdvertisingAccount
       throw new AccountError("Complete the one-time Telegram app setup before signing in.");
     await stopAccountSchedules(owner, client, undefined, "Posting stopped while signing in.");
     await revokePending(owner, client, factory);
+    await client.query("UPDATE advertising_accounts SET login_id=NULL,login_encrypted=NULL,login_expires_at=NULL WHERE owner_id=$1", [owner]);
     const pending: PendingAccountLogin = { id: randomUUID(), method: input.method, step: input.method === "qr" ? "qr" : "code",
       apiId, apiHash, session: "", phone: input.phone?.trim(), expires: Date.now() + 10 * 60000 };
-    const driver = factory(pending);
+    const isQr = pending.method === "qr";
+    const driver = isQr ? await connectedQrDriver(owner, pending, factory) : factory(pending);
+    let keepQr = false;
     try {
-      await driver.connect();
+      if (!isQr) await driver.connect();
       if (pending.method === "phone") pending.hash = await driver.sendCode(pending.phone!);
       else {
         const qr = await driver.qr();
@@ -106,8 +115,12 @@ export async function beginAccountLogin(owner: string, input: AdvertisingAccount
       // Preserve a successful first setup even if the merchant cancels login.
       // Existing active sessions keep their original app until replacement succeeds.
       if (!saved?.session_encrypted) await client.query("UPDATE advertising_accounts SET api_id=$2,api_hash_encrypted=$3 WHERE owner_id=$1", [owner, apiId, seal(apiHash, owner)]);
+      keepQr = isQr;
     } catch (error) { throw safeAccountError(error); }
-    finally { await driver.disconnect(); }
+    finally {
+      if (isQr) { if (!keepQr) await closeQrDriver(owner, pending.id); }
+      else await driver.disconnect();
+    }
   });
 }
 export async function saveAccountApp(owner: string, input: AdvertisingAppCredentialsInput) {
@@ -130,9 +143,11 @@ export async function advanceAccountLogin(owner: string, input: AdvertisingAccou
     if (polling && pending.step !== "qr") return;
     if (!polling && pending.step === "code" && !input.code) throw new AccountError("Enter the login code Telegram sent you.");
     if (!polling && pending.step === "password" && !input.password) throw new AccountError("Enter your Telegram two-step password.");
-    const driver = factory(pending);
+    const isQr = pending.method === "qr" && pending.step === "qr";
+    const driver = isQr ? await connectedQrDriver(owner, pending, factory) : factory(pending);
+    let keepQr = false;
     try {
-      await driver.connect();
+      if (!isQr) await driver.connect();
       const alreadyAuthorized = await driver.me();
       if (!alreadyAuthorized && pending.step === "password") await driver.password(input.password!);
       else if (!alreadyAuthorized && pending.step === "code") await driver.code(pending.phone!, pending.hash!, input.code!);
@@ -140,15 +155,22 @@ export async function advanceAccountLogin(owner: string, input: AdvertisingAccou
         if (!alreadyAuthorized) {
           const qr = await driver.qr();
           pending.qrUrl = qr.url;
-          if (!qr.authorized) { pending.session = driver.session(); await savePending(owner, pending, client); return; }
+          if (!qr.authorized) { pending.session = driver.session(); await savePending(owner, pending, client); keepQr = isQr; return; }
         }
       }
       await finishLogin(owner, pending, driver, client, factory);
     } catch (error) {
       const safe = safeAccountError(error);
       if (safe.kind === "password") { pending.step = "password"; pending.qrUrl = undefined; pending.session = driver.session(); await savePending(owner, pending, client); return; }
+      if (["auth", "restricted", "expired", "rate_limit"].includes(safe.kind)) {
+        await stopAccountSchedules(owner, client, undefined, safe.message);
+        await client.query("UPDATE advertising_accounts SET login_id=NULL,login_encrypted=NULL,login_expires_at=NULL,last_error=$2 WHERE owner_id=$1", [owner, safe.message]);
+      }
       throw safe;
-    } finally { await driver.disconnect(); }
+    } finally {
+      if (isQr) { if (!keepQr) await closeQrDriver(owner, pending.id); }
+      else await driver.disconnect();
+    }
   });
 }
 export async function withAccountDriver<T>(owner: string, client: AdvertisingClient, fn: (driver: AccountDriver, row: Record<string, any>) => Promise<T>, factory: AccountFactory = createAccountDriver) {

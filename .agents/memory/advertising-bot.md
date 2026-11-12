@@ -44,3 +44,15 @@ Phone-code login needs a separate request-attempt policy from advertising sends.
 **Why:** GramJS counts a phone data-centre migration as a request attempt. With one attempt it switches servers but exits before requesting the code there, returning an unhelpful generic failure.
 
 **How to apply:** Allow bounded additional attempts only during phone-code initiation and restore the single-attempt policy afterward, including on failure. Do not solve login routing by globally enabling advertising-message retries.
+
+Treat Telegram security notifications and session revocations as a reason to stop, not to repeatedly authenticate or try alternate connections.
+
+**Why:** Account-level security actions can revoke devices and bot credentials beyond the advertising feature. Reusing one pending account authorization concurrently from different servers can invalidate it; read-only channel checks are not proof that Telegram will consider a session safe.
+
+**How to apply:** Keep pending QR ownership exclusive across servers, never automatically retry a failed login indefinitely, and preserve read-only group checks. Diagnose with synthetic RPC/browser responses unless a real account action is explicitly authorized. Do not claim app fixes can reverse Telegram restrictions or prove what caused a security notification.
+
+Advertising browser tests must fail closed on unmocked external-capable requests.
+
+**Why:** A synthetic workspace response alone does not isolate the real saved API app credentials. If browser interception misses the begin-login POST, the live backend can still create a real pending Telegram challenge.
+
+**How to apply:** Prove mutation interception or use a fully isolated fake server before clicking login, verification, discovery, channel checks or posting. An interception miss is a reason to stop and clean up the exact test-created challenge, not retry the live flow.

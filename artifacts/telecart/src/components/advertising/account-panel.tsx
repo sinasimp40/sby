@@ -38,6 +38,7 @@ export function AccountPanel({ ws }: { ws: AdvertisingWorkspace }) {
   const showLogin = !a.connected || relogin || !!a.login;
   return (
     <Panel title="Telegram account" meta={<StatusLine ws={ws} busy={busy} />}>
+      <p className="mb-4 rounded-lg border border-signal/30 bg-signal-soft/40 p-3 text-xs text-muted-foreground" data-testid="text-telegram-security-warning">If Telegram reports suspicious activity, resets sessions or freezes bots, stop and review Telegram Settings → Devices and the official security notice. Do not repeatedly scan, log in or check channels. Telecart cannot lift Telegram restrictions. Use your own API app credentials and only one server for this account session. Channel checks do not join channels or send advertisements.</p>
       {a.connected && (
         <div className="mb-4 space-y-2">
           <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/40 p-3">
@@ -132,6 +133,7 @@ function PendingLogin({ login, ws, onDone }: { login: AdvertisingAccountLogin; w
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
+  const [pollStopped, setPollStopped] = useState(false);
   const left = useCountdown(login.expiresAt);
   const expired = login.step === "expired" || left === 0;
   const syncRef = useRef(sync); syncRef.current = sync;
@@ -153,7 +155,10 @@ function PendingLogin({ login, ws, onDone }: { login: AdvertisingAccountLogin; w
         syncRef.current(r);
         if (r.account.connected && !r.account.login) { doneRef.current(); return; }
         if (!r.account.login || r.account.login.step !== "qr") return;
-      } catch (x) { if (alive) setErr(errMsg(x)); }
+      } catch (x) {
+        if (alive) { setErr(errMsg(x)); setPollStopped(true); }
+        return; // Never keep reconnecting after a failed/security-blocked login.
+      }
       finally { resetRef.current(); }
       if (alive) timer = setTimeout(tick, 5000);
     };
@@ -186,7 +191,7 @@ function PendingLogin({ login, ws, onDone }: { login: AdvertisingAccountLogin; w
     <div className="space-y-4 rounded-lg border p-4" data-testid="panel-login-pending">
       <div className="flex items-center gap-2">
         <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground" data-testid="text-login-step">{expired ? "Expired" : login.step === "qr" ? "Waiting for scan" : login.step === "code" ? "Enter login code" : "Two-step password"}</span>
-        {!expired && <span className="ml-auto font-mono text-[11px] text-muted-foreground" data-testid="text-login-expires">expires in {mm}</span>}
+        {!expired && <span className="ml-auto font-mono text-[11px] text-muted-foreground" data-testid="text-login-expires">login attempt expires in {mm}</span>}
       </div>
       {expired ? (
         <div className="space-y-3">
@@ -203,7 +208,7 @@ function PendingLogin({ login, ws, onDone }: { login: AdvertisingAccountLogin; w
             <li>Go to Settings, Devices, Link Desktop Device.</li>
             <li>Point the camera at this code.</li>
             <li className="text-muted-foreground">If two-step verification is on, you will be asked for the password here.</li>
-            <li className="list-none pt-1 font-mono text-[11px] text-muted-foreground" data-testid="text-qr-polling">{poll.isPending ? "Checking..." : "Checking every 5 seconds"}</li>
+            <li className="list-none pt-1 font-mono text-[11px] text-muted-foreground" data-testid="text-qr-polling">{pollStopped ? "Automatic checks stopped. Review the error, then cancel this attempt." : poll.isPending ? "Checking..." : "Checking every 5 seconds · QR refreshes when Telegram expires it"}</li>
           </ol>
         </div>
       ) : (
