@@ -27,6 +27,12 @@ export interface SettingsInput {
      */
   welcomeMessage: string;
   /**
+     * Public HTTPS image/GIF link. With an image, welcomeMessage must fit Telegram's 1024-character caption limit. Null removes the image; omission preserves it.
+     * @maxLength 2048
+     * @nullable
+     */
+  welcomeImageUrl?: string | null;
+  /**
      * @maxLength 32
      * @pattern ^@?[A-Za-z0-9_]*$
      */

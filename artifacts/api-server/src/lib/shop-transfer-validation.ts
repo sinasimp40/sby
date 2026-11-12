@@ -8,6 +8,7 @@ import { customEmojiIdValid, MAX_CUSTOM_EMOJIS } from "./custom-emoji-library";
 import { SaveSettingsBody } from "@workspace/api-zod";
 import { validCoinNormalIcon } from "./coin-button-icons";
 import { coinNames } from "./deposit-coin-buttons";
+import { validProductMediaUrl } from "./product-media";
 
 export function validateShopRelationships(data: TransferData, ownerId: string) {
   let area = "ownership";
@@ -51,6 +52,9 @@ export function validateShopRelationships(data: TransferData, ownerId: string) {
     for (const settings of data.settings) {
       // Inspect only; never reserialize the original lossless JSONB text.
       const preferences = JSON.parse(settings.preferences as string) as Record<string, unknown>;
+      if (preferences?.welcomeImageUrl != null &&
+        (typeof preferences.welcomeImageUrl !== "string" || !validProductMediaUrl(preferences.welcomeImageUrl) ||
+          typeof preferences.welcomeMessage !== "string" || preferences.welcomeMessage.length > 1024)) throw new Error();
       const parsed = SaveSettingsBody.shape.coinButtonIcons.safeParse(preferences?.coinButtonIcons);
       if (!parsed.success) throw new Error();
       const icons = parsed.data ?? {};

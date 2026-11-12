@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ProductMediaPreview } from "@/components/product-media-preview";
+import { ProductMediaPreview, isProductImageUrl } from "@/components/product-media-preview";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -19,8 +19,13 @@ const label = z.string().trim().min(1, "Required").max(30);
 const schema = z.object({
   botUsername: handle, supportUsername: handle,
   welcomeMessage: z.string().trim().min(1, "Welcome message is required").max(3000),
+  welcomeImageUrl: z.string().trim().max(2048).refine(value => !value || isProductImageUrl(value), "Use a direct public HTTPS image or GIF link."),
   supportMessage: z.string().max(2000),
   productsLabel: label, supportLabel: label, walletLabel: label, ordersLabel: label,
+}).superRefine((data, ctx) => {
+  if (data.welcomeImageUrl && data.welcomeMessage.length > 1024) {
+    ctx.addIssue({ code: "custom", path: ["welcomeMessage"], message: "With an image, shorten the welcome text to 1,024 characters so it stays in one message." });
+  }
 });
 type V = z.infer<typeof schema>;
 type Msg = { id: number; from: "bot" | "user"; body: ReactNode };
@@ -28,15 +33,16 @@ type Msg = { id: number; from: "bot" | "user"; body: ReactNode };
 export default function BotPage() {
   const { settings, savePartial, saving } = useShopSettings();
   const products = useListProducts();
-  const form = useForm<V>({ resolver: zodResolver(schema), defaultValues: { botUsername: "", supportUsername: "", welcomeMessage: "", supportMessage: "", productsLabel: "Products", supportLabel: "Support", walletLabel: "Wallet", ordersLabel: "Order History" } });
-  const inited = useRef(false);
+  const form = useForm<V>({ resolver: zodResolver(schema), defaultValues: { botUsername: "", supportUsername: "", welcomeMessage: "", welcomeImageUrl: "", supportMessage: "", productsLabel: "Products", supportLabel: "Support", walletLabel: "Wallet", ordersLabel: "Order History" } });
+  const inited = useRef<boolean | null>(null);
+  const dirty = form.formState.isDirty;
   useEffect(() => {
     const s = settings.data;
-    if (s && !inited.current) {
-      inited.current = true;
-      form.reset({ botUsername: s.botUsername, supportUsername: s.supportUsername, welcomeMessage: s.welcomeMessage, supportMessage: s.supportMessage, productsLabel: s.productsLabel, supportLabel: s.supportLabel, walletLabel: s.walletLabel, ordersLabel: s.ordersLabel });
+    if (s && (inited.current !== s.isDemo || !dirty)) {
+      inited.current = s.isDemo;
+      form.reset({ botUsername: s.botUsername, supportUsername: s.supportUsername, welcomeMessage: s.welcomeMessage, welcomeImageUrl: s.welcomeImageUrl ?? "", supportMessage: s.supportMessage, productsLabel: s.productsLabel, supportLabel: s.supportLabel, walletLabel: s.walletLabel, ordersLabel: s.ordersLabel });
     }
-  }, [settings.data, form]);
+  }, [settings.data, form, dirty]);
   const v = useWatch({ control: form.control }) as V;
   const [chat, setChat] = useState<Msg[]>([]);
   const idRef = useRef(1);
@@ -120,7 +126,7 @@ export default function BotPage() {
       {settings.isError ? <ErrorState message="Failed to load settings" onRetry={() => settings.refetch()} /> : settings.isLoading ? <RowsSkeleton rows={8} /> : (
         <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit((d) => savePartial(d, "Bot messages"))} className="space-y-5">
+            <form onSubmit={form.handleSubmit((d) => savePartial({ ...d, welcomeImageUrl: d.welcomeImageUrl || null }, "Bot messages"))} className="space-y-5">
               <Panel title="Identity">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <FormField control={form.control} name="botUsername" render={({ field }) => (<FormItem><FormLabel>Bot username</FormLabel><FormControl><Input placeholder="@yourshop_bot" className="font-mono" {...field} data-testid="input-bot-username" /></FormControl><FormMessage /></FormItem>)} />
@@ -130,6 +136,7 @@ export default function BotPage() {
               <Panel title="Messages">
                 <div className="space-y-4">
                   <FormField control={form.control} name="welcomeMessage" render={({ field }) => (<FormItem><FormLabel>Welcome message</FormLabel><FormControl><Textarea rows={5} {...field} data-testid="input-welcome-message" /></FormControl><FormDescription>Sent on /start, above the menu.</FormDescription><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="welcomeImageUrl" render={({ field }) => (<FormItem><FormLabel>Welcome image or GIF link</FormLabel><FormControl><Input type="url" placeholder="https://example.com/welcome.jpg" {...field} data-testid="input-welcome-image-url" /></FormControl><FormDescription>Optional public HTTPS link ending in .jpg, .jpeg, .png, .webp or .gif. Image above text, with the menu attached—all one message. With an image, welcome text is limited to 1,024 characters. Clear the link to remove it.</FormDescription><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="supportMessage" render={({ field }) => (<FormItem><FormLabel>Support reply</FormLabel><FormControl><Textarea rows={3} {...field} data-testid="input-support-message" /></FormControl><FormMessage /></FormItem>)} />
                 </div>
               </Panel>
@@ -171,7 +178,10 @@ export default function BotPage() {
               </div>
               <div ref={scrollRef} className="tg-wall h-[380px] space-y-2 overflow-y-auto px-3 py-3 text-[13px] text-[#1b2433]">
                 <div className="mx-auto w-fit rounded-full bg-black/20 px-2.5 py-0.5 text-[11px] text-white">/start</div>
-                <div className="pop max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-md bg-white px-3 py-2 shadow-sm" data-testid="text-preview-welcome">{v.welcomeMessage || "Write a welcome message"}</div>
+                <div className="pop max-w-[85%] overflow-hidden rounded-2xl rounded-bl-md bg-white shadow-sm" data-testid="text-preview-welcome">
+                  <ProductMediaPreview url={v.welcomeImageUrl} name="Welcome image" className="rounded-none border-0" />
+                  <div className="whitespace-pre-wrap px-3 py-2">{v.welcomeMessage || "Write a welcome message"}</div>
+                </div>
                 {chat.map((m) => (
                   <div key={m.id} className={`pop max-w-[85%] rounded-2xl px-3 py-2 shadow-sm ${m.from === "user" ? "ml-auto rounded-br-md bg-[#e1f7c9]" : "rounded-bl-md bg-white"}`}>{m.body}</div>
                 ))}

@@ -16,6 +16,7 @@ export function toInput(s: ShopSettings): SettingsInput {
     shopName: s.shopName,
     botUsername: s.botUsername,
     welcomeMessage: s.welcomeMessage,
+    welcomeImageUrl: s.welcomeImageUrl ?? null,
     supportUsername: s.supportUsername,
     supportMessage: s.supportMessage,
     currency: s.currency,

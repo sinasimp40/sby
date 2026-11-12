@@ -14,6 +14,7 @@ import { paymentCaption } from "./payment-message";
 import { historyMenu, historyOrderView, isHistoryScope, topupCategoryMenu, topupListMenu, type HistoryView } from "./telegram-history";
 import { customerHistoryPage, customerHistorySummary } from "./telegram-history-store";
 import { sendDepositCoinMenu } from "./deposit-coin-buttons";
+import { sendWelcomeMessage } from "./welcome-message";
 import { customerDeliveredInventory } from "./order-delivery";
 import { quantityPrompt, quantityKeyboard, purchaseConfirmation } from "./purchase-copy";
 import { sendProductCard, editProductQuote } from "./product-media";
@@ -25,6 +26,7 @@ import { withCustomEmojiFallback } from "./custom-emoji-delivery";
 interface TelegramMessage extends EmojiImportMessage {
   message_id?: number;
   photo?: Array<{ file_id?: string }>;
+  animation?: { file_id?: string };
   chat: { id: number; type: string };
   from?: TelegramCustomerProfile & { id: number; is_bot?: boolean };
   text?: string;
@@ -141,9 +143,13 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         const removed = Number.isSafeInteger(message.message_id)
           ? await dismissCustomerMessage(connection.ownerId, customer!.id, message.message_id!) : true;
         await db.update(botCustomers).set({ state: {} }).where(eq(botCustomers.id, customer!.id));
-        await send(`${settings.welcomeMessage}${message.photo?.length ? "\n\n🏠 Returned to the home menu.\nAny payment already sent will still be checked automatically." : ""}${removed ? "" : "\n\nTelegram no longer allows deleting this older message. Its buttons have been disabled."}`, {
+        const note = [
+          message.photo?.length || message.animation ? "Returned to Home. Sent payments are still checked automatically." : "",
+          removed ? "" : "The older message could not be deleted; its buttons have been disabled.",
+        ].filter(Boolean).join("\n");
+        await sendWelcomeMessage(customer!.chatId, settings, {
           keyboard: labels.map(row => row.map(label => ({ text: label }))), resize_keyboard: true, is_persistent: true,
-        });
+        }, note);
       } else if (data.startsWith("hist:") || data === "history" || [settings.ordersLabel, labels[1]![1], "/orders"].includes(text)) {
         const [, scope = "o", rawPage = "0"] = data.startsWith("hist:") ? data.split(":") : [];
         const now = new Date();
@@ -271,15 +277,9 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         await sendCheckout(payment);
       } else if (text === "/cancel" || text === "/start" || text.startsWith("/start ")) {
         await db.update(botCustomers).set({ state: {} }).where(eq(botCustomers.id, customer!.id));
-        await send(text === "/cancel" ? "Cancelled. Choose an option below." : settings.welcomeMessage, {
+        await sendWelcomeMessage(customer!.chatId, settings, {
           keyboard: labels.map(row => row.map(label => ({ text: label }))), resize_keyboard: true, is_persistent: true,
-        });
-        if (text !== "/cancel") {
-          const catalog = productCatalogMenu(await productsForOwner(connection.ownerId), 0);
-          if (catalog.text !== "📦 <b>No stock available</b>\n\nPlease check back soon.") {
-            await send(catalog.text, catalog.reply_markup, "HTML");
-          }
-        }
+        }, text === "/cancel" ? "Cancelled. Choose an option below." : "");
       } else if (data === "products" || data.startsWith("products:") || [settings.productsLabel, labels[0]![0], "/products"].includes(text)) {
         const page = data.startsWith("products:") && /^products:\d{1,9}$/.test(data)
           ? Number(data.split(":")[1]) : 0;

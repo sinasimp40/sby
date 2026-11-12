@@ -624,6 +624,8 @@ export const getSettingsResponseOneBotUsernameMax = 32;
 export const getSettingsResponseOneBotUsernameRegExp = new RegExp('^@?[A-Za-z0-9_]*$');
 export const getSettingsResponseOneWelcomeMessageMax = 3000;
 
+export const getSettingsResponseOneWelcomeImageUrlMax = 2048;
+
 export const getSettingsResponseOneSupportUsernameMax = 32;
 
 
@@ -654,6 +656,7 @@ export const GetSettingsResponse = zod.object({
   "shopName": zod.string().min(1).max(getSettingsResponseOneShopNameMax),
   "botUsername": zod.string().max(getSettingsResponseOneBotUsernameMax).regex(getSettingsResponseOneBotUsernameRegExp),
   "welcomeMessage": zod.string().min(1).max(getSettingsResponseOneWelcomeMessageMax),
+  "welcomeImageUrl": zod.string().max(getSettingsResponseOneWelcomeImageUrlMax).nullish().describe('Public HTTPS image/GIF link. With an image, welcomeMessage must fit Telegram\'s 1024-character caption limit. Null removes the image; omission preserves it.'),
   "supportUsername": zod.string().max(getSettingsResponseOneSupportUsernameMax).regex(getSettingsResponseOneSupportUsernameRegExp),
   "supportMessage": zod.string().max(getSettingsResponseOneSupportMessageMax),
   "currency": zod.enum(['USD']),
@@ -686,6 +689,8 @@ export const saveSettingsBodyBotUsernameMax = 32;
 export const saveSettingsBodyBotUsernameRegExp = new RegExp('^@?[A-Za-z0-9_]*$');
 export const saveSettingsBodyWelcomeMessageMax = 3000;
 
+export const saveSettingsBodyWelcomeImageUrlMax = 2048;
+
 export const saveSettingsBodySupportUsernameMax = 32;
 
 
@@ -716,6 +721,7 @@ export const SaveSettingsBody = zod.object({
   "shopName": zod.string().min(1).max(saveSettingsBodyShopNameMax),
   "botUsername": zod.string().max(saveSettingsBodyBotUsernameMax).regex(saveSettingsBodyBotUsernameRegExp),
   "welcomeMessage": zod.string().min(1).max(saveSettingsBodyWelcomeMessageMax),
+  "welcomeImageUrl": zod.string().max(saveSettingsBodyWelcomeImageUrlMax).nullish().describe('Public HTTPS image/GIF link. With an image, welcomeMessage must fit Telegram\'s 1024-character caption limit. Null removes the image; omission preserves it.'),
   "supportUsername": zod.string().max(saveSettingsBodySupportUsernameMax).regex(saveSettingsBodySupportUsernameRegExp),
   "supportMessage": zod.string().max(saveSettingsBodySupportMessageMax),
   "currency": zod.enum(['USD']),
@@ -741,6 +747,8 @@ export const saveSettingsResponseOneBotUsernameMax = 32;
 
 export const saveSettingsResponseOneBotUsernameRegExp = new RegExp('^@?[A-Za-z0-9_]*$');
 export const saveSettingsResponseOneWelcomeMessageMax = 3000;
+
+export const saveSettingsResponseOneWelcomeImageUrlMax = 2048;
 
 export const saveSettingsResponseOneSupportUsernameMax = 32;
 
@@ -772,6 +780,7 @@ export const SaveSettingsResponse = zod.object({
   "shopName": zod.string().min(1).max(saveSettingsResponseOneShopNameMax),
   "botUsername": zod.string().max(saveSettingsResponseOneBotUsernameMax).regex(saveSettingsResponseOneBotUsernameRegExp),
   "welcomeMessage": zod.string().min(1).max(saveSettingsResponseOneWelcomeMessageMax),
+  "welcomeImageUrl": zod.string().max(saveSettingsResponseOneWelcomeImageUrlMax).nullish().describe('Public HTTPS image/GIF link. With an image, welcomeMessage must fit Telegram\'s 1024-character caption limit. Null removes the image; omission preserves it.'),
   "supportUsername": zod.string().max(saveSettingsResponseOneSupportUsernameMax).regex(saveSettingsResponseOneSupportUsernameRegExp),
   "supportMessage": zod.string().max(saveSettingsResponseOneSupportMessageMax),
   "currency": zod.enum(['USD']),

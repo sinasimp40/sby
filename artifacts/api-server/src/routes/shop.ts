@@ -15,6 +15,8 @@ import { revealDeliveredInventory } from "../lib/order-delivery";
 import transferRouter from "./shop-transfer";
 import emojiRouter from "./shop-emojis";
 import { validateCoinButtonIcons } from "../lib/coin-button-icons";
+import { validProductMediaUrl, PRODUCT_MEDIA_ERROR } from "../lib/product-media";
+import { WELCOME_CAPTION_LIMIT } from "../lib/welcome-message";
 
 const router: IRouter = Router();
 const writes = new Map<string, { count: number; expires: number }>();
@@ -88,8 +90,16 @@ router.put("/settings", async (req, res): Promise<void> => {
   }
   const ownerId = getAuth(req).userId!;
   const previous = await settingsForOwner(ownerId);
+  const welcomeImageUrl = body.data.welcomeImageUrl === undefined
+    ? previous.welcomeImageUrl ?? null : body.data.welcomeImageUrl?.trim() || null;
+  if (welcomeImageUrl && !validProductMediaUrl(welcomeImageUrl)) {
+    res.status(400).json({ error: PRODUCT_MEDIA_ERROR }); return;
+  }
+  if (welcomeImageUrl && body.data.welcomeMessage.length > WELCOME_CAPTION_LIMIT) {
+    res.status(400).json({ error: "Shorten the welcome message to 1,024 characters when using an image. The image and text must fit in one Telegram message." }); return;
+  }
   const coinButtonIcons = body.data.coinButtonIcons ?? previous.coinButtonIcons ?? {};
-  const preferences = { ...body.data, coinButtonIcons, shopName: body.data.shopName.trim() };
+  const preferences = { ...body.data, welcomeImageUrl, coinButtonIcons, shopName: body.data.shopName.trim() };
   await db.transaction(async tx => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${ownerId}, 71))`);
     await validateCoinButtonIcons(ownerId, coinButtonIcons, tx);

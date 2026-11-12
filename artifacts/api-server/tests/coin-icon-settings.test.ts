@@ -53,6 +53,16 @@ test("coin icon preferences persist, stay owner-scoped, clear safely and survive
     const reset = await (await request()).json();
     assert.deepEqual(reset.coinButtonIcons, {});
     for (const field of ["acceptedCoins", "minDeposit", "rateMode", "invoiceExpiryMinutes"]) assert.deepEqual(reset[field], baseline[field]);
+    const welcome = { ...baseline, coinButtonIcons: {}, welcomeMessage: "TEST_ONLY Welcome", welcomeImageUrl: "https://cdn.example.com/welcome.gif" };
+    assert.equal((await request(welcome)).status, 200);
+    assert.equal((await (await request()).json()).welcomeImageUrl, welcome.welcomeImageUrl);
+    const { welcomeImageUrl: omitted, ...withoutWelcomeImage } = welcome;
+    assert.equal((await request(withoutWelcomeImage)).status, 200);
+    assert.equal((await (await request()).json()).welcomeImageUrl, omitted);
+    assert.equal((await request({ ...welcome, welcomeImageUrl: "https://127.0.0.1/private.png" })).status, 400);
+    assert.equal((await request({ ...welcome, welcomeMessage: "a".repeat(1025) })).status, 400);
+    assert.equal((await request({ ...welcome, welcomeImageUrl: null })).status, 200);
+    assert.equal((await (await request()).json()).welcomeImageUrl, null);
   } finally {
     await new Promise<void>(resolve => server.close(() => resolve()));
     for (const table of ["shop_settings", "shop_activity", "shop_custom_emojis", "admin_sessions"]) {

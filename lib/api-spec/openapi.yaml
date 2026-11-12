@@ -919,6 +919,7 @@ components:
         shopName: { type: string, minLength: 1, maxLength: 100 }
         botUsername: { type: string, maxLength: 32, pattern: "^@?[A-Za-z0-9_]*$" }
         welcomeMessage: { type: string, minLength: 1, maxLength: 3000 }
+        welcomeImageUrl: { type: ["string", "null"], maxLength: 2048, description: "Public HTTPS image/GIF link. With an image, welcomeMessage must fit Telegram's 1024-character caption limit. Null removes the image; omission preserves it." }
         supportUsername: { type: string, maxLength: 32, pattern: "^@?[A-Za-z0-9_]*$" }
         supportMessage: { type: string, maxLength: 2000 }
         currency: { type: string, enum: [USD] }

@@ -84,11 +84,13 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
     });
     await t.test("coin icons retain library references and lossless settings in portable ZIPs", async () => {
       await pool.query(`UPDATE shop_settings SET preferences=jsonb_set(preferences,'{coinButtonIcons}',
-        '{"BTC":{"emoji":"💎","customEmojiId":"900000000000000001"},"ETH":{"emoji":""}}'::jsonb) WHERE owner_id=$1`, [source]);
+        '{"BTC":{"emoji":"💎","customEmojiId":"900000000000000001"},"ETH":{"emoji":""}}'::jsonb)
+        || '{"welcomeImageUrl":"https://cdn.example.com/welcome.gif","welcomeMessage":"TEST_ONLY Welcome"}'::jsonb WHERE owner_id=$1`, [source]);
       try {
         const archive = decodeShopArchive((await exportShopTransfer(source)).zip);
         const raw = archive.data.settings[0]!.preferences as string;
         assert.match(raw, /9007199254740993/);
+        assert.equal(JSON.parse(raw).welcomeImageUrl, "https://cdn.example.com/welcome.gif");
         assert.deepEqual(JSON.parse(raw).coinButtonIcons,
           { BTC: { emoji: "💎", customEmojiId: "900000000000000001" }, ETH: { emoji: "" } });
         validateShopRelationships(archive.data, source);
@@ -96,7 +98,7 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
         invalid.settings[0]!.preferences = raw.replace("900000000000000001", "900000000000000999");
         assert.throws(() => validateShopRelationships(invalid, source), /deposit coin icons/);
       } finally {
-        await pool.query("UPDATE shop_settings SET preferences=preferences-'coinButtonIcons' WHERE owner_id=$1", [source]);
+        await pool.query("UPDATE shop_settings SET preferences=preferences-'coinButtonIcons'-'welcomeImageUrl'-'welcomeMessage' WHERE owner_id=$1", [source]);
       }
     });
     await t.test("authenticated ZIPs from before quantity support upgrade single-item orders safely",()=>{

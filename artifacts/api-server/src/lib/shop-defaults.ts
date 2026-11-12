@@ -3,6 +3,7 @@ import type { SettingsInput, Product } from "@workspace/api-zod";
 export const defaultSettings: SettingsInput = {
   shopName: "My Digital Store",
   botUsername: "",
+  welcomeImageUrl: null,
   welcomeMessage: "Welcome to our store!\nDiscover our products, manage your wallet, and find all your orders in one place.\n\nHow can we help you today?",
   supportUsername: "",
   supportMessage: "Need a hand? Contact our support team for help with your orders.",
