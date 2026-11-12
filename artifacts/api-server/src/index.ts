@@ -6,6 +6,7 @@ import { runPaymentReconciliation } from "./lib/payment-reconciliation";
 import { runAccountAdvertisingWorker } from "./lib/advertising-account-schedules";
 import { initializeAccountAdvertising } from "./lib/advertising-account-auth";
 import { configuredOwnerId } from "./lib/admin-bootstrap";
+import { shutdownAccountSessions } from "./lib/advertising-account-session";
 
 const rawPort = process.env["PORT"];
 
@@ -32,7 +33,7 @@ try {
   process.exit(1);
 }
 
-app.listen(port, process.env.TELECART_LOCAL_ONLY === "true" ? "127.0.0.1" : "0.0.0.0", (err) => {
+const server = app.listen(port, process.env.TELECART_LOCAL_ONLY === "true" ? "127.0.0.1" : "0.0.0.0", (err) => {
   if (err) {
     logger.error({ err }, "Error listening on port");
     process.exit(1);
@@ -43,3 +44,14 @@ app.listen(port, process.env.TELECART_LOCAL_ONLY === "true" ? "127.0.0.1" : "0.0
   void runPaymentReconciliation().catch(() => logger.error("Payment reconciliation stopped."));
   void runAccountAdvertisingWorker().catch(() => logger.error("Account advertising sender stopped."));
 });
+let stopping = false;
+const shutdown = () => {
+  if (stopping) return;
+  stopping = true;
+  server.close();
+  const deadline = setTimeout(() => process.exit(1), 8000);
+  deadline.unref();
+  void shutdownAccountSessions().finally(() => process.exit(0));
+};
+process.once("SIGTERM", shutdown);
+process.once("SIGINT", shutdown);

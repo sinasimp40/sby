@@ -9,7 +9,7 @@ export async function accountMode(owner: string) {
 export async function checkAccountGroups(owner: string, ids: string[], factory: AccountFactory = createAccountDriver) {
   return withAdvertisingLock(owner, client => withAccountDriver(owner, client, async (driver, account) => {
     const me = await driver.me();
-    if (!me || me.id !== account.account_id) throw new AccountError("Reconnect the Telegram account before checking groups.", "auth");
+    if (!me || me.id !== account.account_id) throw new AccountError("The saved account could not be verified. Review Telegram Devices before another login.", "auth", 0, "ACCOUNT_IDENTITY_UNVERIFIED");
     const groups = (await client.query("SELECT * FROM advertising_groups WHERE owner_id=$1 AND id=ANY($2::uuid[])", [owner, ids])).rows;
     if (groups.length !== ids.length) throw new AccountError("One or more selected groups were not found.");
     for (const group of groups) {
@@ -30,12 +30,12 @@ export async function checkAccountGroups(owner: string, ids: string[], factory: 
         if (["rate_limit", "auth", "restricted", "network"].includes(safe.kind)) throw safe;
       }
     }
-  }, factory));
+  }, factory, "check_groups"));
 }
 export async function discoverAccountGroups(owner: string, factory: AccountFactory = createAccountDriver) {
   return withAdvertisingLock(owner, client => withAccountDriver(owner, client, async (driver, account) => {
     const me = await driver.me();
-    if (!me || me.id !== account.account_id) throw new AccountError("Reconnect the account before discovering groups.", "auth");
+    if (!me || me.id !== account.account_id) throw new AccountError("The saved account could not be verified. Review Telegram Devices before another login.", "auth", 0, "ACCOUNT_IDENTITY_UNVERIFIED");
     const groups = await driver.groups();
     let count = (await client.query("SELECT count(*)::integer AS n FROM advertising_groups WHERE owner_id=$1", [owner])).rows[0].n;
     for (const group of groups) {
@@ -46,5 +46,5 @@ export async function discoverAccountGroups(owner: string, factory: AccountFacto
         count++;
       }
     }
-  }, factory));
+  }, factory, "discover_groups"));
 }

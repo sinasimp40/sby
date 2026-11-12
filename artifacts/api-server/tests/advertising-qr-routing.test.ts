@@ -71,7 +71,8 @@ test("security revocations are surfaced instead of swallowed as a pending QR", a
     TelegramClient.prototype.getMe = async () => { throw { errorMessage: "SESSION_REVOKED" }; };
     await assert.rejects(driver.me(), error => safeAccountError(error).kind === "auth");
     TelegramClient.prototype.getMe = async () => { throw { errorMessage: "AUTH_KEY_UNREGISTERED" }; };
-    assert.equal(await driver.me(), null, "an initially unauthorised key is normal during QR login");
+    const pending = createAccountDriver({ apiId: 12345, apiHash: "a".repeat(32) });
+    assert.equal(await pending.me(true), null, "an explicitly pending unauthorised key is normal during QR login");
     for (const code of ["AUTH_KEY_DUPLICATED", "SESSION_REVOKED", "USER_DEACTIVATED_BAN", "PEER_FLOOD"]) {
       const error = safeAccountError({ errorMessage: code });
       assert.ok(["auth", "restricted"].includes(error.kind));

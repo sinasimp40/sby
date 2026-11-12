@@ -93,12 +93,12 @@ export async function processAccountSchedules(owner: string, factory: AccountFac
     try {
       await withAccountDriver(owner, client, async driver => {
         const me = await driver.me();
-        if (!me || me.id !== account.account_id) throw new AccountError("The Telegram account session changed. Sign in again.", "auth");
+        if (!me || me.id !== account.account_id) throw new AccountError("The Telegram account identity could not be verified. Review Telegram Devices before another login.", "auth", 0, "ACCOUNT_IDENTITY_UNVERIFIED");
         const checked = await driver.inspect(group.target, schedule.draft);
         if (checked.chatId !== group.chat_id) throw new AccountError("Group identity changed. Check it again.");
         dispatched = true;
         await driver.send(group.chat_id, schedule.draft, randomId);
-      }, factory);
+      }, factory, "post_ad");
       await client.query("UPDATE advertising_account_runs SET status='sent',sent_at=now(),note='Telegram confirmed the post.' WHERE id=$1", [run.id]);
       await client.query(`UPDATE advertising_schedules SET next_send_at=now()+interval_seconds*interval '1 second',
         last_status='sent',note='Posted. Next post follows this group interval.' WHERE owner_id=$1 AND group_id=$2`, [owner, group.id]);

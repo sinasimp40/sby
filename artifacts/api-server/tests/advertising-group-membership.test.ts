@@ -67,7 +67,7 @@ test("public groups absent from dialogs are verified directly before checking or
   let mode = "member", checks = 0, sends = 0;
   TelegramClient.prototype.getDialogs = async () => [] as any;
   TelegramClient.prototype.getEntity = async target => {
-    assert.equal(target, "@TEST_ONLY_group");
+    assert.ok(target === "@TEST_ONLY_group" || target === channel, "cached destinations refresh current group permissions");
     return channel;
   };
   TelegramClient.prototype.invoke = async request => {

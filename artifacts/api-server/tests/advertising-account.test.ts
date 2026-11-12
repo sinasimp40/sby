@@ -150,6 +150,13 @@ test("account sign-in, selected-group schedules and transfers are safe without r
       });
     };
     const resetGlobalWait = () => pool.query("UPDATE advertising_accounts SET next_send_at=now() WHERE owner_id=$1", [owner]);
+    const explicitlyAuthorizeAgain = async () => {
+      await beginAccountLogin(owner, { method: "phone", phone: "+15555550123" }, factory);
+      const login = (await accountStatus(owner)).login!;
+      await advanceAccountLogin(owner, { loginId: login.id, code: "12345" }, false, factory);
+      const ids = (await request()).data.groups.map((group: { id: string }) => group.id);
+      if (ids.length) await checkAccountGroups(owner, ids, factory);
+    };
     await t.test("group discovery, different intervals and selected-only start/stop preserve scope", async () => {
       await discoverAccountGroups(owner, factory);
       const ws = (await request()).data;
@@ -198,7 +205,10 @@ test("account sign-in, selected-group schedules and transfers are safe without r
       const current = (await request()).data;
       assert.equal(current.groups.find((item: { id: string }) => item.id === group.id).running, false);
       assert.equal(current.accountRuns[0].status, "uncertain"); assert.equal(posts.length, afterUnknown);
+      assert.equal(current.account.connected, false, "uncertain network outcomes stop the account instead of reconnecting");
+      assert.equal((await start([group.id])).status, 400);
       sendMode = "ok";
+      await explicitlyAuthorizeAgain();
     });
     await t.test("crash recovery, disabled/deleted groups and foreign IDs fail closed", async () => {
       const group = groups[1]!;
@@ -238,6 +248,8 @@ test("account sign-in, selected-group schedules and transfers are safe without r
       assert.equal((await accountStatus(owner)).connected, false);
       assert.equal((await pool.query("SELECT count(*)::integer AS n FROM advertising_schedules WHERE owner_id=$1 AND running=true", [owner])).rows[0].n, 0);
       revoked = false; await checkAccountConnection(owner, factory);
+      assert.equal((await accountStatus(owner)).connected, false, "a check cannot reopen a previously revoked session");
+      await explicitlyAuthorizeAgain();
       await start([groups[0]!.id]); await request("/schedules/stop-all", "POST");
       const before = posts.length; await resetGlobalWait(); await processAccountSchedules(owner, factory); assert.equal(posts.length, before);
       await start([groups[0]!.id]); const beforeLogout = logouts; await disconnectAccount(owner, factory);

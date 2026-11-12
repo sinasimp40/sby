@@ -57,6 +57,18 @@ Treat Telegram security notifications and session revocations as a reason to sto
 
 **How to apply:** Keep pending QR ownership exclusive across servers, never automatically retry a failed login indefinitely, and preserve read-only group checks. Diagnose with synthetic RPC/browser responses unless a real account action is explicitly authorized. Do not claim app fixes can reverse Telegram restrictions or prove what caused a security notification.
 
+Prioritize session containment over automatic recovery after a security or uncertain connection failure.
+
+**Why:** The user approved hardening their own account connection after repeated account-wide security notices. Retrying an invalid authorization just to discover groups, check it or log out can expose the account to further security actions; a temporary loss of availability is preferable.
+
+**How to apply:** Keep the original connection through authorization and subsequent account actions; require explicit fresh authorization after a stop, and never restart advertising automatically. Locks protect only installations sharing their database, not separately copied databases.
+
+Do not rely solely on GramJS 2.26's `autoReconnect: false` option.
+
+**Why:** The installed sender stores that setting but does not consult it in its reconnect path, including delayed retries. A declared no-reconnect policy is not enforced by that option.
+
+**How to apply:** Preserve explicit sender/lifecycle guards and native-SDK regression coverage. Re-audit this behavior when changing versions; never allow a closed or failed client to send the next RPC or a delayed post.
+
 Check upstream maintenance and distinguish logout reports from verified fixes before changing Telegram client libraries.
 
 **Why:** On 2026-11-12, the GramJS GitHub repository displayed an archived status dated 2026-07-14. Its cloud-hosted logout reports describe similar symptoms even with static IPs, but do not establish a cause or reliable remedy for this shop.
