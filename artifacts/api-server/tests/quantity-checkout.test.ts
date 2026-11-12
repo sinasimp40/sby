@@ -16,8 +16,10 @@ test("quantity copies show live stock, unit/total prices and escaped product tex
   assert.match(purchaseConfirmation(product,3,1000), /Total: \$3.75/);
   assert.match(purchaseConfirmation(product,3,1000), /\$6.25/);
   assert.match(purchaseConfirmation(product,3,50), /Add <b>\$3.25/);
-  for (const row of quantityKeyboard(2,randomUUID()).inline_keyboard) for (const button of row) assert.ok(Buffer.byteLength(button.callback_data) <= 64);
-  assert.equal(quantityKeyboard(2,"TOKEN").inline_keyboard[0]!.length,2);
+  assert.match(quantityPrompt(product,1000), /Enter quantity/);
+  assert.match(quantityPrompt(product,1000), /Type a whole number from <b>1 to 7<\/b> in the chat/);
+  assert.doesNotMatch(quantityPrompt(product,1000), /choose below|How many would you like/);
+  assert.deepEqual(quantityKeyboard().inline_keyboard, [[{ text: "🏠 Cancel", callback_data: "cancel_home" }]]);
   assert.deepEqual(assignedInventoryIds({inventoryId:3,inventoryIds:null}),[3]);
   assert.throws(()=>assignedInventoryIds({inventoryId:3,inventoryIds:[3,3]}));
 });

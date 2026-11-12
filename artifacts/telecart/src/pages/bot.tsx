@@ -60,7 +60,7 @@ export default function BotPage() {
             <span className="font-mono font-semibold">{money(product.price)}</span>
             <span className="rounded-full bg-[#eaf6ef] px-2 py-0.5 text-[11px] font-medium text-[#16835d]">{product.stock} in stock</span>
           </div>
-          <button onClick={() => push("Buy now", <div>🔢 Choose your quantity to continue.</div>)} className="w-full rounded-lg bg-[#16835d] px-3 py-2 text-center text-[12px] font-semibold text-white shadow-sm transition-colors hover:bg-[#116d4c]">🛒 Buy now</button>
+          <button onClick={() => push("Buy now", <div>🔢 Type the quantity in chat to continue.</div>)} className="w-full rounded-lg bg-[#16835d] px-3 py-2 text-center text-[12px] font-semibold text-white shadow-sm transition-colors hover:bg-[#116d4c]">🛒 Buy now</button>
         </div>
       ),
     }]);

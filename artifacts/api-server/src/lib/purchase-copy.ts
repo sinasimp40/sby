@@ -11,15 +11,13 @@ export function quantityPrompt(product: ProductView, balanceCents: number) {
     "", `💵 Unit price: <b>$${product.price.toFixed(2)}</b>`,
     `📦 Stock left: <b>${product.stock}</b>`,
     `👛 Wallet balance: <b>$${(balanceCents / 100).toFixed(2)}</b>`,
-    "", "🔢 <b>How many would you like?</b>",
-    `Send a whole number from <b>1 to ${Math.min(product.stock, MAX_PURCHASE_QUANTITY)}</b>, or choose below.`,
+    "", "🔢 <b>Enter quantity</b>",
+    `Type a whole number from <b>1 to ${Math.min(product.stock, MAX_PURCHASE_QUANTITY)}</b> in the chat and send it.`,
     "", "<i>Stock is checked again before payment. Nothing is charged yet.</i>",
   ].join("\n");
 }
-export function quantityKeyboard(stock: number, token: string) {
-  const values = [1,2,3,5,10].filter(q => q <= stock);
+export function quantityKeyboard() {
   return { inline_keyboard: [
-    values.map(q => ({ text: `${q}`, callback_data: `qty:${token}:${q}` })),
     [{ text: "🏠 Cancel", callback_data: "cancel_home" }],
   ] };
 }

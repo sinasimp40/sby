@@ -33,8 +33,8 @@ Pending crypto deposits must not block purchases using existing wallet balance. 
 
 **How to apply:** Apply the pending limit only to new crypto invoices, excluding customer-cancelled and expired unpaid quotes. Cancellation changes customer intent, not provider truth; keep late-payment verification and exactly-once wallet crediting intact.
 
-The user requires the bot to ask how many products the buyer wants and show stock left before checkout. They want emoji and styled Telegram messages, not a plain text-only purchase flow.
+The user requires the bot to collect a quantity typed manually in chat, without preset quantity buttons, and show stock left before checkout. They want emoji and styled Telegram messages, not a plain text-only purchase flow.
 
-**Why:** The user explicitly requested quantity selection, visible stock and better purchase formatting.
+**Why:** The user explicitly requested visible stock and better purchase formatting, then replaced preset quantity buttons with manual typed entry.
 
 **How to apply:** Quote quantity, unit price and total before confirmation. Recheck price, stock and funds atomically at payment; assign the entire order or charge nothing. Delivery retries must use the same complete assigned account bundle.

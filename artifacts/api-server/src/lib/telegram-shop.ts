@@ -220,7 +220,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         const token = randomUUID();
         const state = { type: "purchase-quantity", token, productId: product.id, expires: Date.now() + 10 * 60000 };
         await db.update(botCustomers).set({ state }).where(eq(botCustomers.id, customer!.id));
-        const prompt = await send(quantityPrompt(product, customer!.balanceCents), quantityKeyboard(product.stock, token), "HTML");
+        const prompt = await send(quantityPrompt(product, customer!.balanceCents), quantityKeyboard(), "HTML");
         if (Number.isSafeInteger(prompt.message_id)) await db.update(botCustomers).set({
           state: { ...state, promptMessageId: Number(prompt.message_id) },
         }).where(eq(botCustomers.id, customer!.id));
