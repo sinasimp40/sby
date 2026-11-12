@@ -9,6 +9,60 @@ tags:
   - name: health
   - name: shop
 paths:
+  /shop/product-groups:
+    get:
+      operationId: listProductGroups
+      tags: [shop]
+      responses:
+        "200":
+          description: Products with independently priced and stocked options.
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/ProductGroup" } }
+    post:
+      operationId: createProductGroup
+      tags: [shop]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProductGroupInput" }
+      responses:
+        "201":
+          description: Group created; existing option IDs and inventory are preserved.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProductGroup" }
+        "400": { description: Invalid options }
+        "409": { description: An option already belongs to another group }
+  /shop/product-groups/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      operationId: updateProductGroup
+      tags: [shop]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProductGroupInput" }
+      responses:
+        "200":
+          description: Group and options updated atomically. Saved options must remain included; archive rather than silently dropping them.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProductGroup" }
+        "404": { description: Group not found }
+        "409": { description: Conflicting option ownership or omitted saved option }
+    delete:
+      operationId: deleteProductGroup
+      tags: [shop]
+      responses:
+        "204": { description: Deleted group and all options including unsold inventory }
+        "409": { description: Order history or reserved/delivered stock exists; archive options instead }
   /shop/custom-emojis:
     get:
       operationId: listCustomEmojis
@@ -581,9 +635,46 @@ components:
         deliveryFormat: { type: string, enum: ["email:pass", "user:pass"] }
         buttonEmoji: { type: string }
         buttonCustomEmojiId: { type: [string, "null"] }
+        groupId: { type: [string, "null"] }
+        groupName: { type: [string, "null"] }
+        groupDescription: { type: [string, "null"] }
+        optionName: { type: [string, "null"] }
         stock: { type: integer }
         sold: { type: integer }
         createdAt: { type: string }
+    ProductOptionInput:
+      type: object
+      additionalProperties: false
+      required: [name, description, price, status, deliveryFormat]
+      properties:
+        id: { type: integer, minimum: 1, description: "Keep an existing product/option ID to preserve its inventory and orders." }
+        name: { type: string, minLength: 1, maxLength: 36 }
+        description: { type: string, maxLength: 2000 }
+        price: { type: number, minimum: 0.01, maximum: 100000 }
+        status: { type: string, enum: [active, draft, archived] }
+        deliveryFormat: { type: string, enum: ["email:pass", "user:pass"] }
+    ProductGroupInput:
+      type: object
+      additionalProperties: false
+      required: [name, description, options]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        description: { type: string, maxLength: 2000 }
+        imageUrl: { type: [string, "null"], maxLength: 2048 }
+        buttonEmoji: { type: string, maxLength: 32 }
+        buttonCustomEmojiId: { type: [string, "null"], pattern: '^[0-9]{1,30}$' }
+        options: { type: array, minItems: 1, maxItems: 20, items: { $ref: "#/components/schemas/ProductOptionInput" } }
+    ProductGroup:
+      type: object
+      required: [id, name, description, imageUrl, buttonEmoji, buttonCustomEmojiId, options]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        imageUrl: { type: [string, "null"] }
+        buttonEmoji: { type: string }
+        buttonCustomEmojiId: { type: [string, "null"] }
+        options: { type: array, items: { $ref: "#/components/schemas/Product" } }
     CustomEmoji:
       type: object
       required: [id, emoji, setName, format, previewUrl]

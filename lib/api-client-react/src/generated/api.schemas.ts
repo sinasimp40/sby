@@ -90,6 +90,14 @@ export interface Product {
   buttonEmoji?: string;
   /** @nullable */
   buttonCustomEmojiId?: string | null;
+  /** @nullable */
+  groupId?: string | null;
+  /** @nullable */
+  groupName?: string | null;
+  /** @nullable */
+  groupDescription?: string | null;
+  /** @nullable */
+  optionName?: string | null;
   stock: number;
   sold: number;
   createdAt: string;
@@ -170,6 +178,84 @@ export interface ProductInput {
      * @pattern ^[0-9]{1,30}$
      */
   buttonCustomEmojiId?: string | null;
+}
+
+export type ProductOptionInputStatus = typeof ProductOptionInputStatus[keyof typeof ProductOptionInputStatus];
+
+
+export const ProductOptionInputStatus = {
+  active: 'active',
+  draft: 'draft',
+  archived: 'archived',
+} as const;
+
+export type ProductOptionInputDeliveryFormat = typeof ProductOptionInputDeliveryFormat[keyof typeof ProductOptionInputDeliveryFormat];
+
+
+export const ProductOptionInputDeliveryFormat = {
+  'email:pass': 'email:pass',
+  'user:pass': 'user:pass',
+} as const;
+
+export interface ProductOptionInput {
+  /**
+     * Keep an existing product/option ID to preserve its inventory and orders.
+     * @minimum 1
+     */
+  id?: number;
+  /**
+     * @minLength 1
+     * @maxLength 36
+     */
+  name: string;
+  /** @maxLength 2000 */
+  description: string;
+  /**
+     * @minimum 0.01
+     * @maximum 100000
+     */
+  price: number;
+  status: ProductOptionInputStatus;
+  deliveryFormat: ProductOptionInputDeliveryFormat;
+}
+
+export interface ProductGroupInput {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  name: string;
+  /** @maxLength 2000 */
+  description: string;
+  /**
+     * @maxLength 2048
+     * @nullable
+     */
+  imageUrl?: string | null;
+  /** @maxLength 32 */
+  buttonEmoji?: string;
+  /**
+     * @nullable
+     * @pattern ^[0-9]{1,30}$
+     */
+  buttonCustomEmojiId?: string | null;
+  /**
+     * @minItems 1
+     * @maxItems 20
+     */
+  options: ProductOptionInput[];
+}
+
+export interface ProductGroup {
+  id: string;
+  name: string;
+  description: string;
+  /** @nullable */
+  imageUrl: string | null;
+  buttonEmoji: string;
+  /** @nullable */
+  buttonCustomEmojiId: string | null;
+  options: Product[];
 }
 
 export type CustomEmojiFormat = typeof CustomEmojiFormat[keyof typeof CustomEmojiFormat];

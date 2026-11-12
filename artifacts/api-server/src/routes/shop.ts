@@ -9,6 +9,7 @@ import {
 } from "@workspace/api-zod";
 import { productsForOwner, recordsForOwner, settingsForOwner, recordActivity } from "../lib/shop-store";
 import productRouter from "./shop-products";
+import productGroupRouter from "./shop-product-groups";
 import commerceRouter from "./shop-commerce";
 import { revealDeliveredInventory } from "../lib/order-delivery";
 import transferRouter from "./shop-transfer";
@@ -35,6 +36,7 @@ router.use((req, res, next) => {
 });
 
 router.use(productRouter);
+router.use(productGroupRouter);
 router.use(commerceRouter);
 router.use(transferRouter);
 router.use(emojiRouter);
@@ -52,7 +54,8 @@ router.get("/overview", async (req, res): Promise<void> => {
   res.json(GetOverviewResponse.parse({
     isDemo: !ownerId, revenue, orderCount: orders.length, customerCount: customers.length,
     walletBalance: customers.reduce((total, customer) => total + Math.round(customer.walletBalance * 100), 0) / 100,
-    productCount: products.length, stockCount: products.reduce((total, product) => total + product.stock, 0),
+    productCount: new Set(products.map(product => product.groupId ?? `single:${product.id}`)).size,
+    stockCount: products.reduce((total, product) => total + product.stock, 0),
     pendingPayments: orders.filter((order) => order.status === "pending").length,
     botConnected: settings.botConnected, paymentsConnected: settings.paymentsConnected,
     recentOrders: orders.slice(0, 5), topProducts: products.slice(0, 4),

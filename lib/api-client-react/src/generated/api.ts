@@ -49,6 +49,8 @@ import type {
   PaymentAttempt,
   PaymentMinimum,
   Product,
+  ProductGroup,
+  ProductGroupInput,
   ProductInput,
   SettingsInput,
   ShopSettings,
@@ -88,6 +90,334 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getListProductGroupsUrl = () => {
+
+
+
+
+  return `/api/shop/product-groups`
+}
+
+export const listProductGroups = async ( options?: Parameters<typeof customFetch>[1]): Promise<ProductGroup[]> => {
+
+  return customFetch<ProductGroup[]>(getListProductGroupsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListProductGroupsQueryKey = () => {
+    return [
+    `/api/shop/product-groups`
+    ] as const;
+    }
+
+
+export const getListProductGroupsQueryOptions = <TData = Awaited<ReturnType<typeof listProductGroups>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listProductGroups>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListProductGroupsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listProductGroups>>> = ({ signal }) => listProductGroups({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listProductGroups>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListProductGroupsQueryResult = NonNullable<Awaited<ReturnType<typeof listProductGroups>>>
+export type ListProductGroupsQueryError = ErrorType<unknown>
+
+
+export function useListProductGroups<TData = Awaited<ReturnType<typeof listProductGroups>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listProductGroups>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listProductGroups>>,
+          TError,
+          Awaited<ReturnType<typeof listProductGroups>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListProductGroups<TData = Awaited<ReturnType<typeof listProductGroups>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listProductGroups>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listProductGroups>>,
+          TError,
+          Awaited<ReturnType<typeof listProductGroups>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListProductGroups<TData = Awaited<ReturnType<typeof listProductGroups>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listProductGroups>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useListProductGroups<TData = Awaited<ReturnType<typeof listProductGroups>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listProductGroups>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListProductGroupsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateProductGroupUrl = () => {
+
+
+
+
+  return `/api/shop/product-groups`
+}
+
+export const createProductGroup = async (productGroupInput: ProductGroupInput, options?: Parameters<typeof customFetch>[1]): Promise<ProductGroup> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ProductGroup>(getCreateProductGroupUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(productGroupInput)
+  }
+);}
+
+
+
+
+
+export const getCreateProductGroupMutationKey = () => ['createProductGroup'] as const;
+
+export const getCreateProductGroupMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createProductGroup>>, TError,CreateProductGroupMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createProductGroup>>, TError,CreateProductGroupMutationVariables, TContext> => {
+
+const mutationKey = getCreateProductGroupMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createProductGroup>>, CreateProductGroupMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createProductGroup(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateProductGroupMutationResult = NonNullable<Awaited<ReturnType<typeof createProductGroup>>>
+    export type CreateProductGroupMutationBody = BodyType<ProductGroupInput>
+    export type CreateProductGroupMutationError = ErrorType<void>
+    export type CreateProductGroupMutationVariables = {data: BodyType<ProductGroupInput>}
+
+    export const useCreateProductGroup = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createProductGroup>>, TError,CreateProductGroupMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createProductGroup>>,
+        TError,
+        CreateProductGroupMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateProductGroupMutationOptions(options), queryClient);
+    }
+
+export const getUpdateProductGroupUrl = (id: string,) => {
+
+
+
+
+  return `/api/shop/product-groups/${id}`
+}
+
+export const updateProductGroup = async (id: string,
+    productGroupInput: ProductGroupInput, options?: Parameters<typeof customFetch>[1]): Promise<ProductGroup> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ProductGroup>(getUpdateProductGroupUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(productGroupInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateProductGroupMutationKey = () => ['updateProductGroup'] as const;
+
+export const getUpdateProductGroupMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateProductGroup>>, TError,UpdateProductGroupMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateProductGroup>>, TError,UpdateProductGroupMutationVariables, TContext> => {
+
+const mutationKey = getUpdateProductGroupMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateProductGroup>>, UpdateProductGroupMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateProductGroup(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateProductGroupMutationResult = NonNullable<Awaited<ReturnType<typeof updateProductGroup>>>
+    export type UpdateProductGroupMutationBody = BodyType<ProductGroupInput>
+    export type UpdateProductGroupMutationError = ErrorType<void>
+    export type UpdateProductGroupMutationVariables = {id: string;data: BodyType<ProductGroupInput>}
+
+    export const useUpdateProductGroup = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateProductGroup>>, TError,UpdateProductGroupMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateProductGroup>>,
+        TError,
+        UpdateProductGroupMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateProductGroupMutationOptions(options), queryClient);
+    }
+
+export const getDeleteProductGroupUrl = (id: string,) => {
+
+
+
+
+  return `/api/shop/product-groups/${id}`
+}
+
+export const deleteProductGroup = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteProductGroupUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteProductGroupMutationKey = () => ['deleteProductGroup'] as const;
+
+export const getDeleteProductGroupMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteProductGroup>>, TError,DeleteProductGroupMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteProductGroup>>, TError,DeleteProductGroupMutationVariables, TContext> => {
+
+const mutationKey = getDeleteProductGroupMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteProductGroup>>, DeleteProductGroupMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteProductGroup(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteProductGroupMutationResult = NonNullable<Awaited<ReturnType<typeof deleteProductGroup>>>
+
+    export type DeleteProductGroupMutationError = ErrorType<void>
+    export type DeleteProductGroupMutationVariables = {id: string}
+
+    export const useDeleteProductGroup = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteProductGroup>>, TError,DeleteProductGroupMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteProductGroup>>,
+        TError,
+        DeleteProductGroupMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteProductGroupMutationOptions(options), queryClient);
+    }
 
 export const getListCustomEmojisUrl = () => {
 

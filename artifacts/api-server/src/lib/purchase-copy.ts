@@ -1,14 +1,14 @@
 import { escapeHtml } from "./payment-message";
 import { customerMessageText } from "./telegram-copy";
 import { MAX_PURCHASE_QUANTITY } from "./checkout-allocation";
-import { productNameHtml, type ProductName } from "./product-name";
+import { productNameHtml, productDescription, type ProductName } from "./product-name";
 
-interface ProductView extends ProductName { description: string; stock: number; price: number }
+interface ProductView extends ProductName { description: string; groupDescription?: string | null; stock: number; price: number }
 const name = (product: { name: string }) => escapeHtml(customerMessageText(product.name).slice(0, 120));
 export function quantityPrompt(product: ProductView, balanceCents: number, customIcons = true) {
   return [
     productNameHtml(product, customIcons),
-    ...(product.description ? ["", escapeHtml(customerMessageText(product.description).slice(0, 500))] : []),
+    ...(productDescription(product) ? ["", escapeHtml(customerMessageText(productDescription(product)).slice(0, 500))] : []),
     "", `💵 Unit price: <b>$${product.price.toFixed(2)}</b>`,
     `📦 Stock left: <b>${product.stock}</b>`,
     `👛 Wallet balance: <b>$${(balanceCents / 100).toFixed(2)}</b>`,

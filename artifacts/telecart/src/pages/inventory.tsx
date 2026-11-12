@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearch } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { useListProducts, useListInventory, useImportInventory, useDeleteInventoryItem, getListInventoryQueryKey, getListProductsQueryKey, getGetOverviewQueryKey, getListActivityQueryKey } from "@workspace/api-client-react";
+import { useListProducts, useListInventory, useImportInventory, useDeleteInventoryItem, getListInventoryQueryKey, getListProductsQueryKey, getListProductGroupsQueryKey, getGetOverviewQueryKey, getListActivityQueryKey } from "@workspace/api-client-react";
 import { ShieldCheck, Eye, EyeOff, Upload, Trash2, KeyRound, Loader2, Lock } from "lucide-react";
 import { PageHeader, Panel, EmptyState, ErrorState, RowsSkeleton, StatusPill } from "@/components/shared";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,7 @@ export default function InventoryPage() {
   const invalidate = () => {
     if (productId !== null) qc.invalidateQueries({ queryKey: getListInventoryQueryKey(productId) });
     qc.invalidateQueries({ queryKey: getListProductsQueryKey() });
+    qc.invalidateQueries({ queryKey: getListProductGroupsQueryKey() });
     qc.invalidateQueries({ queryKey: getGetOverviewQueryKey() });
     qc.invalidateQueries({ queryKey: getListActivityQueryKey() });
   };

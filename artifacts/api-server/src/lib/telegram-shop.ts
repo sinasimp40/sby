@@ -18,7 +18,7 @@ import { customerDeliveredInventory } from "./order-delivery";
 import { quantityPrompt, quantityKeyboard, purchaseConfirmation } from "./purchase-copy";
 import { sendProductCard, editProductQuote } from "./product-media";
 import { MAX_PURCHASE_QUANTITY } from "./checkout-allocation";
-import { productCatalogMenu } from "./telegram-catalog";
+import { productCatalogMenu, productOptionsMenu } from "./telegram-catalog";
 import { handleEmojiImportMessage, type EmojiImportMessage } from "./emoji-import-session";
 import { withCustomEmojiFallback } from "./custom-emoji-delivery";
 
@@ -209,6 +209,11 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         const checked = await checkPayment(payment.id);
         // Backward compatibility for old invoices: the first callback registers
         // their message reference, refreshes the caption and removes the button.
+      } else if (/^group:[a-f0-9-]{36}$/i.test(data)) {
+        const menu = productOptionsMenu(await productsForOwner(connection.ownerId), data.slice(6));
+        if (!menu) throw new CommerceError("No options are currently in stock for this product.");
+        await db.update(botCustomers).set({ state: {} }).where(eq(botCustomers.id, customer!.id));
+        await sendProductCard(customer!.chatId, menu);
       } else if (/^buy:\d+$/.test(data)) {
         const products = await productsForOwner(connection.ownerId);
         const product = products.find(p => p.id === Number(data.slice(4)) && p.status === "active" && p.stock > 0);

@@ -5,7 +5,7 @@ import { getBotRuntime } from "./bot-runtime";
 import { sendProductCard } from "./product-media";
 import { customerMessageText } from "./telegram-copy";
 import { escapeHtml } from "./payment-message";
-import { productNameHtml } from "./product-name";
+import { productNameHtml, productDescription } from "./product-name";
 
 const PAGE_SIZE = 500;
 const SEND_INTERVAL_MS = 45;
@@ -14,6 +14,7 @@ interface AnnouncementProduct {
   id: number;
   name: string;
   description: string;
+  groupDescription?: string | null;
   priceCents: number;
   buttonEmoji: string;
   buttonCustomEmojiId?: string | null;
@@ -23,7 +24,7 @@ interface AnnouncementProduct {
 }
 
 export function newStockAnnouncement(product: AnnouncementProduct, newlyAdded: number, isNewProduct = false) {
-  const description = customerMessageText(product.description).slice(0, 400);
+  const description = customerMessageText(productDescription(product)).slice(0, 400);
   const heading = [
     isNewProduct ? "✨ <b>NEW PRODUCT</b>" : "📦 <b>ADDED STOCK</b>",
     "",

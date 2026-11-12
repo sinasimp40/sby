@@ -8,6 +8,10 @@ export const shopProducts = pgTable("shop_products", {
   name: text("name").notNull(),
   description: text("description").notNull().default(""),
   imageUrl: text("image_url"),
+  groupId: text("group_id"),
+  groupName: text("group_name"),
+  groupDescription: text("group_description"),
+  optionName: text("option_name"),
   category: text("category").notNull(),
   priceCents: integer("price_cents").notNull(),
   status: text("status").$type<"active" | "draft" | "archived">().notNull().default("draft"),
@@ -18,6 +22,7 @@ export const shopProducts = pgTable("shop_products", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
   index("shop_products_owner_idx").on(table.ownerId),
+  index("shop_products_group_idx").on(table.ownerId, table.groupId),
   foreignKey({ columns: [table.ownerId, table.buttonCustomEmojiId],
     foreignColumns: [shopCustomEmojis.ownerId, shopCustomEmojis.customEmojiId] }),
 ]);

@@ -3,7 +3,7 @@ import { ProductMediaPreview } from "@/components/product-media-preview";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useListProducts } from "@workspace/api-client-react";
+import { useListProducts, type Product } from "@workspace/api-client-react";
 import { Bot, Loader2, RotateCcw, ShoppingBag, LifeBuoy, Wallet, History, ChevronLeft, MoreVertical, PlugZap, Sparkles } from "lucide-react";
 import { PageHeader, Panel, ErrorState, RowsSkeleton } from "@/components/shared";
 import { Button } from "@/components/ui/button";
@@ -46,6 +46,20 @@ export default function BotPage() {
   const push = (userText: string, reply: ReactNode) => setChat((c) => [...c, { id: idRef.current++, from: "user", body: userText }, { id: idRef.current++, from: "bot", body: reply }]);
   const active = (products.data ?? []).filter((p) => p.status === "active");
   const stocked = active.filter((p) => p.stock > 0);
+  const grouped = new Map<string, Product[]>();
+  for (const product of stocked) {
+    const key = product.groupId ?? `single:${product.id}`;
+    grouped.set(key, [...(grouped.get(key) ?? []), product]);
+  }
+  const previewOption = (product: Product) => push(product.optionName ?? product.name, <div className="space-y-2">
+    <div className="font-semibold">{product.name}</div>
+    <ProductMediaPreview url={product.imageUrl} name={product.name} />
+    {product.description && <div className="whitespace-pre-wrap">{product.description}</div>}
+    {product.groupDescription && <div className="whitespace-pre-wrap">{product.groupDescription}</div>}
+    <div className="font-mono">{money(product.price)} per item</div>
+    <div>Type a quantity from 1 to {Math.min(product.stock, 100)} in chat to continue.</div>
+    <div className="text-[11px] opacity-60">Preview only. No payment or purchase is made here.</div>
+  </div>);
   const previewStockAnnouncement = (isNewProduct: boolean) => {
     const product = stocked[0];
     if (!product) return;
@@ -73,10 +87,25 @@ export default function BotPage() {
     }]);
   };
   const tap = (k: "products" | "support" | "wallet" | "orders") => {
-    if (k === "products") push(v.productsLabel, active.length ? (
-      <div><div className="mb-1.5 font-semibold">Available now</div>{active.map((p) => (
-        <div key={p.id} className="flex justify-between gap-3 border-t border-black/5 py-1"><span className="truncate">{p.name}</span><span className="font-mono">{money(p.price)}</span></div>))}
-        <div className="mt-1.5 text-[11px] opacity-60">Checkout is not connected in preview.</div></div>
+    if (k === "products") push(v.productsLabel, stocked.length ? (
+      <div><div className="mb-1.5 font-semibold">Available now</div>{[...grouped].map(([key, options]) => {
+        const p = options[0]!;
+        const name = p.groupName ?? p.name;
+        const low = Math.min(...options.map(option => option.price)), high = Math.max(...options.map(option => option.price));
+        return <button key={key} className="flex w-full justify-between gap-3 border-t border-black/5 py-1 text-left" onClick={() => {
+          if (!p.groupId) { previewOption(p); return; }
+          push(name, <div className="space-y-2">
+            <div className="font-semibold">{name}</div>
+            <ProductMediaPreview url={p.imageUrl} name={name} />
+            {p.groupDescription && <div className="whitespace-pre-wrap">{p.groupDescription}</div>}
+            <div>Choose an option</div>
+            {options.map(option => <button key={option.id} className="flex w-full justify-between rounded border border-black/10 px-2 py-1 text-left" onClick={() => previewOption(option)}>
+              <span>{option.optionName ?? option.name}</span><span className="font-mono">{money(option.price)}</span>
+            </button>)}
+          </div>);
+        }}><span className="truncate">{name}</span><span className="font-mono">{low === high ? money(low) : `${money(low)}–${money(high)}`}</span></button>;
+      })}
+        <div className="mt-1.5 text-[11px] opacity-60">Tap a product to preview its options and quantity step.</div></div>
     ) : "No products are listed right now.");
     if (k === "support") push(v.supportLabel, <div className="whitespace-pre-wrap">{v.supportMessage || "Need help? Contact us."}{v.supportUsername && <div className="mt-1 font-medium text-[#2a8bd0]">@{v.supportUsername.replace(/^@/, "")}</div>}</div>);
     if (k === "wallet") push(v.walletLabel, <div><div>Balance: <b className="font-mono">$0.00</b></div><div className="mt-1 text-[11px] opacity-70">Top-ups via NOWPayments will show a QR code, amount, address, network and expiry here once payments are connected.</div></div>);

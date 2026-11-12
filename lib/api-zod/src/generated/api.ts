@@ -8,6 +8,179 @@
 import * as zod from 'zod';
 
 
+export const ListProductGroupsResponseItem = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "imageUrl": zod.string().nullable(),
+  "buttonEmoji": zod.string(),
+  "buttonCustomEmojiId": zod.string().nullable(),
+  "options": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "imageUrl": zod.string().nullish(),
+  "category": zod.string(),
+  "price": zod.number(),
+  "status": zod.enum(['active', 'draft', 'archived']),
+  "deliveryFormat": zod.enum(['email:pass', 'user:pass']),
+  "buttonEmoji": zod.string().optional(),
+  "buttonCustomEmojiId": zod.string().nullish(),
+  "groupId": zod.string().nullish(),
+  "groupName": zod.string().nullish(),
+  "groupDescription": zod.string().nullish(),
+  "optionName": zod.string().nullish(),
+  "stock": zod.number().int(),
+  "sold": zod.number().int(),
+  "createdAt": zod.string()
+}))
+})
+export const ListProductGroupsResponse = zod.array(ListProductGroupsResponseItem)
+
+
+export const createProductGroupBodyNameMax = 80;
+
+export const createProductGroupBodyDescriptionMax = 2000;
+
+export const createProductGroupBodyImageUrlMax = 2048;
+
+export const createProductGroupBodyButtonEmojiMax = 32;
+
+export const createProductGroupBodyButtonCustomEmojiIdRegExp = new RegExp('^[0-9]{1,30}$');
+
+export const createProductGroupBodyOptionsItemNameMax = 36;
+
+export const createProductGroupBodyOptionsItemDescriptionMax = 2000;
+
+export const createProductGroupBodyOptionsItemPriceMin = 0.01;
+export const createProductGroupBodyOptionsItemPriceMax = 100000;
+
+export const createProductGroupBodyOptionsMax = 20;
+
+
+
+export const CreateProductGroupBody = zod.object({
+  "name": zod.string().min(1).max(createProductGroupBodyNameMax),
+  "description": zod.string().max(createProductGroupBodyDescriptionMax),
+  "imageUrl": zod.string().max(createProductGroupBodyImageUrlMax).nullish(),
+  "buttonEmoji": zod.string().max(createProductGroupBodyButtonEmojiMax).optional(),
+  "buttonCustomEmojiId": zod.string().regex(createProductGroupBodyButtonCustomEmojiIdRegExp).nullish(),
+  "options": zod.array(zod.object({
+  "id": zod.number().int().min(1).optional().describe('Keep an existing product/option ID to preserve its inventory and orders.'),
+  "name": zod.string().min(1).max(createProductGroupBodyOptionsItemNameMax),
+  "description": zod.string().max(createProductGroupBodyOptionsItemDescriptionMax),
+  "price": zod.number().min(createProductGroupBodyOptionsItemPriceMin).max(createProductGroupBodyOptionsItemPriceMax),
+  "status": zod.enum(['active', 'draft', 'archived']),
+  "deliveryFormat": zod.enum(['email:pass', 'user:pass'])
+})).min(1).max(createProductGroupBodyOptionsMax)
+})
+
+export const CreateProductGroupResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "imageUrl": zod.string().nullable(),
+  "buttonEmoji": zod.string(),
+  "buttonCustomEmojiId": zod.string().nullable(),
+  "options": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "imageUrl": zod.string().nullish(),
+  "category": zod.string(),
+  "price": zod.number(),
+  "status": zod.enum(['active', 'draft', 'archived']),
+  "deliveryFormat": zod.enum(['email:pass', 'user:pass']),
+  "buttonEmoji": zod.string().optional(),
+  "buttonCustomEmojiId": zod.string().nullish(),
+  "groupId": zod.string().nullish(),
+  "groupName": zod.string().nullish(),
+  "groupDescription": zod.string().nullish(),
+  "optionName": zod.string().nullish(),
+  "stock": zod.number().int(),
+  "sold": zod.number().int(),
+  "createdAt": zod.string()
+}))
+})
+
+
+export const UpdateProductGroupParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const updateProductGroupBodyNameMax = 80;
+
+export const updateProductGroupBodyDescriptionMax = 2000;
+
+export const updateProductGroupBodyImageUrlMax = 2048;
+
+export const updateProductGroupBodyButtonEmojiMax = 32;
+
+export const updateProductGroupBodyButtonCustomEmojiIdRegExp = new RegExp('^[0-9]{1,30}$');
+
+export const updateProductGroupBodyOptionsItemNameMax = 36;
+
+export const updateProductGroupBodyOptionsItemDescriptionMax = 2000;
+
+export const updateProductGroupBodyOptionsItemPriceMin = 0.01;
+export const updateProductGroupBodyOptionsItemPriceMax = 100000;
+
+export const updateProductGroupBodyOptionsMax = 20;
+
+
+
+export const UpdateProductGroupBody = zod.object({
+  "name": zod.string().min(1).max(updateProductGroupBodyNameMax),
+  "description": zod.string().max(updateProductGroupBodyDescriptionMax),
+  "imageUrl": zod.string().max(updateProductGroupBodyImageUrlMax).nullish(),
+  "buttonEmoji": zod.string().max(updateProductGroupBodyButtonEmojiMax).optional(),
+  "buttonCustomEmojiId": zod.string().regex(updateProductGroupBodyButtonCustomEmojiIdRegExp).nullish(),
+  "options": zod.array(zod.object({
+  "id": zod.number().int().min(1).optional().describe('Keep an existing product/option ID to preserve its inventory and orders.'),
+  "name": zod.string().min(1).max(updateProductGroupBodyOptionsItemNameMax),
+  "description": zod.string().max(updateProductGroupBodyOptionsItemDescriptionMax),
+  "price": zod.number().min(updateProductGroupBodyOptionsItemPriceMin).max(updateProductGroupBodyOptionsItemPriceMax),
+  "status": zod.enum(['active', 'draft', 'archived']),
+  "deliveryFormat": zod.enum(['email:pass', 'user:pass'])
+})).min(1).max(updateProductGroupBodyOptionsMax)
+})
+
+export const UpdateProductGroupResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "imageUrl": zod.string().nullable(),
+  "buttonEmoji": zod.string(),
+  "buttonCustomEmojiId": zod.string().nullable(),
+  "options": zod.array(zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "imageUrl": zod.string().nullish(),
+  "category": zod.string(),
+  "price": zod.number(),
+  "status": zod.enum(['active', 'draft', 'archived']),
+  "deliveryFormat": zod.enum(['email:pass', 'user:pass']),
+  "buttonEmoji": zod.string().optional(),
+  "buttonCustomEmojiId": zod.string().nullish(),
+  "groupId": zod.string().nullish(),
+  "groupName": zod.string().nullish(),
+  "groupDescription": zod.string().nullish(),
+  "optionName": zod.string().nullish(),
+  "stock": zod.number().int(),
+  "sold": zod.number().int(),
+  "createdAt": zod.string()
+}))
+})
+
+
+export const DeleteProductGroupParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const DeleteProductGroupResponse = zod.void()
+
+
 export const ListCustomEmojisResponse = zod.object({
   "items": zod.array(zod.object({
   "id": zod.string(),
@@ -129,6 +302,10 @@ export const GetOverviewResponse = zod.object({
   "deliveryFormat": zod.enum(['email:pass', 'user:pass']),
   "buttonEmoji": zod.string().optional(),
   "buttonCustomEmojiId": zod.string().nullish(),
+  "groupId": zod.string().nullish(),
+  "groupName": zod.string().nullish(),
+  "groupDescription": zod.string().nullish(),
+  "optionName": zod.string().nullish(),
   "stock": zod.number().int(),
   "sold": zod.number().int(),
   "createdAt": zod.string()
@@ -152,6 +329,10 @@ export const ListProductsResponseItem = zod.object({
   "deliveryFormat": zod.enum(['email:pass', 'user:pass']),
   "buttonEmoji": zod.string().optional(),
   "buttonCustomEmojiId": zod.string().nullish(),
+  "groupId": zod.string().nullish(),
+  "groupName": zod.string().nullish(),
+  "groupDescription": zod.string().nullish(),
+  "optionName": zod.string().nullish(),
   "stock": zod.number().int(),
   "sold": zod.number().int(),
   "createdAt": zod.string()
@@ -198,6 +379,10 @@ export const CreateProductResponse = zod.object({
   "deliveryFormat": zod.enum(['email:pass', 'user:pass']),
   "buttonEmoji": zod.string().optional(),
   "buttonCustomEmojiId": zod.string().nullish(),
+  "groupId": zod.string().nullish(),
+  "groupName": zod.string().nullish(),
+  "groupDescription": zod.string().nullish(),
+  "optionName": zod.string().nullish(),
   "stock": zod.number().int(),
   "sold": zod.number().int(),
   "createdAt": zod.string()
@@ -250,6 +435,10 @@ export const UpdateProductResponse = zod.object({
   "deliveryFormat": zod.enum(['email:pass', 'user:pass']),
   "buttonEmoji": zod.string().optional(),
   "buttonCustomEmojiId": zod.string().nullish(),
+  "groupId": zod.string().nullish(),
+  "groupName": zod.string().nullish(),
+  "groupDescription": zod.string().nullish(),
+  "optionName": zod.string().nullish(),
   "stock": zod.number().int(),
   "sold": zod.number().int(),
   "createdAt": zod.string()

@@ -4,7 +4,7 @@ import { z } from "zod/v4";
 import { CommerceError } from "./commerce-providers";
 import {
   parseTransferData, tableKeys, transferSchemaHash, singleItemTransferSchemaHash, quantityTransferSchemaHash, productEmojiTransferSchemaHash, customEmojiTransferSchemaHash, MAX_TRANSFER_BYTES, MAX_ZIP_BYTES,
-  stockAnnouncementTransferSchemaHash, type TransferData,
+  stockAnnouncementTransferSchemaHash, productImageTransferSchemaHash, type TransferData,
 } from "./shop-transfer-tables";
 
 const digest = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
@@ -92,7 +92,7 @@ export function decodeShopArchive(zip: Buffer) {
     if (seen.size !== 3 || !files["manifest.json"] || files["manifest.json"].length > 20000 || !files["shop-data.json"]) throw new Error("Required archive files are missing.");
     const manifest = manifestSchema.parse(JSON.parse(strFromU8(files["manifest.json"])));
     const { signature: signed, ...core } = manifest;
-    if (![transferSchemaHash, stockAnnouncementTransferSchemaHash, singleItemTransferSchemaHash, quantityTransferSchemaHash, productEmojiTransferSchemaHash, customEmojiTransferSchemaHash].includes(manifest.schemaHash)) throw new Error("The app schema differs. Use the same Telecart version on source and destination.");
+    if (![transferSchemaHash, productImageTransferSchemaHash, stockAnnouncementTransferSchemaHash, singleItemTransferSchemaHash, quantityTransferSchemaHash, productEmojiTransferSchemaHash, customEmojiTransferSchemaHash].includes(manifest.schemaHash)) throw new Error("The app schema differs. Use the same Telecart version on source and destination.");
     if (digest(files["shop-data.json"]) !== manifest.dataSha256) throw new Error("Data checksum does not match.");
     if (!timingSafeEqual(Buffer.from(signed, "hex"), Buffer.from(signature(core), "hex"))) {
       throw new Error("Cannot authenticate this archive. Configure the matching original SESSION_SECRET and use an unmodified export.");
@@ -124,17 +124,23 @@ export function decodeShopArchive(zip: Buffer) {
         return { ...row, quantity: 1, inventoryIds: null };
       });
     }
-    if (![transferSchemaHash, stockAnnouncementTransferSchemaHash].includes(manifest.schemaHash) && Array.isArray(rawData?.products)) {
+    if (![transferSchemaHash, productImageTransferSchemaHash, stockAnnouncementTransferSchemaHash].includes(manifest.schemaHash) && Array.isArray(rawData?.products)) {
       rawData.products = rawData.products.map((row: Record<string, unknown>) => {
         if (!row || typeof row !== "object" || "stockAnnouncedAt" in row) throw new Error("Invalid legacy product shape.");
         const stocked = Array.isArray(rawData.inventory) && rawData.inventory.some((stock: Record<string, unknown>) => stock.productId === row.id);
         return { ...row, stockAnnouncedAt: stocked ? row.createdAt : null };
       });
     }
-    if (manifest.schemaHash !== transferSchemaHash && Array.isArray(rawData?.products)) {
+    if (![transferSchemaHash, productImageTransferSchemaHash].includes(manifest.schemaHash) && Array.isArray(rawData?.products)) {
       rawData.products = rawData.products.map((row: Record<string, unknown>) => {
         if (!row || typeof row !== "object" || "imageUrl" in row) throw new Error("Invalid legacy product shape.");
         return { ...row, imageUrl: null };
+      });
+    }
+    if (manifest.schemaHash !== transferSchemaHash && Array.isArray(rawData?.products)) {
+      rawData.products = rawData.products.map((row: Record<string, unknown>) => {
+        if (!row || typeof row !== "object" || ["groupId", "groupName", "groupDescription", "optionName"].some(key => key in row)) throw new Error("Invalid legacy product shape.");
+        return { ...row, groupId: null, groupName: null, groupDescription: null, optionName: null };
       });
     }
     const data = parseTransferData(rawData);

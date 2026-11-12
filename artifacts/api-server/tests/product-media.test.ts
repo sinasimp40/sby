@@ -29,6 +29,10 @@ test("product-name headings honor selected normal/custom icons and a cleared nor
   assert.ok(newStockAnnouncement(selected, 1).heading.includes(customName));
   assert.equal(productNameHtml({ ...normal, buttonEmoji: "" }), "<b>&lt;Product&gt;</b>");
   assert.equal(productNameHtml({ ...selected, buttonEmoji: "" }, false), "<b>&lt;Product&gt;</b>");
+  const option = { ...selected, name: "Replit — Plus", description: "Plus-only features", groupDescription: "Shared ".repeat(400) };
+  const prompt = quantityPrompt(option, 1000);
+  assert.ok(prompt.includes("Plus-only features"));
+  assert.ok(prompt.indexOf("Plus-only features") < prompt.indexOf("Shared"));
 });
 
 test("custom caption rejection uses the configured normal icon without dropping the image or sending another text message", async () => {

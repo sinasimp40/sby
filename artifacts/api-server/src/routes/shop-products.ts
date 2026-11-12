@@ -55,6 +55,9 @@ router.patch("/products/:id", async (req, res): Promise<void> => {
   const ownerId = getAuth(req).userId!;
   const previousProduct = await ownedProduct(ownerId, params.data.id);
   if (!previousProduct) { res.status(404).json({ error: "Product not found." }); return; }
+  if (previousProduct.groupId) {
+    res.status(409).json({ error: "Edit this option from its product group to keep all product details consistent." }); return;
+  }
   const { price, ...input } = body.data;
   if (typeof input.imageUrl === "string") input.imageUrl = input.imageUrl.trim() || null;
   if (input.imageUrl && !validProductMediaUrl(input.imageUrl)) {
@@ -82,6 +85,10 @@ router.delete("/products/:id", async (req, res): Promise<void> => {
   const params = DeleteProductParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: "Invalid product." }); return; }
   const ownerId = getAuth(req).userId!;
+  const existing = await ownedProduct(ownerId, params.data.id);
+  if (existing?.groupId) {
+    res.status(409).json({ error: "Archive this option from its product group, or delete the whole group after reviewing its stock." }); return;
+  }
   const [product] = await db.delete(shopProducts).where(and(
     eq(shopProducts.id, params.data.id), eq(shopProducts.ownerId, ownerId),
   )).returning();

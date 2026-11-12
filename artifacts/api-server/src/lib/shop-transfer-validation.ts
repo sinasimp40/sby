@@ -41,8 +41,23 @@ export function validateShopRelationships(data: TransferData, ownerId: string) {
     }
     for (const p of data.products) {
       if (!Number.isSafeInteger(p.id) || Number(p.id) <= 0 || Number(p.priceCents) < 0 ||
-        !["active", "draft", "archived"].includes(String(p.status)) || !isProductEmoji(p.buttonEmoji) ||
+        !["active", "draft", "archived"].includes(String(p.status)) || (p.buttonEmoji !== "" && !isProductEmoji(p.buttonEmoji)) ||
         (p.buttonCustomEmojiId !== null && !customEmojis.has(p.buttonCustomEmojiId))) throw new Error();
+    }
+    area = "product option groups";
+    const groups = new Map<string, string>();
+    for (const p of data.products) {
+      if (p.groupId === null) {
+        if (p.groupName !== null || p.groupDescription !== null || p.optionName !== null) throw new Error();
+        continue;
+      }
+      if (typeof p.groupId !== "string" || !/^[0-9a-f-]{36}$/i.test(p.groupId) ||
+        typeof p.groupName !== "string" || !p.groupName.trim() || p.groupName.length > 80 ||
+        typeof p.groupDescription !== "string" || typeof p.optionName !== "string" || !p.optionName.trim() || p.optionName.length > 36 ||
+        p.name !== `${p.groupName} — ${p.optionName}`) throw new Error();
+      const shared = JSON.stringify([p.groupName, p.groupDescription, p.imageUrl, p.buttonEmoji, p.buttonCustomEmojiId]);
+      if (groups.has(p.groupId) && groups.get(p.groupId) !== shared) throw new Error();
+      groups.set(p.groupId, shared);
     }
     area = "inventory links and encryption";
     for (const stock of data.inventory) {

@@ -21,6 +21,14 @@ export interface Product {
   buttonEmoji?: string;
   /** @nullable */
   buttonCustomEmojiId?: string | null;
+  /** @nullable */
+  groupId?: string | null;
+  /** @nullable */
+  groupName?: string | null;
+  /** @nullable */
+  groupDescription?: string | null;
+  /** @nullable */
+  optionName?: string | null;
   stock: number;
   sold: number;
   createdAt: string;

@@ -8,7 +8,7 @@ import { is } from "drizzle-orm";
 import { PgTable, getTableConfig } from "drizzle-orm/pg-core";
 import { exportShopTransfer, importShopTransfer, previewShopTransfer, shopTransferStatus, reviewShopTransfer } from "../src/lib/shop-transfer";
 import { decodeShopArchive, encodeShopArchive, previewToken, verifyPreviewToken } from "../src/lib/shop-transfer-archive";
-import { tableKeys, transferTables, singleItemTransferSchemaHash, quantityTransferSchemaHash, productEmojiTransferSchemaHash, customEmojiTransferSchemaHash, stockAnnouncementTransferSchemaHash } from "../src/lib/shop-transfer-tables";
+import { tableKeys, transferTables, singleItemTransferSchemaHash, quantityTransferSchemaHash, productEmojiTransferSchemaHash, customEmojiTransferSchemaHash, stockAnnouncementTransferSchemaHash, productImageTransferSchemaHash } from "../src/lib/shop-transfer-tables";
 import { assignedInventoryIds } from "../src/lib/payment-inventory";
 import { validateShopRelationships } from "../src/lib/shop-transfer-validation";
 import { decryptCredential } from "../src/lib/inventory-encryption";
@@ -18,6 +18,12 @@ import { createCheckout, checkPayment, deliverPayment } from "../src/lib/commerc
 import { reconcilePaymentBatch } from "../src/lib/payment-reconciliation";
 import { getBotRuntime } from "../src/lib/bot-runtime";
 import { seedTransferFixture, cleanTransferFixture, syntheticInventory } from "./helpers/shop-transfer-fixture";
+
+function withoutGroups(data: ReturnType<typeof decodeShopArchive>["data"]) {
+  const copy = structuredClone(data);
+  copy.products.forEach(row => { delete row.groupId; delete row.groupName; delete row.groupDescription; delete row.optionName; });
+  return copy;
+}
 
 test("portable ZIP round trip preserves business data and refuses unsafe imports", async t => {
   if (process.env.NODE_ENV === "production") throw new Error("Development fixtures only.");
@@ -34,6 +40,9 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
     await pool.query("UPDATE shop_products SET button_emoji=$1 WHERE owner_id=$2", ["🔑", source]);
     await pool.query("INSERT INTO shop_custom_emojis(owner_id,custom_emoji_id,emoji,set_name,format) VALUES($1,'900000000000000001','🔑','TEST_ONLY','animated')", [source]);
     await pool.query("UPDATE shop_products SET button_custom_emoji_id='900000000000000001' WHERE owner_id=$1", [source]);
+    await pool.query(`UPDATE shop_products SET group_id=$1, group_name='TEST_ONLY options', group_description='Shared option description',
+      option_name=CASE WHEN status='active' THEN 'Basic' ELSE 'Draft' END,
+      name=CASE WHEN status='active' THEN 'TEST_ONLY options — Basic' ELSE 'TEST_ONLY options — Draft' END WHERE owner_id=$2`, [randomUUID(), source]);
     const exported = await exportShopTransfer(source);
     const decoded = decodeShopArchive(exported.zip);
     await t.test("ZIP is actual complete shop data, with no credentials key or sessions included", async () => {
@@ -49,6 +58,11 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
       assert.equal(decoded.data.payments.length, 6);
       assert.equal(decoded.data.walletEntries.length, 3);
       assert.ok(decoded.data.products.every(product => product.buttonEmoji === "🔑"));
+      assert.ok(decoded.data.products.every(product => product.groupName === "TEST_ONLY options" && product.optionName));
+      const clearedFallback = structuredClone(decoded.data);
+      clearedFallback.products.forEach(product => { product.buttonEmoji = ""; });
+      validateShopRelationships(clearedFallback, source);
+      assert.ok(decodeShopArchive(encodeShopArchive(source, clearedFallback).zip).data.products.every(product => product.buttonEmoji === ""));
       assert.equal(decoded.data.customEmojis.length, 1);
       const raw = strFromU8(unzipSync(exported.zip)["shop-data.json"]!);
       assert.doesNotMatch(raw, /TEST_ONLY_TELEGRAM|TEST_ONLY_API|TEST_ONLY_IPN|TEST_ONLY:delivered|admin_sessions/);
@@ -69,7 +83,7 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
       assert.ok(tableKeys.every(key => other.data[key].length === 0));
     });
     await t.test("authenticated ZIPs from before quantity support upgrade single-item orders safely",()=>{
-      const legacyData = structuredClone(decoded.data);
+      const legacyData = withoutGroups(decoded.data);
       legacyData.products = legacyData.products.map(product => {
         const row = { ...product }; delete row.buttonEmoji; delete row.buttonCustomEmojiId; delete row.stockAnnouncedAt; delete row.imageUrl; return row;
       });
@@ -93,7 +107,7 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
       validateShopRelationships(upgraded.data,source);
     });
     await t.test("authenticated quantity-order ZIPs from before product emojis retain all orders", () => {
-      const legacyData = structuredClone(decoded.data);
+      const legacyData = withoutGroups(decoded.data);
       legacyData.products = legacyData.products.map(product => {
         const row = { ...product }; delete row.buttonEmoji; delete row.buttonCustomEmojiId; delete row.stockAnnouncedAt; delete row.imageUrl; return row;
       });
@@ -113,7 +127,7 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
       validateShopRelationships(upgraded.data, source);
     });
     await t.test("authenticated plain-emoji ZIPs upgrade without inventing custom icons", () => {
-      const legacyData = structuredClone(decoded.data);
+      const legacyData = withoutGroups(decoded.data);
       legacyData.products = legacyData.products.map(product => {
         const row = { ...product }; delete row.buttonCustomEmojiId; delete row.stockAnnouncedAt; delete row.imageUrl; return row;
       });
@@ -133,7 +147,7 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
       validateShopRelationships(upgraded.data, source);
     });
     await t.test("authenticated existing-shop ZIPs retain the new-versus-restock distinction", () => {
-      const oldData = structuredClone(decoded.data);
+      const oldData = withoutGroups(decoded.data);
       oldData.products = oldData.products.map(product => {
         const row = { ...product }; delete row.stockAnnouncedAt; delete row.imageUrl; return row;
       });
@@ -154,7 +168,7 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
       validateShopRelationships(upgraded.data, source);
     });
     await t.test("pre-image ZIPs preserve announcement markers and default images to null", () => {
-      const oldData = structuredClone(decoded.data);
+      const oldData = withoutGroups(decoded.data);
       oldData.products = oldData.products.map(product => {
         const row = { ...product }; delete row.imageUrl; return row;
       });
@@ -169,6 +183,21 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
       const upgraded = decodeShopArchive(Buffer.from(zipSync(files)));
       assert.ok(upgraded.data.products.every(product => product.imageUrl === null));
       assert.deepEqual(upgraded.data.products.map(product => product.stockAnnouncedAt), decoded.data.products.map(product => product.stockAnnouncedAt));
+    });
+    await t.test("pre-option ZIPs retain product photos and announcement state", () => {
+      const oldData = withoutGroups(decoded.data);
+      const bytes = strToU8(JSON.stringify(oldData));
+      const { signature: _, ...core } = decoded.manifest;
+      core.schemaHash = productImageTransferSchemaHash;
+      core.dataSha256 = createHash("sha256").update(bytes).digest("hex");
+      const signature = createHmac("sha256", process.env.SESSION_SECRET!).update(JSON.stringify(core)).digest("hex");
+      const files = unzipSync(exported.zip);
+      files["shop-data.json"] = bytes;
+      files["manifest.json"] = strToU8(JSON.stringify({ ...core, signature }));
+      const upgraded = decodeShopArchive(Buffer.from(zipSync(files)));
+      assert.ok(upgraded.data.products.every(product => product.groupId === null && product.optionName === null));
+      assert.deepEqual(upgraded.data.products.map(product => [product.imageUrl, product.stockAnnouncedAt]),
+        decoded.data.products.map(product => [product.imageUrl, product.stockAnnouncedAt]));
     });
     await t.test("corruption, unsafe ZIP paths, modification and incompatible encryption keys fail before writes", () => {
       assert.throws(() => decodeShopArchive(Buffer.from("not a ZIP")));
