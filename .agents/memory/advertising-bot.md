@@ -15,6 +15,12 @@ Account authorization belongs in the protected dashboard, never chat. Explain th
 
 **How to apply:** Encrypt sessions and pending challenges per owner; never persist codes/passwords or expose saved credentials. Connecting alone never starts posting. Personal accounts cannot attach inline bot buttons: render the optional shop link as ordinary message/caption text.
 
+API ID/hash setup is one-time; later logins should ask only for phone plus code (and two-step password when enabled), or QR.
+
+**Why:** The user explicitly asked to simplify login rather than re-enter app credentials.
+
+**How to apply:** Preserve encrypted app credentials across normal account disconnects and cancelled logins. Provide an explicit confirmed Forget setup action that stops advertising and removes both app credentials and sessions. Never export these credentials.
+
 A group link does not grant membership or posting permission. Do not automatically join groups or message personal contacts.
 
 **Why:** The requested import is a list of destinations, not permission to join or advertise. Assuming otherwise would mislead the merchant and risk unsolicited posts.

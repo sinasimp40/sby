@@ -8,6 +8,190 @@
 import * as zod from 'zod';
 
 
+export const saveAdvertisingAppCredentialsBodyApiIdMax = 2147483647;
+
+export const saveAdvertisingAppCredentialsBodyApiHashMin = 32;
+export const saveAdvertisingAppCredentialsBodyApiHashMax = 32;
+
+
+
+export const SaveAdvertisingAppCredentialsBody = zod.object({
+  "apiId": zod.number().int().min(1).max(saveAdvertisingAppCredentialsBodyApiIdMax),
+  "apiHash": zod.string().min(saveAdvertisingAppCredentialsBodyApiHashMin).max(saveAdvertisingAppCredentialsBodyApiHashMax)
+})
+
+export const saveAdvertisingAppCredentialsResponseDraftTextMax = 4096;
+
+export const saveAdvertisingAppCredentialsResponseDraftImageUrlMax = 2048;
+
+export const saveAdvertisingAppCredentialsResponseDraftButtonTextMax = 64;
+
+export const saveAdvertisingAppCredentialsResponseDraftButtonUrlMax = 2048;
+
+export const saveAdvertisingAppCredentialsResponseGroupsItemIntervalSecondsMin = 60;
+export const saveAdvertisingAppCredentialsResponseGroupsItemIntervalSecondsMax = 2592000;
+
+
+
+export const SaveAdvertisingAppCredentialsResponse = zod.object({
+  "account": zod.object({
+  "appConfigured": zod.boolean(),
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "accountId": zod.string().nullable(),
+  "username": zod.string(),
+  "displayName": zod.string(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable(),
+  "login": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "method": zod.enum(['qr', 'phone']),
+  "step": zod.enum(['qr', 'code', 'password', 'expired']),
+  "expiresAt": zod.coerce.date(),
+  "qrImage": zod.string().nullable()
+}),zod.null()])
+}),
+  "accountRuns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().uuid(),
+  "target": zod.string(),
+  "status": zod.enum(['sending', 'sent', 'failed', 'uncertain', 'cancelled', 'rate_limited']),
+  "note": zod.string(),
+  "startedAt": zod.coerce.date(),
+  "sentAt": zod.coerce.date().nullable()
+})),
+  "bot": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "username": zod.string(),
+  "botLink": zod.string().nullable(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable()
+}),
+  "draft": zod.object({
+  "text": zod.string().max(saveAdvertisingAppCredentialsResponseDraftTextMax),
+  "imageUrl": zod.string().max(saveAdvertisingAppCredentialsResponseDraftImageUrlMax).nullable(),
+  "buttonText": zod.string().max(saveAdvertisingAppCredentialsResponseDraftButtonTextMax),
+  "buttonUrl": zod.string().max(saveAdvertisingAppCredentialsResponseDraftButtonUrlMax).nullable()
+}),
+  "shopBotUrl": zod.string().nullable(),
+  "groups": zod.array(zod.object({
+  "intervalSeconds": zod.number().int().min(saveAdvertisingAppCredentialsResponseGroupsItemIntervalSecondsMin).max(saveAdvertisingAppCredentialsResponseGroupsItemIntervalSecondsMax),
+  "running": zod.boolean(),
+  "nextSendAt": zod.coerce.date().nullable(),
+  "lastStatus": zod.string(),
+  "scheduleNote": zod.string(),
+  "id": zod.string().uuid(),
+  "target": zod.string(),
+  "kind": zod.enum(['public', 'private_invite', 'chat_id']),
+  "title": zod.string(),
+  "chatId": zod.string().nullable(),
+  "enabled": zod.boolean(),
+  "status": zod.enum(['pending', 'ready', 'needs_setup', 'duplicate', 'error']),
+  "note": zod.string(),
+  "checkedAt": zod.coerce.date().nullable()
+})),
+  "campaigns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['queued', 'sending', 'completed', 'partial', 'cancelled']),
+  "text": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "total": zod.number().int(),
+  "sent": zod.number().int(),
+  "failed": zod.number().int(),
+  "uncertain": zod.number().int(),
+  "pending": zod.number().int(),
+  "cancelled": zod.number().int()
+}))
+})
+
+
+export const forgetAdvertisingAppCredentialsResponseDraftTextMax = 4096;
+
+export const forgetAdvertisingAppCredentialsResponseDraftImageUrlMax = 2048;
+
+export const forgetAdvertisingAppCredentialsResponseDraftButtonTextMax = 64;
+
+export const forgetAdvertisingAppCredentialsResponseDraftButtonUrlMax = 2048;
+
+export const forgetAdvertisingAppCredentialsResponseGroupsItemIntervalSecondsMin = 60;
+export const forgetAdvertisingAppCredentialsResponseGroupsItemIntervalSecondsMax = 2592000;
+
+
+
+export const ForgetAdvertisingAppCredentialsResponse = zod.object({
+  "account": zod.object({
+  "appConfigured": zod.boolean(),
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "accountId": zod.string().nullable(),
+  "username": zod.string(),
+  "displayName": zod.string(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable(),
+  "login": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "method": zod.enum(['qr', 'phone']),
+  "step": zod.enum(['qr', 'code', 'password', 'expired']),
+  "expiresAt": zod.coerce.date(),
+  "qrImage": zod.string().nullable()
+}),zod.null()])
+}),
+  "accountRuns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().uuid(),
+  "target": zod.string(),
+  "status": zod.enum(['sending', 'sent', 'failed', 'uncertain', 'cancelled', 'rate_limited']),
+  "note": zod.string(),
+  "startedAt": zod.coerce.date(),
+  "sentAt": zod.coerce.date().nullable()
+})),
+  "bot": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "username": zod.string(),
+  "botLink": zod.string().nullable(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable()
+}),
+  "draft": zod.object({
+  "text": zod.string().max(forgetAdvertisingAppCredentialsResponseDraftTextMax),
+  "imageUrl": zod.string().max(forgetAdvertisingAppCredentialsResponseDraftImageUrlMax).nullable(),
+  "buttonText": zod.string().max(forgetAdvertisingAppCredentialsResponseDraftButtonTextMax),
+  "buttonUrl": zod.string().max(forgetAdvertisingAppCredentialsResponseDraftButtonUrlMax).nullable()
+}),
+  "shopBotUrl": zod.string().nullable(),
+  "groups": zod.array(zod.object({
+  "intervalSeconds": zod.number().int().min(forgetAdvertisingAppCredentialsResponseGroupsItemIntervalSecondsMin).max(forgetAdvertisingAppCredentialsResponseGroupsItemIntervalSecondsMax),
+  "running": zod.boolean(),
+  "nextSendAt": zod.coerce.date().nullable(),
+  "lastStatus": zod.string(),
+  "scheduleNote": zod.string(),
+  "id": zod.string().uuid(),
+  "target": zod.string(),
+  "kind": zod.enum(['public', 'private_invite', 'chat_id']),
+  "title": zod.string(),
+  "chatId": zod.string().nullable(),
+  "enabled": zod.boolean(),
+  "status": zod.enum(['pending', 'ready', 'needs_setup', 'duplicate', 'error']),
+  "note": zod.string(),
+  "checkedAt": zod.coerce.date().nullable()
+})),
+  "campaigns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['queued', 'sending', 'completed', 'partial', 'cancelled']),
+  "text": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "total": zod.number().int(),
+  "sent": zod.number().int(),
+  "failed": zod.number().int(),
+  "uncertain": zod.number().int(),
+  "pending": zod.number().int(),
+  "cancelled": zod.number().int()
+}))
+})
+
+
 export const beginAdvertisingAccountLoginBodyApiIdMax = 2147483647;
 
 export const beginAdvertisingAccountLoginBodyApiHashMin = 32;
@@ -18,8 +202,8 @@ export const beginAdvertisingAccountLoginBodyPhoneMax = 20;
 
 
 export const BeginAdvertisingAccountLoginBody = zod.object({
-  "apiId": zod.number().int().min(1).max(beginAdvertisingAccountLoginBodyApiIdMax),
-  "apiHash": zod.string().min(beginAdvertisingAccountLoginBodyApiHashMin).max(beginAdvertisingAccountLoginBodyApiHashMax),
+  "apiId": zod.number().int().min(1).max(beginAdvertisingAccountLoginBodyApiIdMax).optional(),
+  "apiHash": zod.string().min(beginAdvertisingAccountLoginBodyApiHashMin).max(beginAdvertisingAccountLoginBodyApiHashMax).optional(),
   "method": zod.enum(['qr', 'phone']),
   "phone": zod.string().max(beginAdvertisingAccountLoginBodyPhoneMax).optional()
 })
@@ -39,6 +223,7 @@ export const beginAdvertisingAccountLoginResponseGroupsItemIntervalSecondsMax = 
 
 export const BeginAdvertisingAccountLoginResponse = zod.object({
   "account": zod.object({
+  "appConfigured": zod.boolean(),
   "configured": zod.boolean(),
   "connected": zod.boolean(),
   "accountId": zod.string().nullable(),
@@ -124,6 +309,7 @@ export const cancelAdvertisingAccountLoginResponseGroupsItemIntervalSecondsMax =
 
 export const CancelAdvertisingAccountLoginResponse = zod.object({
   "account": zod.object({
+  "appConfigured": zod.boolean(),
   "configured": zod.boolean(),
   "connected": zod.boolean(),
   "accountId": zod.string().nullable(),
@@ -222,6 +408,7 @@ export const verifyAdvertisingAccountLoginResponseGroupsItemIntervalSecondsMax =
 
 export const VerifyAdvertisingAccountLoginResponse = zod.object({
   "account": zod.object({
+  "appConfigured": zod.boolean(),
   "configured": zod.boolean(),
   "connected": zod.boolean(),
   "accountId": zod.string().nullable(),
@@ -311,6 +498,7 @@ export const pollAdvertisingAccountLoginResponseGroupsItemIntervalSecondsMax = 2
 
 export const PollAdvertisingAccountLoginResponse = zod.object({
   "account": zod.object({
+  "appConfigured": zod.boolean(),
   "configured": zod.boolean(),
   "connected": zod.boolean(),
   "accountId": zod.string().nullable(),
@@ -396,6 +584,7 @@ export const checkAdvertisingAccountResponseGroupsItemIntervalSecondsMax = 25920
 
 export const CheckAdvertisingAccountResponse = zod.object({
   "account": zod.object({
+  "appConfigured": zod.boolean(),
   "configured": zod.boolean(),
   "connected": zod.boolean(),
   "accountId": zod.string().nullable(),
@@ -481,6 +670,7 @@ export const disconnectAdvertisingAccountResponseGroupsItemIntervalSecondsMax = 
 
 export const DisconnectAdvertisingAccountResponse = zod.object({
   "account": zod.object({
+  "appConfigured": zod.boolean(),
   "configured": zod.boolean(),
   "connected": zod.boolean(),
   "accountId": zod.string().nullable(),
@@ -603,6 +793,7 @@ export const startAdvertisingAccountSchedulesResponseGroupsItemIntervalSecondsMa
 
 export const StartAdvertisingAccountSchedulesResponse = zod.object({
   "account": zod.object({
+  "appConfigured": zod.boolean(),
   "configured": zod.boolean(),
   "connected": zod.boolean(),
   "accountId": zod.string().nullable(),
@@ -696,6 +887,7 @@ export const stopAdvertisingAccountSchedulesResponseGroupsItemIntervalSecondsMax
 
 export const StopAdvertisingAccountSchedulesResponse = zod.object({
   "account": zod.object({
+  "appConfigured": zod.boolean(),
   "configured": zod.boolean(),
   "connected": zod.boolean(),
   "accountId": zod.string().nullable(),
@@ -781,6 +973,7 @@ export const stopAllAdvertisingAccountSchedulesResponseGroupsItemIntervalSeconds
 
 export const StopAllAdvertisingAccountSchedulesResponse = zod.object({
   "account": zod.object({
+  "appConfigured": zod.boolean(),
   "configured": zod.boolean(),
   "connected": zod.boolean(),
   "accountId": zod.string().nullable(),
@@ -866,6 +1059,7 @@ export const getAdvertisingWorkspaceResponseGroupsItemIntervalSecondsMax = 25920
 
 export const GetAdvertisingWorkspaceResponse = zod.object({
   "account": zod.object({
+  "appConfigured": zod.boolean(),
   "configured": zod.boolean(),
   "connected": zod.boolean(),
   "accountId": zod.string().nullable(),
@@ -960,6 +1154,7 @@ export const connectAdvertisingBotResponseGroupsItemIntervalSecondsMax = 2592000
 
 export const ConnectAdvertisingBotResponse = zod.object({
   "account": zod.object({
+  "appConfigured": zod.boolean(),
   "configured": zod.boolean(),
   "connected": zod.boolean(),
   "accountId": zod.string().nullable(),
@@ -1045,6 +1240,7 @@ export const disconnectAdvertisingBotResponseGroupsItemIntervalSecondsMax = 2592
 
 export const DisconnectAdvertisingBotResponse = zod.object({
   "account": zod.object({
+  "appConfigured": zod.boolean(),
   "configured": zod.boolean(),
   "connected": zod.boolean(),
   "accountId": zod.string().nullable(),
@@ -1130,6 +1326,7 @@ export const checkAdvertisingBotResponseGroupsItemIntervalSecondsMax = 2592000;
 
 export const CheckAdvertisingBotResponse = zod.object({
   "account": zod.object({
+  "appConfigured": zod.boolean(),
   "configured": zod.boolean(),
   "connected": zod.boolean(),
   "accountId": zod.string().nullable(),
@@ -1215,6 +1412,7 @@ export const discoverAdvertisingGroupsResponseGroupsItemIntervalSecondsMax = 259
 
 export const DiscoverAdvertisingGroupsResponse = zod.object({
   "account": zod.object({
+  "appConfigured": zod.boolean(),
   "configured": zod.boolean(),
   "connected": zod.boolean(),
   "accountId": zod.string().nullable(),
@@ -1330,6 +1528,7 @@ export const addAdvertisingGroupsResponseGroupsItemIntervalSecondsMax = 2592000;
 
 export const AddAdvertisingGroupsResponse = zod.object({
   "account": zod.object({
+  "appConfigured": zod.boolean(),
   "configured": zod.boolean(),
   "connected": zod.boolean(),
   "accountId": zod.string().nullable(),
@@ -1423,6 +1622,7 @@ export const checkAdvertisingGroupsResponseGroupsItemIntervalSecondsMax = 259200
 
 export const CheckAdvertisingGroupsResponse = zod.object({
   "account": zod.object({
+  "appConfigured": zod.boolean(),
   "configured": zod.boolean(),
   "connected": zod.boolean(),
   "accountId": zod.string().nullable(),
@@ -1525,6 +1725,7 @@ export const updateAdvertisingGroupResponseGroupsItemIntervalSecondsMax = 259200
 
 export const UpdateAdvertisingGroupResponse = zod.object({
   "account": zod.object({
+  "appConfigured": zod.boolean(),
   "configured": zod.boolean(),
   "connected": zod.boolean(),
   "accountId": zod.string().nullable(),
@@ -1614,6 +1815,7 @@ export const deleteAdvertisingGroupResponseGroupsItemIntervalSecondsMax = 259200
 
 export const DeleteAdvertisingGroupResponse = zod.object({
   "account": zod.object({
+  "appConfigured": zod.boolean(),
   "configured": zod.boolean(),
   "connected": zod.boolean(),
   "accountId": zod.string().nullable(),
@@ -1716,6 +1918,7 @@ export const saveAdvertisingDraftResponseGroupsItemIntervalSecondsMax = 2592000;
 
 export const SaveAdvertisingDraftResponse = zod.object({
   "account": zod.object({
+  "appConfigured": zod.boolean(),
   "configured": zod.boolean(),
   "connected": zod.boolean(),
   "accountId": zod.string().nullable(),
@@ -1870,6 +2073,7 @@ export const cancelAdvertisingCampaignResponseGroupsItemIntervalSecondsMax = 259
 
 export const CancelAdvertisingCampaignResponse = zod.object({
   "account": zod.object({
+  "appConfigured": zod.boolean(),
   "configured": zod.boolean(),
   "connected": zod.boolean(),
   "accountId": zod.string().nullable(),

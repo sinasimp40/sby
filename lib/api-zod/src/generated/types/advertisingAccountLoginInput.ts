@@ -12,12 +12,12 @@ export interface AdvertisingAccountLoginInput {
      * @minimum 1
      * @maximum 2147483647
      */
-  apiId: number;
+  apiId?: number;
   /**
      * @minLength 32
      * @maxLength 32
      */
-  apiHash: string;
+  apiHash?: string;
   method: AdvertisingAccountLoginInputMethod;
   /** @maxLength 20 */
   phone?: string;

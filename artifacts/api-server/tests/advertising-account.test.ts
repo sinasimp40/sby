@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { pool } from "@workspace/db";
 import app from "../src/app";
 import { adminCookieName, issueAdminSession } from "../src/lib/admin-auth";
-import { beginAccountLogin, advanceAccountLogin, accountStatus, cancelAccountLogin, disconnectAccount, checkAccountConnection } from "../src/lib/advertising-account-auth";
+import { beginAccountLogin, advanceAccountLogin, accountStatus, cancelAccountLogin, disconnectAccount, checkAccountConnection, saveAccountApp } from "../src/lib/advertising-account-auth";
 import { AccountError, accountMessage, type AccountFactory } from "../src/lib/advertising-account-driver";
 import { checkAccountGroups, discoverAccountGroups } from "../src/lib/advertising-account-groups";
 import { processAccountSchedules, stopSelectedAccountSchedules } from "../src/lib/advertising-account-schedules";
@@ -40,6 +40,8 @@ test("account sign-in, selected-group schedules and transfers are safe without r
     { chatId: "-100333333333", target: "-100333333333", title: "TEST_ONLY unselected group" },
   ];
   const factory: AccountFactory = input => {
+    assert.equal(input.apiId, api.apiId);
+    assert.equal(input.apiHash, api.apiHash);
     let state = input.session ? JSON.parse(input.session) as { authorized: boolean } : { authorized: false };
     return {
       connect: async () => {},
@@ -78,10 +80,24 @@ test("account sign-in, selected-group schedules and transfers are safe without r
     return { status: response.status, data: await response.json() };
   };
   try {
+    await t.test("app setup is saved once, encrypted, owner-scoped and never starts advertising", async () => {
+      await assert.rejects(beginAccountLogin(owner, { method: "qr" }, factory), /one-time/);
+      assert.equal((await request("/account/app", "PUT", api, "")).status, 401);
+      assert.equal((await request("/account/app", "PUT", { ...api, apiHash: "invalid" })).status, 400);
+      const result = await request("/account/app", "PUT", api);
+      assert.equal(result.status, 200);
+      assert.equal(result.data.account.appConfigured, true);
+      assert.equal(result.data.account.connected, false);
+      assert.ok(!JSON.stringify(result.data).includes(api.apiHash));
+      const row = (await pool.query("SELECT api_hash_encrypted FROM advertising_accounts WHERE owner_id=$1", [owner])).rows[0];
+      assert.ok(row.api_hash_encrypted && !row.api_hash_encrypted.includes(api.apiHash));
+      assert.equal((await accountStatus(foreign)).appConfigured, false);
+      assert.equal(posts.length, 0);
+    });
     await t.test("phone code and two-step password are verified without exposing credentials", async () => {
       assert.equal((await request("", "GET", undefined, "")).status, 401);
       await assert.rejects(beginAccountLogin(owner, { ...api, method: "phone", phone: "invalid" }, factory), /international/);
-      await beginAccountLogin(owner, { ...api, method: "phone", phone: "+15555550123" }, factory);
+      await beginAccountLogin(owner, { method: "phone", phone: "+15555550123" }, factory);
       const pending = await accountStatus(owner);
       assert.equal(pending.login!.step, "code"); assert.equal(pending.connected, false);
       assert.ok(!JSON.stringify(pending).includes(api.apiHash));
@@ -92,16 +108,18 @@ test("account sign-in, selected-group schedules and transfers are safe without r
       await advanceAccountLogin(owner, { loginId: pending.login!.id, password: "TEST_ONLY_PASSWORD" }, false, factory);
       const status = await accountStatus(owner);
       assert.equal(status.connected, true); assert.equal(status.username, identity.username); assert.equal(status.login, null);
+      await assert.rejects(saveAccountApp(owner, { apiId: 999, apiHash: "b".repeat(32) }), /Disconnect/);
       const raw = (await pool.query("SELECT * FROM advertising_accounts WHERE owner_id=$1", [owner])).rows[0];
       assert.ok(!JSON.stringify(raw).includes(api.apiHash)); assert.ok(!JSON.stringify(raw).includes("TEST_ONLY_PASSWORD"));
       assert.equal((await request("/connection", "POST", { token: "12345:TEST_ONLY_TOKEN_NOT_USED" })).status, 410);
     });
     await t.test("QR cancellation, expiry and QR two-step login preserve secure states", async () => {
-      await beginAccountLogin(owner, { ...api, method: "qr" }, factory);
+      await beginAccountLogin(owner, { method: "qr" }, factory);
       let status = await accountStatus(owner);
       assert.match(status.login!.qrImage!, /^data:image\/png;base64,/);
       await assert.rejects(advanceAccountLogin(owner, { loginId: randomUUID() }, true, factory), /no longer active/);
       await cancelAccountLogin(owner, factory); assert.equal((await accountStatus(owner)).login, null);
+      assert.equal((await accountStatus(owner)).appConfigured, true);
       await beginAccountLogin(owner, { ...api, method: "qr" }, factory);
       status = await accountStatus(owner);
       await pool.query("UPDATE advertising_accounts SET login_expires_at=now()-interval '1 second' WHERE owner_id=$1", [owner]);
@@ -224,8 +242,19 @@ test("account sign-in, selected-group schedules and transfers are safe without r
       const before = posts.length; await resetGlobalWait(); await processAccountSchedules(owner, factory); assert.equal(posts.length, before);
       await start([groups[0]!.id]); const beforeLogout = logouts; await disconnectAccount(owner, factory);
       assert.equal(logouts, beforeLogout + 1); assert.equal((await accountStatus(owner)).configured, false);
+      assert.equal((await accountStatus(owner)).appConfigured, true, "normal disconnect preserves one-time app setup");
       await processAccountSchedules(owner, factory); assert.equal(posts.length, before);
       assert.equal((await start([groups[0]!.id])).status, 400);
+      await beginAccountLogin(owner, { method: "phone", phone: "+15555550123" }, factory);
+      const reconnect = await accountStatus(owner);
+      await advanceAccountLogin(owner, { loginId: reconnect.login!.id, code: "12345" }, false, factory);
+      assert.equal((await accountStatus(owner)).connected, true, "reconnect uses only phone/code and saved app credentials");
+      await disconnectAccount(owner, factory, true);
+      assert.equal((await accountStatus(owner)).appConfigured, false);
+      assert.equal((await request("/account/app", "DELETE", undefined, "")).status, 401);
+      assert.equal((await request("/account/app", "DELETE")).status, 200);
+      await assert.rejects(beginAccountLogin(owner, { method: "qr" }, factory), /one-time/);
+      assert.equal(posts.length, before, "reconnect and forgetting setup never start ads");
     });
   } finally {
     globalThis.fetch = originalFetch;

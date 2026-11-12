@@ -8,6 +8,7 @@
 import type { AdvertisingAccountLogin } from './advertisingAccountLogin';
 
 export interface AdvertisingAccount {
+  appConfigured: boolean;
   configured: boolean;
   connected: boolean;
   /** @nullable */

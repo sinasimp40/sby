@@ -9,6 +9,16 @@ tags:
   - name: health
   - name: shop
 paths:
+  /shop/advertising/account/app:
+    put:
+      operationId: saveAdvertisingAppCredentials
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingAppCredentialsInput"}}}}
+      responses:
+        "200": {description: Saved one-time app setup, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
+    delete:
+      operationId: forgetAdvertisingAppCredentials
+      responses:
+        "200": {description: Stopped advertising and removed app setup and session, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
   /shop/advertising/account/login:
     post:
       operationId: beginAdvertisingAccountLogin
@@ -813,12 +823,18 @@ components:
         campaigns: {type: array, items: {$ref: "#/components/schemas/AdvertisingCampaign"}}
     AdvertisingAccountLoginInput:
       type: object
-      required: [apiId, apiHash, method]
+      required: [method]
       properties:
         apiId: {type: integer, minimum: 1, maximum: 2147483647}
         apiHash: {type: string, minLength: 32, maxLength: 32}
         method: {type: string, enum: [qr, phone]}
         phone: {type: string, maxLength: 20}
+    AdvertisingAppCredentialsInput:
+      type: object
+      required: [apiId, apiHash]
+      properties:
+        apiId: {type: integer, minimum: 1, maximum: 2147483647}
+        apiHash: {type: string, minLength: 32, maxLength: 32}
     AdvertisingAccountVerification:
       type: object
       required: [loginId]
@@ -842,8 +858,9 @@ components:
         qrImage: {type: [string, "null"]}
     AdvertisingAccount:
       type: object
-      required: [configured, connected, accountId, username, displayName, checkedAt, error, login]
+      required: [appConfigured, configured, connected, accountId, username, displayName, checkedAt, error, login]
       properties:
+        appConfigured: {type: boolean}
         configured: {type: boolean}
         connected: {type: boolean}
         accountId: {type: [string, "null"]}

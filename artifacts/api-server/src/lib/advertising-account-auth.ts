@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import QRCode from "qrcode";
 import { pool } from "@workspace/db";
-import type { AdvertisingAccount, AdvertisingAccountLoginInput, AdvertisingAccountVerification } from "@workspace/api-zod";
+import type { AdvertisingAccount, AdvertisingAccountLoginInput, AdvertisingAccountVerification, AdvertisingAppCredentialsInput } from "@workspace/api-zod";
 import { encryptProviderSecret, decryptProviderSecret } from "./provider-credentials";
 import { withAdvertisingLock, type AdvertisingClient } from "./advertising-store";
 import { stopAdvertising } from "./advertising-management";
@@ -36,7 +36,7 @@ export async function accountStatus(owner: string): Promise<AdvertisingAccount> 
       expiresAt: new Date(row.login_expires_at),
       qrImage: !expired && pending.step === "qr" && pending.qrUrl ? await QRCode.toDataURL(pending.qrUrl, { margin: 2, width: 240 }) : null };
   }
-  return { configured: Boolean(row?.session_encrypted), connected: Boolean(row?.session_encrypted && row.checked_at && !row.last_error),
+  return { appConfigured: Boolean(row?.api_id && row.api_hash_encrypted), configured: Boolean(row?.session_encrypted), connected: Boolean(row?.session_encrypted && row.checked_at && !row.last_error),
     accountId: row?.account_id ?? null, username: row?.username ?? "", displayName: row?.display_name ?? "",
     checkedAt: row?.checked_at?.toISOString() ?? null, error: row?.last_error ?? null, login };
 }
@@ -80,14 +80,19 @@ async function finishLogin(owner: string, pending: PendingAccountLogin, driver: 
   }
 }
 export async function beginAccountLogin(owner: string, input: AdvertisingAccountLoginInput, factory: AccountFactory = createAccountDriver) {
-  if (!/^[a-f0-9]{32}$/i.test(input.apiHash)) throw new AccountError("Enter the 32-character API hash from my.telegram.org.");
   if (input.method === "phone" && !/^\+[1-9]\d{6,14}$/.test(input.phone?.trim() ?? "")) throw new AccountError("Enter your phone number in international +country-code format.");
   await initializeAccountAdvertising(owner);
   return withAdvertisingLock(owner, async client => {
+    const saved = (await client.query("SELECT api_id,api_hash_encrypted,session_encrypted FROM advertising_accounts WHERE owner_id=$1", [owner])).rows[0];
+    if ((input.apiId === undefined) !== (input.apiHash === undefined)) throw new AccountError("Provide both API app credentials, or use the saved app setup.");
+    const apiId = input.apiId ?? saved?.api_id;
+    const apiHash = input.apiHash ?? (saved?.api_hash_encrypted ? open(saved.api_hash_encrypted, owner) : "");
+    if (!Number.isInteger(apiId) || apiId < 1 || apiId > 2147483647 || !/^[a-f0-9]{32}$/i.test(apiHash))
+      throw new AccountError("Complete the one-time Telegram app setup before signing in.");
     await stopAccountSchedules(owner, client, undefined, "Posting stopped while signing in.");
     await revokePending(owner, client, factory);
     const pending: PendingAccountLogin = { id: randomUUID(), method: input.method, step: input.method === "qr" ? "qr" : "code",
-      apiId: input.apiId, apiHash: input.apiHash, session: "", phone: input.phone?.trim(), expires: Date.now() + 10 * 60000 };
+      apiId, apiHash, session: "", phone: input.phone?.trim(), expires: Date.now() + 10 * 60000 };
     const driver = factory(pending);
     try {
       await driver.connect();
@@ -98,8 +103,22 @@ export async function beginAccountLogin(owner: string, input: AdvertisingAccount
       }
       pending.session = driver.session();
       await savePending(owner, pending, client);
+      // Preserve a successful first setup even if the merchant cancels login.
+      // Existing active sessions keep their original app until replacement succeeds.
+      if (!saved?.session_encrypted) await client.query("UPDATE advertising_accounts SET api_id=$2,api_hash_encrypted=$3 WHERE owner_id=$1", [owner, apiId, seal(apiHash, owner)]);
     } catch (error) { throw safeAccountError(error); }
     finally { await driver.disconnect(); }
+  });
+}
+export async function saveAccountApp(owner: string, input: AdvertisingAppCredentialsInput) {
+  if (!Number.isInteger(input.apiId) || input.apiId < 1 || input.apiId > 2147483647 || !/^[a-f0-9]{32}$/i.test(input.apiHash))
+    throw new AccountError("Enter a valid API ID and 32-character API hash from my.telegram.org.");
+  await initializeAccountAdvertising(owner);
+  return withAdvertisingLock(owner, async client => {
+    const row = (await client.query("SELECT * FROM advertising_accounts WHERE owner_id=$1", [owner])).rows[0];
+    const unchanged = row.api_id === input.apiId && row.api_hash_encrypted && open(row.api_hash_encrypted, owner) === input.apiHash;
+    if (!unchanged && (row.session_encrypted || row.login_encrypted)) throw new AccountError("Disconnect the account and cancel any pending login before changing app credentials.");
+    await client.query("UPDATE advertising_accounts SET api_id=$2,api_hash_encrypted=$3 WHERE owner_id=$1", [owner, input.apiId, seal(input.apiHash, owner)]);
   });
 }
 export async function advanceAccountLogin(owner: string, input: AdvertisingAccountVerification, polling = false, factory: AccountFactory = createAccountDriver) {
@@ -170,15 +189,17 @@ export async function cancelAccountLogin(owner: string, factory: AccountFactory 
     await client.query("UPDATE advertising_accounts SET login_id=NULL,login_encrypted=NULL,login_expires_at=NULL WHERE owner_id=$1", [owner]);
   });
 }
-export async function disconnectAccount(owner: string, factory: AccountFactory = createAccountDriver) {
+export async function disconnectAccount(owner: string, factory: AccountFactory = createAccountDriver, forgetApp = false) {
   return withAdvertisingLock(owner, async client => {
     await stopAccountSchedules(owner, client);
     await revokePending(owner, client, factory);
     let warning: string | null = null;
-    try { await withAccountDriver(owner, client, driver => driver.logout(), factory); }
+    const hasSession = (await client.query("SELECT 1 FROM advertising_accounts WHERE owner_id=$1 AND session_encrypted IS NOT NULL", [owner])).rowCount;
+    try { if (hasSession) await withAccountDriver(owner, client, driver => driver.logout(), factory); }
     catch { warning = "Local session removed. Telegram could not confirm remote logout; terminate Telecart Advertising in Telegram Settings → Devices."; }
-    await client.query(`UPDATE advertising_accounts SET api_id=NULL,api_hash_encrypted=NULL,session_encrypted=NULL,account_id=NULL,username='',
-      display_name='',generation=generation+1,checked_at=NULL,last_error=$2,login_id=NULL,login_encrypted=NULL,login_expires_at=NULL WHERE owner_id=$1`, [owner, warning]);
+    await client.query(`UPDATE advertising_accounts SET api_id=CASE WHEN $3 THEN NULL ELSE api_id END,
+      api_hash_encrypted=CASE WHEN $3 THEN NULL ELSE api_hash_encrypted END,session_encrypted=NULL,account_id=NULL,username='',
+      display_name='',generation=generation+1,checked_at=NULL,last_error=$2,login_id=NULL,login_encrypted=NULL,login_expires_at=NULL WHERE owner_id=$1`, [owner, warning, forgetApp]);
     await client.query("UPDATE advertising_groups SET account_generation=NULL,status='pending',checked_at=NULL WHERE owner_id=$1", [owner]);
   });
 }

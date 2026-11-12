@@ -3,11 +3,12 @@ import { z } from "zod";
 import {
   BeginAdvertisingAccountLoginBody, VerifyAdvertisingAccountLoginBody, PollAdvertisingAccountLoginBody,
   StartAdvertisingAccountSchedulesBody, StopAdvertisingAccountSchedulesBody,
+  SaveAdvertisingAppCredentialsBody,
 } from "@workspace/api-zod";
 import { getShopAuth } from "../lib/admin-auth";
 import { CommerceError } from "../lib/commerce-providers";
 import { advertisingWorkspace } from "../lib/advertising-store";
-import { beginAccountLogin, advanceAccountLogin, cancelAccountLogin, checkAccountConnection, disconnectAccount } from "../lib/advertising-account-auth";
+import { beginAccountLogin, advanceAccountLogin, cancelAccountLogin, checkAccountConnection, disconnectAccount, saveAccountApp } from "../lib/advertising-account-auth";
 import { startAccountSchedules, stopSelectedAccountSchedules } from "../lib/advertising-account-schedules";
 
 const router: IRouter = Router();
@@ -22,6 +23,8 @@ const run = (fn: (owner: string, req: Request) => Promise<unknown>) => async (re
   }
 };
 router.post("/advertising/account/login", run((owner, req) => beginAccountLogin(owner, BeginAdvertisingAccountLoginBody.parse(req.body))));
+router.put("/advertising/account/app", run((owner, req) => saveAccountApp(owner, SaveAdvertisingAppCredentialsBody.parse(req.body))));
+router.delete("/advertising/account/app", run(owner => disconnectAccount(owner, undefined, true)));
 router.delete("/advertising/account/login", run(owner => cancelAccountLogin(owner)));
 router.post("/advertising/account/login/verify", run((owner, req) => advanceAccountLogin(owner, VerifyAdvertisingAccountLoginBody.parse(req.body))));
 router.post("/advertising/account/login/poll", run((owner, req) => advanceAccountLogin(owner, PollAdvertisingAccountLoginBody.parse(req.body), true)));
