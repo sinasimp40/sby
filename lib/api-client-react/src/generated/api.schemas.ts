@@ -81,6 +81,8 @@ export interface Product {
   id: number;
   name: string;
   description: string;
+  /** @nullable */
+  imageUrl?: string | null;
   category: string;
   price: number;
   status: ProductStatus;
@@ -140,6 +142,12 @@ export interface ProductInput {
   name: string;
   /** @maxLength 2000 */
   description: string;
+  /**
+     * Optional public HTTPS link ending in .jpg, .jpeg, .png, .webp or .gif. Null removes the image; omission preserves it on update.
+     * @maxLength 2048
+     * @nullable
+     */
+  imageUrl?: string | null;
   /**
      * Legacy field; not required or shown in the dashboard.
      * @maxLength 80

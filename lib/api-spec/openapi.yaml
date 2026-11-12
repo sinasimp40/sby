@@ -560,6 +560,7 @@ components:
       properties:
         name: { type: string, minLength: 1, maxLength: 120 }
         description: { type: string, maxLength: 2000 }
+        imageUrl: { type: [string, "null"], maxLength: 2048, description: "Optional public HTTPS link ending in .jpg, .jpeg, .png, .webp or .gif. Null removes the image; omission preserves it on update." }
         category: { type: string, maxLength: 80, description: "Legacy field; not required or shown in the dashboard." }
         price: { type: number, minimum: 0.01, maximum: 100000 }
         status: { type: string, enum: [active, draft, archived] }
@@ -573,6 +574,7 @@ components:
         id: { type: integer }
         name: { type: string }
         description: { type: string }
+        imageUrl: { type: [string, "null"] }
         category: { type: string }
         price: { type: number }
         status: { type: string, enum: [active, draft, archived] }

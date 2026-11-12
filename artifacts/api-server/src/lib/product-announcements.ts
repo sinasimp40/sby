@@ -2,7 +2,7 @@ import { and, asc, eq, gt, sql } from "drizzle-orm";
 import { db, botCustomers, botConnections, shopInventory, shopProducts } from "@workspace/db";
 import { logger } from "./logger";
 import { getBotRuntime } from "./bot-runtime";
-import { telegram } from "./commerce-providers";
+import { sendProductCard } from "./product-media";
 import { customerMessageText } from "./telegram-copy";
 import { escapeHtml } from "./payment-message";
 
@@ -17,32 +17,35 @@ interface AnnouncementProduct {
   buttonEmoji: string;
   status: string;
   stock: number;
+  imageUrl?: string | null;
 }
 
 export function newStockAnnouncement(product: AnnouncementProduct, newlyAdded: number, isNewProduct = false) {
   const name = escapeHtml(customerMessageText(product.name).slice(0, 120));
   const description = customerMessageText(product.description).slice(0, 400);
-  const text = [
+  const heading = [
     isNewProduct ? "✨ <b>NEW PRODUCT</b>" : "📦 <b>ADDED STOCK</b>",
     "",
     `${escapeHtml(product.buttonEmoji)} <b>${name}</b>`,
-    ...(description ? ["", escapeHtml(description)] : []),
-    "",
+  ].join("\n");
+  const body = [
+    ...(description ? [escapeHtml(description), ""] : []),
     `💵 <b>$${(product.priceCents / 100).toFixed(2)}</b>`,
     `📦 <b>${product.stock} in stock</b>`,
     ...(newlyAdded > 0 ? [`➕ ${newlyAdded} ${newlyAdded === 1 ? "account" : "accounts"} just added`] : []),
     "",
-    "<i>Tap below to choose your quantity.</i>",
+    "<i>Tap Buy now, then type your quantity in chat.</i>",
   ].join("\n");
   return {
-    text,
+    text: `${heading}\n\n${body}`,
+    heading, body, imageUrl: product.imageUrl,
     reply_markup: {
       inline_keyboard: [[{ text: "🛒 Buy now", callback_data: `buy:${product.id}` }]],
     },
   };
 }
 
-const pause = () => new Promise<void>(resolve => setTimeout(resolve, SEND_INTERVAL_MS));
+const pause = (messages = 1) => new Promise<void>(resolve => setTimeout(resolve, SEND_INTERVAL_MS * messages));
 
 export async function claimProductAnnouncement(ownerId: string, productId: number) {
   return db.transaction(async tx => {
@@ -91,20 +94,15 @@ export async function announceProductAvailability(ownerId: string, productId: nu
 
     for (const recipient of recipients) {
       try {
-        await telegram("sendMessage", {
-          chat_id: recipient.chatId,
-          text: message.text,
-          parse_mode: "HTML",
-          reply_markup: message.reply_markup,
-          protect_content: true,
-        });
+        await sendProductCard(recipient.chatId, message);
         sent++;
       } catch {
         failed++;
         if (!(await getBotRuntime(ownerId)).enabled) break;
       }
       after = recipient.id;
-      await pause();
+      // Media cards can send a heading, photo/animation, and long description.
+      await pause(message.imageUrl ? 3 : 1);
     }
   }
 

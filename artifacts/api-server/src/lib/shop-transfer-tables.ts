@@ -35,6 +35,7 @@ function schemaHash() { return createHash("sha256").update(JSON.stringify(tableK
   })),
 })))).digest("hex"); }
 export const transferSchemaHash = schemaHash();
+export const stockAnnouncementTransferSchemaHash = "31b3e0ba15d0ec9c6c50fe4459d27c51fa66bf8a303c521d7bfabeeedb1bcc37";
 export const customEmojiTransferSchemaHash = "77ef1802650bd259a6a5be7810dd487d2c3f55fc4a24096d0e22780e6c5604f2";
 // Immutable fingerprints of previous signed formats, not recomputed from the live schema.
 export const singleItemTransferSchemaHash = "c2df18244024c0f53fbaa510fc9e817791f4c396471322e28f6b460728d78aa2";

@@ -19,10 +19,13 @@ import { useAuthGate } from "@/components/auth-gate";
 import { money, shortDate, errMsg } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { CustomEmojiPicker } from "@/components/custom-emoji-picker";
+import { ProductMediaPreview, isProductImageUrl } from "@/components/product-media-preview";
 
 const schema = z.object({
   name: z.string().trim().min(1, "Name is required").max(120),
   description: z.string().max(2000),
+  imageUrl: z.string().trim().max(2048).refine(value => !value || isProductImageUrl(value),
+    "Use a public HTTPS link ending in .jpg, .jpeg, .png, .webp or .gif."),
   price: z.coerce.number({ invalid_type_error: "Enter a price" }).min(0.01, "Minimum $0.01").max(100000, "Maximum $100,000"),
   status: z.enum(["active", "draft", "archived"]),
   deliveryFormat: z.enum(["email:pass", "user:pass"]),
@@ -31,7 +34,7 @@ const schema = z.object({
   buttonCustomEmojiId: z.string().regex(/^[0-9]{1,30}$/).nullable(),
 });
 type FormValues = z.infer<typeof schema>;
-const blank: FormValues = { name: "", description: "", price: 0, status: "draft", deliveryFormat: "email:pass", buttonEmoji: "🛍", buttonCustomEmojiId: null };
+const blank: FormValues = { name: "", description: "", imageUrl: "", price: 0, status: "draft", deliveryFormat: "email:pass", buttonEmoji: "🛍", buttonCustomEmojiId: null };
 const selectClassName = "h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
 
 function useInvalidate() {
@@ -50,7 +53,7 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
   const { toast } = useToast();
   const form = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: blank });
   useEffect(() => {
-    if (open) form.reset(product ? { name: product.name, description: product.description, price: product.price, status: product.status, deliveryFormat: product.deliveryFormat, buttonEmoji: product.buttonEmoji ?? "🛍", buttonCustomEmojiId: product.buttonCustomEmojiId ?? null } : blank);
+    if (open) form.reset(product ? { name: product.name, description: product.description, imageUrl: product.imageUrl ?? "", price: product.price, status: product.status, deliveryFormat: product.deliveryFormat, buttonEmoji: product.buttonEmoji ?? "🛍", buttonCustomEmojiId: product.buttonCustomEmojiId ?? null } : blank);
   }, [open, product, form]);
   const pending = create.isPending || update.isPending;
   const onSubmit = (v: FormValues) => {
@@ -58,8 +61,9 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
       onSuccess: () => { invalidate(); toast({ title: product ? "Product updated" : "Product created", description: v.name }); onOpenChange(false); },
       onError: (e: unknown) => toast({ variant: "destructive", title: "Could not save product", description: errMsg(e) }),
     };
-    if (product) update.mutate({ id: product.id, data: v }, opts);
-    else create.mutate({ data: v }, opts);
+    const data = { ...v, imageUrl: v.imageUrl || null };
+    if (product) update.mutate({ id: product.id, data }, opts);
+    else create.mutate({ data }, opts);
   };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -72,6 +76,15 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField control={form.control} name="name" render={({ field }) => (
               <FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="Streaming Premium — 1 month" {...field} data-testid="input-product-name" /></FormControl><FormMessage /></FormItem>
+            )} />
+            <FormField control={form.control} name="imageUrl" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Image or GIF link <span className="font-normal text-muted-foreground">(optional)</span></FormLabel>
+                <FormControl><Input {...field} type="url" disabled={pending} placeholder="https://example.com/product.gif" data-testid="input-product-image-url" /></FormControl>
+                <p className="text-xs text-muted-foreground">Direct public JPG, PNG, WebP or GIF link. Shown below the product name in stock alerts and Buy now. GIFs play as animations. Clear the link to remove it.</p>
+                <FormMessage />
+                <ProductMediaPreview url={field.value} name={form.watch("name")} />
+              </FormItem>
             )} />
             <FormField control={form.control} name="buttonEmoji" render={({ field }) => (
               <FormItem>

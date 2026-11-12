@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { ProductMediaPreview } from "@/components/product-media-preview";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -55,12 +56,18 @@ export default function BotPage() {
         <div className="-m-1 space-y-2">
           <div className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#16835d]">{isNewProduct ? "✨ New product" : "📦 Added stock"}</div>
           <div className="font-semibold">{product.buttonEmoji ?? "🛍"} {product.name}</div>
+          <ProductMediaPreview url={product.imageUrl} name={product.name} />
           {product.description && <div className="whitespace-pre-wrap text-[12px] text-[#566273]">{product.description}</div>}
           <div className="flex items-center justify-between gap-2 text-[12px]">
             <span className="font-mono font-semibold">{money(product.price)}</span>
             <span className="rounded-full bg-[#eaf6ef] px-2 py-0.5 text-[11px] font-medium text-[#16835d]">{product.stock} in stock</span>
           </div>
-          <button onClick={() => push("Buy now", <div>🔢 Type the quantity in chat to continue.</div>)} className="w-full rounded-lg bg-[#16835d] px-3 py-2 text-center text-[12px] font-semibold text-white shadow-sm transition-colors hover:bg-[#116d4c]">🛒 Buy now</button>
+          <button onClick={() => push("Buy now", <div className="space-y-2">
+            <div className="font-semibold">{product.name}</div>
+            <ProductMediaPreview url={product.imageUrl} name={product.name} />
+            {product.description && <div className="whitespace-pre-wrap">{product.description}</div>}
+            <div>🔢 Type a quantity from 1 to {Math.min(product.stock, 100)} in chat to continue.</div>
+          </div>)} className="w-full rounded-lg bg-[#16835d] px-3 py-2 text-center text-[12px] font-semibold text-white shadow-sm transition-colors hover:bg-[#116d4c]">🛒 Buy now</button>
         </div>
       ),
     }]);

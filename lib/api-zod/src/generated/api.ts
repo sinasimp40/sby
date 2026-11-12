@@ -122,6 +122,7 @@ export const GetOverviewResponse = zod.object({
   "id": zod.number().int(),
   "name": zod.string(),
   "description": zod.string(),
+  "imageUrl": zod.string().nullish(),
   "category": zod.string(),
   "price": zod.number(),
   "status": zod.enum(['active', 'draft', 'archived']),
@@ -144,6 +145,7 @@ export const ListProductsResponseItem = zod.object({
   "id": zod.number().int(),
   "name": zod.string(),
   "description": zod.string(),
+  "imageUrl": zod.string().nullish(),
   "category": zod.string(),
   "price": zod.number(),
   "status": zod.enum(['active', 'draft', 'archived']),
@@ -161,6 +163,8 @@ export const createProductBodyNameMax = 120;
 
 export const createProductBodyDescriptionMax = 2000;
 
+export const createProductBodyImageUrlMax = 2048;
+
 export const createProductBodyCategoryMax = 80;
 
 export const createProductBodyPriceMin = 0.01;
@@ -174,6 +178,7 @@ export const createProductBodyButtonCustomEmojiIdRegExp = new RegExp('^[0-9]{1,3
 export const CreateProductBody = zod.object({
   "name": zod.string().min(1).max(createProductBodyNameMax),
   "description": zod.string().max(createProductBodyDescriptionMax),
+  "imageUrl": zod.string().max(createProductBodyImageUrlMax).nullish().describe('Optional public HTTPS link ending in .jpg, .jpeg, .png, .webp or .gif. Null removes the image; omission preserves it on update.'),
   "category": zod.string().max(createProductBodyCategoryMax).optional().describe('Legacy field; not required or shown in the dashboard.'),
   "price": zod.number().min(createProductBodyPriceMin).max(createProductBodyPriceMax),
   "status": zod.enum(['active', 'draft', 'archived']),
@@ -186,6 +191,7 @@ export const CreateProductResponse = zod.object({
   "id": zod.number().int(),
   "name": zod.string(),
   "description": zod.string(),
+  "imageUrl": zod.string().nullish(),
   "category": zod.string(),
   "price": zod.number(),
   "status": zod.enum(['active', 'draft', 'archived']),
@@ -209,6 +215,8 @@ export const updateProductBodyNameMax = 120;
 
 export const updateProductBodyDescriptionMax = 2000;
 
+export const updateProductBodyImageUrlMax = 2048;
+
 export const updateProductBodyCategoryMax = 80;
 
 export const updateProductBodyPriceMin = 0.01;
@@ -222,6 +230,7 @@ export const updateProductBodyButtonCustomEmojiIdRegExp = new RegExp('^[0-9]{1,3
 export const UpdateProductBody = zod.object({
   "name": zod.string().min(1).max(updateProductBodyNameMax),
   "description": zod.string().max(updateProductBodyDescriptionMax),
+  "imageUrl": zod.string().max(updateProductBodyImageUrlMax).nullish().describe('Optional public HTTPS link ending in .jpg, .jpeg, .png, .webp or .gif. Null removes the image; omission preserves it on update.'),
   "category": zod.string().max(updateProductBodyCategoryMax).optional().describe('Legacy field; not required or shown in the dashboard.'),
   "price": zod.number().min(updateProductBodyPriceMin).max(updateProductBodyPriceMax),
   "status": zod.enum(['active', 'draft', 'archived']),
@@ -234,6 +243,7 @@ export const UpdateProductResponse = zod.object({
   "id": zod.number().int(),
   "name": zod.string(),
   "description": zod.string(),
+  "imageUrl": zod.string().nullish(),
   "category": zod.string(),
   "price": zod.number(),
   "status": zod.enum(['active', 'draft', 'archived']),

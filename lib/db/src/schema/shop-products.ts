@@ -7,6 +7,7 @@ export const shopProducts = pgTable("shop_products", {
   ownerId: text("owner_id").notNull(),
   name: text("name").notNull(),
   description: text("description").notNull().default(""),
+  imageUrl: text("image_url"),
   category: text("category").notNull(),
   priceCents: integer("price_cents").notNull(),
   status: text("status").$type<"active" | "draft" | "archived">().notNull().default("draft"),

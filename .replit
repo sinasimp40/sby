@@ -35,3 +35,6 @@ TELECART_OWNER_ID = "local-8f1ba325-02da-4c00-a6b1-6263fa3c50c2"
 
 [nix]
 channel = "stable-25_05"
+
+[objectStorage]
+defaultBucketID = "replit-objstore-6ef88930-eaec-49ee-98b9-58470dbc980d"

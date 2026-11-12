@@ -16,6 +16,7 @@ import { customerHistoryPage, customerHistorySummary } from "./telegram-history-
 import { sendDepositCoinMenu } from "./deposit-coin-buttons";
 import { customerDeliveredInventory } from "./order-delivery";
 import { quantityPrompt, quantityKeyboard, purchaseConfirmation } from "./purchase-copy";
+import { sendProductCard, editProductQuote } from "./product-media";
 import { MAX_PURCHASE_QUANTITY } from "./checkout-allocation";
 import { productCatalogMenu } from "./telegram-catalog";
 import { handleEmojiImportMessage, type EmojiImportMessage } from "./emoji-import-session";
@@ -110,13 +111,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
       const quote = purchaseConfirmation(product, quantity, customer!.balanceCents);
       const messageId = update.callback_query ? message.message_id : Number(state.promptMessageId);
       if (Number.isSafeInteger(messageId) && messageId! > 0) {
-        try {
-          await telegram("editMessageText", { chat_id: customer!.chatId, message_id: messageId, text: quote, reply_markup: keyboard, parse_mode: "HTML" });
-          return;
-        } catch (error) {
-          if (error instanceof TelegramRequestError && error.reason === "not_modified") return;
-          if (!(error instanceof TelegramRequestError && error.providerStatus === 400)) throw error;
-        }
+        if (await editProductQuote(customer!.chatId, messageId!, quote, keyboard, state.promptIsMedia === true)) return;
       }
       await send(quote, keyboard, "HTML");
     };
@@ -220,9 +215,13 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         const token = randomUUID();
         const state = { type: "purchase-quantity", token, productId: product.id, expires: Date.now() + 10 * 60000 };
         await db.update(botCustomers).set({ state }).where(eq(botCustomers.id, customer!.id));
-        const prompt = await send(quantityPrompt(product, customer!.balanceCents), quantityKeyboard(), "HTML");
+        const [heading, ...lines] = quantityPrompt(product, customer!.balanceCents).split("\n");
+        const prompt = await sendProductCard(customer!.chatId, {
+          heading: heading!, body: lines.join("\n").trimStart(), imageUrl: product.imageUrl,
+          reply_markup: quantityKeyboard(),
+        });
         if (Number.isSafeInteger(prompt.message_id)) await db.update(botCustomers).set({
-          state: { ...state, promptMessageId: Number(prompt.message_id) },
+          state: { ...state, promptMessageId: Number(prompt.message_id), promptIsMedia: prompt.mediaPrompt === true },
         }).where(eq(botCustomers.id, customer!.id));
       } else if (data.startsWith("qty:")) {
         const [, token, quantity] = data.split(":");

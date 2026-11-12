@@ -1,0 +1,83 @@
+import { isIP } from "node:net";
+import { telegram, TelegramRequestError } from "./commerce-providers";
+import { logger } from "./logger";
+
+export const PRODUCT_MEDIA_ERROR = "Use a public HTTPS image link ending in .jpg, .jpeg, .png, .webp or .gif (not a webpage).";
+
+// Telegram retrieves the URL itself. Never fetch arbitrary image links on our server.
+export function validProductMediaUrl(value: string): boolean {
+  if (value.length > 2048) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password && !url.port &&
+      !url.hash && !isIP(url.hostname.replace(/^\[|\]$/g, "")) &&
+      url.hostname.includes(".") && !/\.(localhost|local|internal|invalid|test)$/.test(url.hostname) &&
+      /\.(jpe?g|png|webp|gif)$/i.test(url.pathname);
+  } catch { return false; }
+}
+
+export function productMediaMethod(url: string) {
+  return /\.gif$/i.test(new URL(url).pathname) ? "sendAnimation" as const : "sendPhoto" as const;
+}
+
+interface ProductCard {
+  heading: string;
+  body: string;
+  imageUrl?: string | null;
+  reply_markup: object;
+}
+export interface ProductCardMessage {
+  message_id?: number;
+  mediaPrompt?: boolean;
+}
+type Send = (method: string, body: Record<string, unknown>) => Promise<{ message_id?: number }>;
+
+export async function sendProductCard(chatId: string, card: ProductCard, send: Send = telegram): Promise<ProductCardMessage> {
+  const common = { chat_id: chatId, parse_mode: "HTML", protect_content: true };
+  const text = [card.heading, card.body].filter(Boolean).join("\n\n");
+  if (!card.imageUrl || !validProductMediaUrl(card.imageUrl)) {
+    return send("sendMessage", { ...common, text, reply_markup: card.reply_markup });
+  }
+  // A separate heading is necessary to put the photo below the name, not above it.
+  await send("sendMessage", { ...common, text: card.heading });
+  const method = productMediaMethod(card.imageUrl);
+  const captionFits = card.body.length <= 1024;
+  try {
+    const message = await send(method, {
+      ...common, [method === "sendAnimation" ? "animation" : "photo"]: card.imageUrl,
+      ...(captionFits ? { caption: card.body, reply_markup: card.reply_markup } : {}),
+    });
+    if (captionFits) return { ...message, mediaPrompt: true };
+  } catch (error) {
+    // Only a definitive media rejection is safe to recover from automatically.
+    // A timeout may already have sent the photo, so do not blindly retry it.
+    if (!(error instanceof TelegramRequestError && error.providerStatus === 400)) throw error;
+    logger.warn({ method }, "Telegram rejected a product image link; sent an explicit image-unavailable notice.");
+    return send("sendMessage", {
+      ...common, text: `⚠️ Product image unavailable. The image link may be broken or not public.\n\n${card.body}`,
+      reply_markup: card.reply_markup,
+    });
+  }
+  // Keep long descriptions intact without exceeding Telegram's caption limit.
+  return send("sendMessage", { ...common, text: card.body, reply_markup: card.reply_markup });
+}
+
+export async function editProductQuote(
+  chatId: string, messageId: number, quote: string, keyboard: object, mediaPrompt: boolean, send: Send = telegram,
+): Promise<boolean> {
+  try {
+    if (mediaPrompt && quote.length > 1024) {
+      await send("editMessageReplyMarkup", { chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: [] } });
+      return false;
+    }
+    await send(mediaPrompt ? "editMessageCaption" : "editMessageText", {
+      chat_id: chatId, message_id: messageId,
+      [mediaPrompt ? "caption" : "text"]: quote, reply_markup: keyboard, parse_mode: "HTML",
+    });
+    return true;
+  } catch (error) {
+    if (error instanceof TelegramRequestError && error.reason === "not_modified") return true;
+    if (error instanceof TelegramRequestError && error.providerStatus === 400) return false;
+    throw error;
+  }
+}

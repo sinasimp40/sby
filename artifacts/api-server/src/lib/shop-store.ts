@@ -11,6 +11,7 @@ export async function productsForOwner(ownerId: string | null) {
     id: shopProducts.id,
     name: shopProducts.name,
     description: shopProducts.description,
+    imageUrl: shopProducts.imageUrl,
     category: shopProducts.category,
     priceCents: shopProducts.priceCents,
     status: shopProducts.status,

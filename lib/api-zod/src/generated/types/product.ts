@@ -12,6 +12,8 @@ export interface Product {
   id: number;
   name: string;
   description: string;
+  /** @nullable */
+  imageUrl?: string | null;
   category: string;
   price: number;
   status: ProductStatus;
