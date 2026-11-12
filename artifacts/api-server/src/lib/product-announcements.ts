@@ -6,6 +6,7 @@ import { sendProductCard } from "./product-media";
 import { customerMessageText } from "./telegram-copy";
 import { escapeHtml } from "./payment-message";
 import { productNameHtml, productDescription } from "./product-name";
+import { settingsForOwner } from "./shop-store";
 
 const PAGE_SIZE = 500;
 const SEND_INTERVAL_MS = 45;
@@ -75,6 +76,7 @@ export async function announceProductAvailability(ownerId: string, productId: nu
   const [connection] = await db.select({ ownerId: botConnections.ownerId })
     .from(botConnections).where(eq(botConnections.id, "primary"));
   if (connection?.ownerId !== ownerId || !(await getBotRuntime(ownerId)).enabled) return;
+  if ((await settingsForOwner(ownerId)).maintenanceMode) return;
 
   const announcement = await claimProductAnnouncement(ownerId, productId);
   if (!announcement) return;
@@ -84,7 +86,7 @@ export async function announceProductAvailability(ownerId: string, productId: nu
   let failed = 0;
 
   while (true) {
-    if (!(await getBotRuntime(ownerId)).enabled) break;
+    if (!(await getBotRuntime(ownerId)).enabled || (await settingsForOwner(ownerId)).maintenanceMode) break;
     const recipients = await db.select({ id: botCustomers.id, chatId: botCustomers.chatId })
       .from(botCustomers)
       .where(and(

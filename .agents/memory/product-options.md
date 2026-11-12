@@ -9,6 +9,12 @@ The user chose one product with selectable options, rather than separate top-lev
 
 **How to apply:** Keep one entry per grouped product in Telegram. Give each option its own price, description and inventory. Preserve ordinary single-product buying and the user's no-category requirement.
 
+A group entry shows only its selected icon and group name, never a price or price range—even if just one option is in stock. Prices belong on individual options.
+
+**Why:** The user explicitly corrected the displayed group price: “group has individual price right?”
+
+**How to apply:** Keep group prices off Telegram catalog buttons and the bot preview; dashboard group rows should say prices are per option. Standalone products and option selections retain their own prices.
+
 Grouping an existing product must preserve the original product identity and its stock as the first option, not move or regenerate its inventory.
 
 **Why:** Credentials are encrypted for their owner and product identity, and historical purchases refer to that identity. Recreating the item or moving encrypted rows could break delivery and past orders.

@@ -63,6 +63,10 @@ test("coin icon preferences persist, stay owner-scoped, clear safely and survive
     assert.equal((await request({ ...welcome, welcomeMessage: "a".repeat(1025) })).status, 400);
     assert.equal((await request({ ...welcome, welcomeImageUrl: null })).status, 200);
     assert.equal((await (await request()).json()).welcomeImageUrl, null);
+    assert.equal((await request({ ...baseline, maintenanceMode: true })).status, 200);
+    assert.equal((await (await request()).json()).maintenanceMode, true);
+    assert.equal((await request({ ...baseline, maintenanceMode: false })).status, 200);
+    assert.equal((await (await request()).json()).maintenanceMode, false);
   } finally {
     await new Promise<void>(resolve => server.close(() => resolve()));
     for (const table of ["shop_settings", "shop_activity", "shop_custom_emojis", "admin_sessions"]) {

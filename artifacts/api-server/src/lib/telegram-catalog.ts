@@ -44,12 +44,9 @@ export function productCatalogMenu(input: CatalogProduct[], requestedPage = 0, c
       /^[0-9]{1,30}$/.test(product.buttonCustomEmojiId) ? product.buttonCustomEmojiId : null;
     const productName = Array.from(customerMessageText(product.name)).slice(0, 20).join("");
     const normalEmoji = product.buttonEmoji === "" ? "" : isProductEmoji(product.buttonEmoji) ? product.buttonEmoji : "🛍";
-    const prices = product.options.map(option => option.price);
-    const low = Math.min(...prices), high = Math.max(...prices);
-    const price = low === high ? `$${low.toFixed(2)}` : `$${low.toFixed(2)}–$${high.toFixed(2)}`;
     return {
     ...(customId ? { icon_custom_emoji_id: customId } : {}),
-    text: `${!customId && normalEmoji ? `${normalEmoji} ` : ""}${productName} · ${price}`,
+    text: `${!customId && normalEmoji ? `${normalEmoji} ` : ""}${productName}${product.groupId ? "" : ` · $${product.price.toFixed(2)}`}`,
     callback_data: product.groupId ? `group:${product.groupId}` : `buy:${product.id}`,
   }; });
   const inline_keyboard = Array.from({ length: Math.ceil(buttons.length / 2) },
@@ -65,7 +62,7 @@ export function productCatalogMenu(input: CatalogProduct[], requestedPage = 0, c
   ]);
   return {
     text: products.length
-      ? `🛍 <b>Browse products</b>\n\n📖 Page <b>${page + 1} of ${pages}</b> · Products ${start + 1}–${start + entries.length} of ${products.length}\n\n💵 Unit prices\nTap a product to choose an option or enter a quantity.`
+      ? `🛍 <b>Browse products</b>\n\n📖 Page <b>${page + 1} of ${pages}</b> · Products ${start + 1}–${start + entries.length} of ${products.length}\n\nTap a product to choose an option or enter a quantity.`
       : "📦 <b>No stock available</b>\n\nPlease check back soon.",
     reply_markup: { inline_keyboard },
   };

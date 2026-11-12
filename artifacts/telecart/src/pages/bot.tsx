@@ -44,6 +44,8 @@ export default function BotPage() {
     }
   }, [settings.data, form, dirty]);
   const v = useWatch({ control: form.control }) as V;
+  const maintenance = settings.data?.maintenanceMode === true;
+  const pauseNotice = "The shop is temporarily paused for maintenance. Please try again later.\n\nPayments already sent will still be checked automatically.";
   const [chat, setChat] = useState<Msg[]>([]);
   const idRef = useRef(1);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -93,11 +95,11 @@ export default function BotPage() {
     }]);
   };
   const tap = (k: "products" | "support" | "wallet" | "orders") => {
+    if (maintenance) { push(k, pauseNotice); return; }
     if (k === "products") push(v.productsLabel, stocked.length ? (
       <div><div className="mb-1.5 font-semibold">Available now</div>{[...grouped].map(([key, options]) => {
         const p = options[0]!;
         const name = p.groupName ?? p.name;
-        const low = Math.min(...options.map(option => option.price)), high = Math.max(...options.map(option => option.price));
         return <button key={key} className="flex w-full justify-between gap-3 border-t border-black/5 py-1 text-left" onClick={() => {
           if (!p.groupId) { previewOption(p); return; }
           push(name, <div className="space-y-2">
@@ -109,7 +111,7 @@ export default function BotPage() {
               <span>{option.optionName ?? option.name}</span><span className="font-mono">{money(option.price)}</span>
             </button>)}
           </div>);
-        }}><span className="truncate">{name}</span><span className="font-mono">{low === high ? money(low) : `${money(low)}–${money(high)}`}</span></button>;
+        }}><span className="truncate">{name}</span>{!p.groupId && <span className="font-mono">{money(p.price)}</span>}</button>;
       })}
         <div className="mt-1.5 text-[11px] opacity-60">Tap a product to preview its options and quantity step.</div></div>
     ) : "No products are listed right now.");
@@ -164,8 +166,8 @@ export default function BotPage() {
             <div className="mb-2 flex items-center justify-between">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-signal px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-white" data-testid="badge-preview-not-connected"><PlugZap className="h-3 w-3" />Preview · not connected</span>
-                <Button size="sm" variant="outline" disabled={!stocked.length} onClick={() => previewStockAnnouncement(true)} data-testid="button-preview-stock-announcement"><Sparkles className="mr-1 h-3 w-3" />New product</Button>
-                <Button size="sm" variant="outline" disabled={!stocked.length} onClick={() => previewStockAnnouncement(false)} data-testid="button-preview-restock-announcement">Added stock</Button>
+                <Button size="sm" variant="outline" disabled={maintenance || !stocked.length} onClick={() => previewStockAnnouncement(true)} data-testid="button-preview-stock-announcement"><Sparkles className="mr-1 h-3 w-3" />New product</Button>
+                <Button size="sm" variant="outline" disabled={maintenance || !stocked.length} onClick={() => previewStockAnnouncement(false)} data-testid="button-preview-restock-announcement">Added stock</Button>
               </div>
               <button onClick={() => setChat([])} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground" data-testid="button-reset-preview"><RotateCcw className="h-3 w-3" />Reset</button>
             </div>
@@ -179,15 +181,15 @@ export default function BotPage() {
               <div ref={scrollRef} className="tg-wall h-[380px] space-y-2 overflow-y-auto px-3 py-3 text-[13px] text-[#1b2433]">
                 <div className="mx-auto w-fit rounded-full bg-black/20 px-2.5 py-0.5 text-[11px] text-white">/start</div>
                 <div className="pop max-w-[85%] overflow-hidden rounded-2xl rounded-bl-md bg-white shadow-sm" data-testid="text-preview-welcome">
-                  <ProductMediaPreview url={v.welcomeImageUrl} name="Welcome image" className="rounded-none border-0" />
-                  <div className="whitespace-pre-wrap px-3 py-2">{v.welcomeMessage || "Write a welcome message"}</div>
+                  {!maintenance && <ProductMediaPreview url={v.welcomeImageUrl} name="Welcome image" className="rounded-none border-0" />}
+                  <div className="whitespace-pre-wrap px-3 py-2">{maintenance ? pauseNotice : v.welcomeMessage || "Write a welcome message"}</div>
                 </div>
                 {chat.map((m) => (
                   <div key={m.id} className={`pop max-w-[85%] rounded-2xl px-3 py-2 shadow-sm ${m.from === "user" ? "ml-auto rounded-br-md bg-[#e1f7c9]" : "rounded-bl-md bg-white"}`}>{m.body}</div>
                 ))}
               </div>
               <div className="grid gap-1.5 bg-[#eef1f4] p-2">
-                {keys.map((row, i) => (
+                {!maintenance && keys.map((row, i) => (
                   <div key={i} className="grid grid-cols-2 gap-1.5">
                     {row.map((b) => (
                       <button key={b.k} onClick={() => tap(b.k)} data-testid={`button-preview-${b.k}`} className="flex items-center justify-center gap-1.5 truncate rounded-lg bg-white px-2 py-2.5 text-[13px] font-medium text-[#1b2433] shadow-[0_1px_0_rgba(0,0,0,0.08)] transition-transform active:scale-[0.97]">

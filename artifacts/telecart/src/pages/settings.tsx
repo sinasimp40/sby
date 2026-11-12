@@ -20,11 +20,12 @@ type V = z.infer<typeof schema>;
 export default function SettingsPage() {
   const { settings, savePartial, saving } = useShopSettings();
   const form = useForm<V>({ resolver: zodResolver(schema), defaultValues: { shopName: "", currency: "USD", maintenanceMode: false } });
-  const inited = useRef(false);
+  const inited = useRef<boolean | null>(null);
+  const dirty = form.formState.isDirty;
   useEffect(() => {
     const s = settings.data;
-    if (s && !inited.current) { inited.current = true; form.reset({ shopName: s.shopName, currency: "USD", maintenanceMode: s.maintenanceMode }); }
-  }, [settings.data, form]);
+    if (s && (inited.current !== s.isDemo || !dirty)) { inited.current = s.isDemo; form.reset({ shopName: s.shopName, currency: "USD", maintenanceMode: s.maintenanceMode }); }
+  }, [settings.data, form, dirty]);
 
   return (
     <div>
@@ -41,7 +42,7 @@ export default function SettingsPage() {
             <Panel title="Availability">
               <FormField control={form.control} name="maintenanceMode" render={({ field }) => (
                 <FormItem className="flex items-center justify-between gap-4">
-                  <div><FormLabel>Maintenance mode</FormLabel><FormDescription>When the bot is connected, buyers see a pause notice instead of the menu.</FormDescription></div>
+                  <div><FormLabel>Maintenance mode</FormLabel><FormDescription>After saving, customer commands and buttons show a pause notice instead of the menu. Payments already sent continue to be checked automatically.</FormDescription></div>
                   <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} data-testid="switch-maintenance" /></FormControl>
                 </FormItem>
               )} />

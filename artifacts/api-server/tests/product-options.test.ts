@@ -57,7 +57,7 @@ test("grouped options preserve existing stock IDs and independently allocate the
       const catalog = productCatalogMenu(group.options);
       const root = catalog.reply_markup.inline_keyboard[0]![0]!;
       assert.equal(root.callback_data, `group:${group.id}`);
-      assert.equal(root.text, "TEST_ONLY Replit · $1.25");
+      assert.equal(root.text, "TEST_ONLY Replit");
       const choice = productOptionsMenu(group.options, group.id)!;
       assert.match(choice.body, /Common product details/);
       assert.equal(choice.reply_markup.inline_keyboard[0]![0]!.text, "Basic · $1.25");

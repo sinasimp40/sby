@@ -38,3 +38,9 @@ The user requires the bot to collect a quantity typed manually in chat, without 
 **Why:** The user explicitly requested visible stock and better purchase formatting, then replaced preset quantity buttons with manual typed entry.
 
 **How to apply:** Quote quantity, unit price and total before confirmation. Recheck price, stock and funds atomically at payment; assign the entire order or charge nothing. Delivery retries must use the same complete assigned account bundle.
+
+Maintenance mode pauses customer commands, old inline buttons and purchase selections, but must not disable the Telegram receiver or stop reconciliation of payments already sent.
+
+**Why:** The user reported that maintenance kept showing normal bot interactions despite the promised pause notice. Stopping the receiver would prevent that notice, and stopping payment checks could leave real funds uncredited.
+
+**How to apply:** Gate customer routing before menus and payment actions, clear pending interaction state, and remove the reply keyboard. Keep verified settlement, wallet crediting and already-paid delivery independent of shop availability. Distinguish maintenance from the operator's global Telegram-processing switch.

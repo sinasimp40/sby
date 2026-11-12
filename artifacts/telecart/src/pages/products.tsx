@@ -229,8 +229,6 @@ export default function ProductsPage() {
                 const open = expanded[g.id] ?? false;
                 const stock = g.options.reduce((a, o) => a + o.stock, 0);
                 const sold = g.options.reduce((a, o) => a + o.sold, 0);
-                const prices = g.options.filter(o => o.status !== "archived").map(o => o.price);
-                const lo = prices.length ? Math.min(...prices) : 0, hi = prices.length ? Math.max(...prices) : 0;
                 const active = g.options.filter(o => o.status === "active").length;
                 return <tbody key={g.id} className="border-b border-border/60" data-testid={`group-${g.id}`}>
                   <tr className="cursor-pointer transition-colors hover:bg-muted/40" onClick={() => setExpanded(s => ({ ...s, [g.id]: !open }))} data-testid={`row-group-${g.id}`}>
@@ -244,7 +242,7 @@ export default function ProductsPage() {
                     <td className="px-3 py-3 font-mono text-xs text-muted-foreground">—</td>
                     <td className={cn("tabular px-3 py-3 text-right font-mono", stock === 0 && "text-signal")}>{stock}</td>
                     <td className="tabular px-3 py-3 text-right font-mono text-muted-foreground">{sold}</td>
-                    <td className="tabular px-3 py-3 text-right font-mono font-medium">{lo === hi ? money(lo) : `${money(lo)}–${money(hi)}`}</td>
+                    <td className="px-3 py-3 text-right text-xs text-muted-foreground">Per option</td>
                     <td className="px-4 py-3" onClick={e => e.stopPropagation()}><div className="flex justify-end gap-0.5">
                       <Button size="icon" variant="ghost" className="h-8 w-8" title="Edit group and options" onClick={() => openGroup(g)} data-testid={`button-edit-group-${g.id}`}><Pencil className="h-4 w-4" /></Button>
                       <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" title="Delete group" onClick={() => askDeleteGroup(g)} data-testid={`button-delete-group-${g.id}`}><Trash2 className="h-4 w-4" /></Button>

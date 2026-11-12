@@ -15,6 +15,7 @@ import { historyMenu, historyOrderView, isHistoryScope, topupCategoryMenu, topup
 import { customerHistoryPage, customerHistorySummary } from "./telegram-history-store";
 import { sendDepositCoinMenu } from "./deposit-coin-buttons";
 import { sendWelcomeMessage } from "./welcome-message";
+import { sendMaintenanceNotice } from "./maintenance-notice";
 import { customerDeliveredInventory } from "./order-delivery";
 import { quantityPrompt, quantityKeyboard, purchaseConfirmation } from "./purchase-copy";
 import { sendProductCard, editProductQuote } from "./product-media";
@@ -37,10 +38,12 @@ export interface TelegramUpdate {
   callback_query?: { id: string; from: TelegramCustomerProfile & { id: number }; message?: TelegramMessage; data?: string };
 }
 
-export async function handleTelegramUpdate(update: TelegramUpdate) {
+const customerServices = { activeConnection, getBotRuntime, settingsForOwner, telegram };
+
+export async function handleTelegramUpdate(update: TelegramUpdate, services = customerServices) {
   if (!Number.isSafeInteger(update?.update_id) || update.update_id < 0) throw new CommerceError("Invalid Telegram update.");
-  const connection = await activeConnection();
-  if (!connection || connection.active !== "yes" || !(await getBotRuntime()).enabled) throw new CommerceError("Bot is not active.", 503);
+  const connection = await services.activeConnection();
+  if (!connection || connection.active !== "yes" || !(await services.getBotRuntime()).enabled) throw new CommerceError("Bot is not active.", 503);
   const message = update.callback_query?.message ?? update.message;
   const from = update.callback_query?.from ?? message?.from;
   if (!message || message.chat?.type !== "private" || !from || !Number.isSafeInteger(from.id) ||
@@ -75,8 +78,8 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
     }).onConflictDoUpdate({
       target: [botCustomers.ownerId, botCustomers.telegramId], set: { username, chatId: String(message.chat.id) },
     }).returning();
-    const settings = await settingsForOwner(connection.ownerId);
-    const send = (text: string, reply_markup?: object, parse_mode?: "HTML") => telegram("sendMessage", {
+    const settings = await services.settingsForOwner(connection.ownerId);
+    const send = (text: string, reply_markup?: object, parse_mode?: "HTML") => services.telegram("sendMessage", {
       chat_id: customer!.chatId, text: customerMessageText(text), ...(reply_markup ? { reply_markup } : {}),
       ...(parse_mode ? { parse_mode } : {}),
     });
@@ -137,9 +140,14 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         // Acknowledge promptly; this has no financial side effects.
         // Telegram can expire the spinner acknowledgment before retrying a webhook.
         // Its failure must not block idempotent checkout/delivery recovery.
-        await telegram("answerCallbackQuery", { callback_query_id: update.callback_query.id }).catch(() => undefined);
+        await services.telegram("answerCallbackQuery", { callback_query_id: update.callback_query.id }).catch(() => undefined);
       }
-      if (data === "cancel_home" || data === "history_home") {
+      if (settings.maintenanceMode) {
+        // Keep polling and payment reconciliation alive, but never run a
+        // customer command/callback or retain a pending purchase selection.
+        await db.update(botCustomers).set({ state: {} }).where(eq(botCustomers.id, customer!.id));
+        await sendMaintenanceNotice(customer!.chatId, services.telegram);
+      } else if (data === "cancel_home" || data === "history_home") {
         const removed = Number.isSafeInteger(message.message_id)
           ? await dismissCustomerMessage(connection.ownerId, customer!.id, message.message_id!) : true;
         await db.update(botCustomers).set({ state: {} }).where(eq(botCustomers.id, customer!.id));
