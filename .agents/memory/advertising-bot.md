@@ -3,11 +3,11 @@ name: Separate advertising account
 description: Merchant-required Telegram personal-account advertising, independent of the shop bot, with explicit recurring group controls.
 ---
 
-The user now requires advertising through a personal Telegram account, not an advertising bot, inside the same dashboard. Support both phone plus login code and QR login, Telegram two-step verification, selected destination groups, individual group intervals, and Start/Stop controls. Keep advertisement editing, `.txt` group-link segregation and manual group entry.
+The user explicitly requires advertising through their own Telegram client account, not an advertising bot, inside the same dashboard. Support both phone plus login code and QR login, Telegram two-step verification, selected destination groups, individual group intervals, and Start/Stop controls. Keep advertisement editing, `.txt` group-link segregation and manual group entry.
 
 **Why:** The user explicitly replaced the earlier separate-bot approach with an account that can chat in groups. They were concerned about advertisements interfering with customers using the shop bot.
 
-**How to apply:** Never reuse or change the shop bot credentials/sending path for advertisements. Keep advertising independent of shop maintenance. Stop legacy advertising-bot jobs during the switch, preserve history, and require explicit selected-group confirmation before any account posting.
+**How to apply:** Keep the personal-account approach when diagnosing authentication or Telegram security notifications; do not propose replacing it with an advertising bot. Never reuse or change the shop bot credentials/sending path for advertisements. Keep advertising independent of shop maintenance. Stop legacy advertising-bot jobs during the switch, preserve history, and require explicit selected-group confirmation before any account posting.
 
 Account authorization belongs in the protected dashboard, never chat. Explain the API app ID/hash requirement and full-account access, and allow checking connection and revoking the saved session.
 
