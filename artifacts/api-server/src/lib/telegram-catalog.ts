@@ -27,7 +27,7 @@ export function productCatalogMenu(input: CatalogProduct[], requestedPage = 0, c
     const productName = Array.from(customerMessageText(product.name)).slice(0, 20).join("");
     return {
     ...(customId ? { icon_custom_emoji_id: customId } : {}),
-    text: `${customId ? "" : `${isProductEmoji(product.buttonEmoji) ? product.buttonEmoji : "🛍"} `}${productName} · $${product.price.toFixed(2)} · 📦 ${product.stock}`,
+    text: `${customId ? "" : `${isProductEmoji(product.buttonEmoji) ? product.buttonEmoji : "🛍"} `}${productName} · $${product.price.toFixed(2)}`,
     callback_data: `buy:${product.id}`,
   }; });
   const inline_keyboard = Array.from({ length: Math.ceil(buttons.length / 2) },
@@ -43,7 +43,7 @@ export function productCatalogMenu(input: CatalogProduct[], requestedPage = 0, c
   ]);
   return {
     text: products.length
-      ? `🛍 <b>Browse products</b>\n\n📖 Page <b>${page + 1} of ${pages}</b> · Products ${start + 1}–${start + entries.length} of ${products.length}\n\n💵 Unit prices · 📦 Available stock\nTap a product, then choose how many you want.`
+      ? `🛍 <b>Browse products</b>\n\n📖 Page <b>${page + 1} of ${pages}</b> · Products ${start + 1}–${start + entries.length} of ${products.length}\n\n💵 Unit prices\nTap a product, then type your quantity in chat.`
       : "📦 <b>No stock available</b>\n\nPlease check back soon.",
     reply_markup: { inline_keyboard },
   };

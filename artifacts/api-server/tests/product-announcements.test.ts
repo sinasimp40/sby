@@ -78,7 +78,7 @@ test("first stocked announcement is remembered across concurrent calls and empty
   }
 });
 
-test("catalog buttons show product details without a Buy now label or extra cart icon", async () => {
+test("catalog buttons show icon, name and price without stock count or Buy now label", async () => {
   const { productCatalogMenu } = await import("../src/lib/telegram-catalog");
   const menu = productCatalogMenu([{ ...product, price: 4.25 }]);
   const button = menu.reply_markup.inline_keyboard.flat().find(item => item.callback_data === "buy:42");
@@ -86,14 +86,15 @@ test("catalog buttons show product details without a Buy now label or extra cart
   assert.doesNotMatch(button.text, /Buy now/i);
   assert.match(button.text, /VIP/);
   assert.match(button.text, /\$4\.25/);
-  assert.match(button.text, /📦 8/);
+  assert.doesNotMatch(button.text, /📦|stock/i);
+  assert.doesNotMatch(menu.text, /Available stock/);
   assert.doesNotMatch(button.text, /🛒/);
   const musicProduct = { ...product, name: "test1", price: 1, buttonEmoji: "🎵" };
   const ordinary = productCatalogMenu([musicProduct]).reply_markup.inline_keyboard[0]![0]!;
-  assert.equal(ordinary.text, "🎵 test1 · $1.00 · 📦 8");
+  assert.equal(ordinary.text, "🎵 test1 · $1.00");
   const custom = productCatalogMenu([{ ...musicProduct, buttonCustomEmojiId: "12345" }]).reply_markup.inline_keyboard[0]![0]!;
   assert.equal("icon_custom_emoji_id" in custom && custom.icon_custom_emoji_id, "12345");
-  assert.equal(custom.text, "test1 · $1.00 · 📦 8");
+  assert.equal(custom.text, "test1 · $1.00");
   const fallback = productCatalogMenu([{ ...musicProduct, buttonCustomEmojiId: "12345" }], 0, false).reply_markup.inline_keyboard[0]![0]!;
-  assert.equal(fallback.text, "🎵 test1 · $1.00 · 📦 8");
+  assert.equal(fallback.text, "🎵 test1 · $1.00");
 });
