@@ -19,7 +19,7 @@ const secret = { mutation: { gcTime: 0 } } as const;
 
 function StatusLine({ ws, busy }: { ws: AdvertisingWorkspace; busy: boolean }) {
   const a = ws.account;
-  const label = busy ? "Working" : a.connected ? "Connected" : a.login ? (a.login.step === "expired" ? "Login expired" : "Login in progress") : a.configured ? "Needs attention" : "Not connected";
+  const label = busy ? "Working" : a.error?.startsWith("Account network recovery [") ? "Reconnecting" : a.connected ? "Connected" : a.login ? (a.login.step === "expired" ? "Login expired" : "Login in progress") : a.configured ? "Needs attention" : "Not connected";
   const ok = a.connected && !busy;
   return <span role="status" aria-live="polite" className={cn("inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider", ok ? "text-ok" : "text-signal")} data-testid="status-ad-account"><span className={cn("h-1.5 w-1.5 rounded-full", ok ? "bg-ok" : "bg-signal")} />{label}</span>;
 }
@@ -33,9 +33,19 @@ export function AccountPanel({ ws }: { ws: AdvertisingWorkspace }) {
   const [relogin, setRelogin] = useState(false);
   const [err, setErr] = useState("");
   const a = ws.account;
+  const recovering = a.error?.startsWith("Account network recovery [") ?? false;
   const busy = check.isPending || disconnect.isPending;
   const running = ws.groups.filter(g => g.running).length;
-  const showLogin = !a.connected || relogin || !!a.login;
+  const showLogin = !recovering && (!a.connected || relogin || !!a.login);
+  const checkSession = async () => {
+    setErr("");
+    try {
+      const r = await check.mutateAsync(); sync(r);
+      const pending = r.account.error?.startsWith("Account network recovery [");
+      toast({ title: r.account.connected ? "Session is valid" : pending ? "Saved-session recovery queued" : "Session check failed",
+        variant: r.account.connected || pending ? "default" : "destructive" });
+    } catch (x) { setErr(errMsg(x)); }
+  };
   return (
     <Panel title="Telegram account" meta={<StatusLine ws={ws} busy={busy} />}>
       <p className="mb-4 rounded-lg border border-signal/30 bg-signal-soft/40 p-3 text-xs text-muted-foreground" data-testid="text-telegram-security-warning">If Telegram reports suspicious activity, resets sessions or freezes bots, stop and review Telegram Settings → Devices and the official security notice. Do not repeatedly scan, log in or check channels. Telecart cannot lift Telegram restrictions. Use your own API app credentials and only one server for this account session. Channel checks do not join channels or send advertisements.</p>
@@ -47,13 +57,17 @@ export function AccountPanel({ ws }: { ws: AdvertisingWorkspace }) {
               <div className="truncate text-sm font-semibold" data-testid="text-ad-account-name">{a.displayName || "Telegram account"}</div>
               <div className="truncate font-mono text-xs text-muted-foreground" data-testid="text-ad-account-username">{a.username ? `@${a.username}` : a.accountId ? `id ${a.accountId}` : ""}{a.checkedAt ? ` · checked ${ago(a.checkedAt)}` : ""}</div>
             </div>
-            <Button size="sm" variant="outline" disabled={busy} onClick={async () => { setErr(""); try { const r = await check.mutateAsync(); sync(r); toast({ title: r.account.connected ? "Session is valid" : "Session check failed", variant: r.account.connected ? "default" : "destructive" }); } catch (x) { setErr(errMsg(x)); } }} data-testid="button-check-ad-account">{check.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-1 h-3.5 w-3.5" />}Check session</Button>
+            <Button size="sm" variant="outline" disabled={busy} onClick={checkSession} data-testid="button-check-ad-account">{check.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-1 h-3.5 w-3.5" />}Check session</Button>
             <Button size="sm" variant="ghost" disabled={busy} className="text-destructive" onClick={() => setConfirmOff(true)} data-testid="button-disconnect-ad-account"><Unplug className="mr-1 h-3.5 w-3.5" />Disconnect</Button>
           </div>
           {!relogin && !a.login && <button type="button" className="text-xs font-medium text-primary hover:underline" onClick={() => setRelogin(true)} data-testid="button-change-account">Log in with a different account</button>}
         </div>
       )}
-      {a.error && <p role="alert" className="mb-3 text-sm text-destructive" data-testid="error-ad-account">{a.error}</p>}
+      {a.error && <p role={recovering ? "status" : "alert"} className={cn("mb-3 text-sm", recovering ? "text-muted-foreground" : "text-destructive")} data-testid="error-ad-account">{recovering
+        ? `Temporary network interruption. ${/^Account network recovery \[(\d)\/3;/.exec(a.error)?.[1] ?? "0"} of 3 recovery attempts used. Retrying the same saved authorization with backoff—not a new login. Uncertain posts are not resent and paused groups remain paused.`
+        : a.error}</p>}
+      {a.configured && !a.connected && !a.login && !recovering && /^Account connection stopped \[(CONNECTION_LOST|REQUEST_TIMEOUT|TRANSPORT_UNAVAILABLE)\]/.test(a.error ?? "") &&
+        <Button size="sm" variant="outline" disabled={busy} onClick={checkSession} className="mb-3 mr-2" data-testid="button-recover-ad-account">Retry saved connection</Button>}
       {err && <p role="alert" className="mb-3 text-sm text-destructive" data-testid="error-ad-account-action">{err}</p>}
       {a.configured && !a.connected && <Button size="sm" variant="outline" className="mb-3" onClick={() => setConfirmOff(true)}>Disconnect saved session</Button>}
       {a.appConfigured && <AppSetup ws={ws} />}

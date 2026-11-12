@@ -9,7 +9,8 @@ import { AccountError, safeAccountError, createAccountDriver, type AccountFactor
 import { connectedLoginDriver, closeQrDriver } from "./advertising-account-qr";
 import { connectedAccountSession, closeAccountSession, loginConnectionKey, accountConnectionKey,
   promoteAccountSession, setAccountSessionFailureHandler } from "./advertising-account-session";
-import { isSessionStopped, sessionStopped, stoppedAccountError, reportAccountError, type AccountOperation } from "./advertising-account-errors";
+import { isSessionStopped, isTransportFailure, sessionStopped, stoppedAccountError, reportAccountError, type AccountOperation } from "./advertising-account-errors";
+import { queueNetworkRecovery, recoveryState, recoverAccountConnection } from "./advertising-account-recovery";
 
 export type PendingAccountLogin = { id: string; method: "qr" | "phone"; step: "qr" | "code" | "password"; apiId: number; apiHash: string; session: string; phone?: string; hash?: string; qrUrl?: string; expires: number };
 const seal = (value: string, owner: string) => encryptProviderSecret(value, owner, "advertising-account");
@@ -49,16 +50,18 @@ async function savePending(owner: string, p: PendingAccountLogin, client: Advert
     ON CONFLICT(owner_id) DO UPDATE SET login_id=EXCLUDED.login_id,login_encrypted=EXCLUDED.login_encrypted,login_expires_at=EXCLUDED.login_expires_at`,
     [owner, p.id, seal(JSON.stringify(p), owner), new Date(p.expires)]);
 }
-async function recordStoppedAccount(owner: string, client: AdvertisingClient, generation: number, error: AccountError) {
+export async function recordStoppedAccount(owner: string, client: AdvertisingClient, generation: number, error: AccountError) {
   const row = (await client.query("SELECT generation,last_error FROM advertising_accounts WHERE owner_id=$1", [owner])).rows[0];
   if (!row || row.generation !== generation) return;
   const message = sessionStopped(error);
   if (row.last_error !== message) await stopAccountSchedules(owner, client, undefined, message);
   await client.query("UPDATE advertising_accounts SET last_error=$2,checked_at=now() WHERE owner_id=$1", [owner, message]);
 }
-function watchAccount(owner: string, generation: number) {
+export function watchAccount(owner: string, generation: number) {
   return (error: AccountError) => {
-    void withAdvertisingLock(owner, client => recordStoppedAccount(owner, client, generation, error))
+    void withAdvertisingLock(owner, client => isTransportFailure(error)
+      ? queueNetworkRecovery(owner, client, generation, error)
+      : recordStoppedAccount(owner, client, generation, error))
       .catch(error => { reportAccountError("background", error); });
   };
 }
@@ -205,6 +208,7 @@ export async function withAccountDriver<T>(owner: string, client: AdvertisingCli
   const row = (await client.query("SELECT * FROM advertising_accounts WHERE owner_id=$1", [owner])).rows[0];
   if (!row?.session_encrypted || !row.api_hash_encrypted || !row.api_id) throw new AccountError("Connect your Telegram account first.");
   if (row.login_encrypted) throw new AccountError("Finish or cancel the pending account login first.");
+  if (recoveryState(row.last_error)) throw new AccountError("Network recovery is in progress. No operation was replayed.");
   if (isSessionStopped(row.last_error)) throw stoppedAccountError(row.last_error);
   const key = accountConnectionKey(row.generation);
   let driver: AccountDriver | undefined;
@@ -220,7 +224,8 @@ export async function withAccountDriver<T>(owner: string, client: AdvertisingCli
   catch (error) {
     const safe = reportAccountError(operation, error);
     if (["auth", "restricted", "network"].includes(safe.kind)) {
-      await recordStoppedAccount(owner, client, row.generation, safe);
+      if (isTransportFailure(safe)) await queueNetworkRecovery(owner, client, row.generation, safe);
+      else await recordStoppedAccount(owner, client, row.generation, safe);
       await closeAccountSession(owner, key, safe);
     } else if (safe.kind === "rate_limit") {
       await client.query("UPDATE advertising_accounts SET next_send_at=greatest(next_send_at,now()+$2*interval '1 second') WHERE owner_id=$1", [owner, safe.waitSeconds]);
@@ -230,6 +235,13 @@ export async function withAccountDriver<T>(owner: string, client: AdvertisingCli
 }
 export async function checkAccountConnection(owner: string, factory: AccountFactory = createAccountDriver) {
   return withAdvertisingLock(owner, async client => {
+    const row = (await client.query("SELECT generation,last_error FROM advertising_accounts WHERE owner_id=$1", [owner])).rows[0];
+    if (/^Account connection stopped \[(CONNECTION_LOST|REQUEST_TIMEOUT|TRANSPORT_UNAVAILABLE)\]/.test(row?.last_error ?? ""))
+      await queueNetworkRecovery(owner, client, row.generation, stoppedAccountError(row.last_error));
+    if (recoveryState((await client.query("SELECT last_error FROM advertising_accounts WHERE owner_id=$1", [owner])).rows[0]?.last_error)) {
+      await recoverAccountConnection(owner, client, factory);
+      return;
+    }
     try {
       await withAccountDriver(owner, client, async (driver, row) => {
         const me = await driver.me();
@@ -238,6 +250,7 @@ export async function checkAccountConnection(owner: string, factory: AccountFact
       }, factory, "check_account");
     } catch (error) {
       const safe = safeAccountError(error);
+      if (isTransportFailure(safe)) return; // Already queued; do not turn a recoverable drop into a hard stop.
       await stopAccountSchedules(owner, client, undefined, "Posting stopped because the account connection could not be verified.");
       await client.query("UPDATE advertising_accounts SET checked_at=now(),last_error=$2 WHERE owner_id=$1", [owner,
         ["auth", "restricted", "network"].includes(safe.kind) ? sessionStopped(safe) : safe.message]);

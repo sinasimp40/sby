@@ -7,6 +7,7 @@ import { withAccountDriver, stopAccountSchedules } from "./advertising-account-a
 import { accountMessage, AccountError, safeAccountError, createAccountDriver, type AccountFactory } from "./advertising-account-driver";
 import { assertTransferReviewed } from "./shop-transfer-safety";
 import { logger } from "./logger";
+import { processAccountRecovery, recoveryState } from "./advertising-account-recovery";
 
 export async function startAccountSchedules(owner: string, input: AdvertisingAccountStartInput) {
   if (!input.permissionConfirmed) throw new AccountError("Confirm permission to post this recurring advertisement in every selected group.");
@@ -67,6 +68,7 @@ export async function processAccountSchedules(owner: string, factory: AccountFac
     const schedule = (await client.query("SELECT * FROM advertising_schedules WHERE owner_id=$1 AND running=true AND next_send_at<=now() ORDER BY next_send_at,group_id LIMIT 1", [owner])).rows[0];
     if (!schedule) return;
     const account = (await client.query("SELECT * FROM advertising_accounts WHERE owner_id=$1", [owner])).rows[0];
+    if (recoveryState(account?.last_error)) return; // Keep enabled schedules waiting; never dispatch while recovering.
     if (!account?.session_encrypted || account.last_error || account.login_encrypted || account.generation !== schedule.account_generation) {
       await stopAccountSchedules(owner, client, undefined, "Posting stopped because the account connection changed."); return;
     }
@@ -126,7 +128,7 @@ export async function processAccountSchedules(owner: string, factory: AccountFac
 }
 export async function runAccountAdvertisingWorker() {
   for (;;) {
-    try { const owner = configuredOwnerId(); if (owner) await processAccountSchedules(owner); }
+    try { const owner = configuredOwnerId(); if (owner) { await processAccountRecovery(owner); await processAccountSchedules(owner); } }
     catch { logger.warn("Account advertising sender could not complete a queue check."); }
     await new Promise(resolve => setTimeout(resolve, 3000));
   }

@@ -1,7 +1,7 @@
 import { pool } from "@workspace/db";
 import type { PoolClient } from "pg";
 import type { AccountDriver, AccountFactory } from "./advertising-account-driver";
-import { AccountError, reportAccountError } from "./advertising-account-errors";
+import { AccountError, isTransportFailure, reportAccountError } from "./advertising-account-errors";
 
 type DriverInput = Parameters<AccountFactory>[0];
 type Entry = {
@@ -22,12 +22,16 @@ export const accountConnectionKey = (generation: number) => `account:${generatio
 
 // Call under withAdvertisingLock. The dedicated lease remains held between RPCs.
 export async function connectedAccountSession(owner: string, key: string, input: DriverInput, factory: AccountFactory,
-  options: { expires?: number; allowRestore?: boolean; onFailure?: (error: AccountError) => void } = {}) {
+  options: { expires?: number; allowRestore?: boolean; recoverTransport?: boolean; onFailure?: (error: AccountError) => void } = {}) {
   if (stopping) throw new AccountError("Account connections are shutting down. No request was sent.", "network", 0, "CONNECTION_CLOSED");
   await closing.get(owner);
   if (quarantined.has(owner)) throw new AccountError("The previous connection could not be fully closed. Restart this server before connecting again.", "network", 0, "CONNECTION_CLOSED");
   const failure = failed.get(owner);
-  if (failure?.key === key) throw failure.error; // No implicit reconnect after failure.
+  if (failure?.key === key) {
+    if (!options.recoverTransport || !(isTransportFailure(failure.error) ||
+      (failure.error.kind === "network" && failure.error.telegramCode === "UNKNOWN"))) throw failure.error;
+    failed.delete(owner); // Only the bounded recovery coordinator may opt in.
+  }
   const current = live.get(owner);
   if (current?.key === key && current.factory === factory) {
     if (options.onFailure) current.onFailure = options.onFailure;
@@ -47,7 +51,7 @@ export async function connectedAccountSession(owner: string, key: string, input:
     leaseLost = true;
     const error = new AccountError("The account connection lost its exclusive server lease and was closed. Review the connection before proceeding.",
       "network", 0, "CONNECTION_LEASE_LOST");
-    if (entry) failAccountSession(owner, entry.key, error);
+    if (entry && published) failAccountSession(owner, entry.key, error);
     else void driver?.disconnect().catch(() => undefined);
   };
   lease.once("error", onLeaseError);
@@ -56,9 +60,9 @@ export async function connectedAccountSession(owner: string, key: string, input:
     if (!locked) throw new AccountError("This Telegram account connection is active on another server. Use only one Telecart server. No second connection was opened.", "network", 0, "CONNECTION_LEASE_LOST");
     if (stopping || leaseLost) throw new AccountError("Account connection ownership could not be confirmed.", "network", 0, "CONNECTION_LEASE_LOST");
     driver = factory(input);
+    entry = { key, driver, factory, lease, onFailure: options.onFailure, onLeaseError };
     await driver.connect();
     if (stopping || leaseLost) throw new AccountError("Account connection ownership was lost during setup.", "network", 0, "CONNECTION_LEASE_LOST");
-    entry = { key, driver, factory, lease, onFailure: options.onFailure, onLeaseError };
     const ready = entry;
     if (options.expires) {
       entry.timer = setTimeout(() => { void closeAccountSession(owner, key).catch(() => undefined); }, Math.max(1, options.expires - Date.now()));
@@ -70,7 +74,10 @@ export async function connectedAccountSession(owner: string, key: string, input:
     return driver;
   } catch (error) {
     // A published entry owns its lease; otherwise this setup attempt owns it.
-    if (published) await closeAccountSession(owner, key);
+    if (entry) {
+      if (!published) quarantined.set(owner, entry);
+      await closeAccountSession(owner, key);
+    }
     else {
       await driver?.disconnect().catch(() => undefined);
       if (locked) await lease.query("SELECT pg_advisory_unlock(hashtextextended($1,76))", [lockKey(owner)]).catch(() => undefined);

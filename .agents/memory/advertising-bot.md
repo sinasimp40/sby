@@ -57,17 +57,23 @@ Treat Telegram security notifications and session revocations as a reason to sto
 
 **How to apply:** Keep pending QR ownership exclusive across servers, never automatically retry a failed login indefinitely, and preserve read-only group checks. Diagnose with synthetic RPC/browser responses unless a real account action is explicitly authorized. Do not claim app fixes can reverse Telegram restrictions or prove what caused a security notification.
 
-Prioritize session containment over automatic recovery after a security or uncertain connection failure.
+Prioritize session containment after security failures, but distinguish temporary network loss from revoked authorization.
 
-**Why:** The user approved hardening their own account connection after repeated account-wide security notices. Retrying an invalid authorization just to discover groups, check it or log out can expose the account to further security actions; a temporary loss of availability is preferable.
+**Why:** The user approved hardening after repeated security notices, then explicitly approved bounded network recovery when transient transport drops stopped advertising even though Telegram still listed the authorization in Devices. A network socket closure alone does not establish revocation; repeatedly creating new logins is not the remedy.
 
-**How to apply:** Keep the original connection through authorization and subsequent account actions; require explicit fresh authorization after a stop, and never restart advertising automatically. Locks protect only installations sharing their database, not separately copied databases.
+**How to apply:** Keep exclusive ownership and fully dispose of the old client before bounded transport recovery. Reuse and pin the saved authorization, verify the same account, and never enable the SDK's request-replaying reconnect loop. Security/identity failures, lease loss, failed disposal and exhausted recovery remain hard stops. Never replay uncertain posts, enable paused groups or send catch-up bursts. Locks protect only installations sharing their database, not separately copied databases.
 
 Do not rely solely on GramJS 2.26's `autoReconnect: false` option.
 
 **Why:** The installed sender stores that setting but does not consult it in its reconnect path, including delayed retries. A declared no-reconnect policy is not enforced by that option.
 
 **How to apply:** Preserve explicit sender/lifecycle guards and native-SDK regression coverage. Re-audit this behavior when changing versions; never allow a closed or failed client to send the next RPC or a delayed post.
+
+Load a saved GramJS StringSession before deciding whether its authorization key exists.
+
+**Why:** Its constructor decodes serialized key bytes, but the public `authKey` remains empty until asynchronous `load()` completes. Checking immediately would incorrectly reject every valid stored authorization during recovery.
+
+**How to apply:** Await loading before pinning a copy of the existing key, and keep a regression using a real serialized SDK session with all network methods mocked. Never respond to a missing key by generating another authorization automatically.
 
 Check upstream maintenance and distinguish logout reports from verified fixes before changing Telegram client libraries.
 

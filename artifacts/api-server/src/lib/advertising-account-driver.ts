@@ -37,9 +37,12 @@ export interface AccountDriver {
   send(chatId: string, draft: AdvertisingDraft, randomId: string): Promise<AccountPostReceipt>;
   logout(): Promise<void>;
 }
-export type AccountFactory = (input: { apiId: number; apiHash: string; session?: string }) => AccountDriver;
-export const createAccountDriver: AccountFactory = ({ apiId, apiHash, session = "" }) => {
+export type AccountFactory = (input: { apiId: number; apiHash: string; session?: string; preserveAuthorization?: boolean }) => AccountDriver;
+export const createAccountDriver: AccountFactory = ({ apiId, apiHash, session = "", preserveAuthorization = false }) => {
   const store = new StringSession(session);
+  let originalKey: Buffer | undefined;
+  if (preserveAuthorization && !session)
+    throw new AccountError("The saved authorization key is missing. Recovery will not create a new login.", "auth", 0, "AUTH_KEY_INVALID");
   const client = new TelegramClient(store, apiId, apiHash, {
     baseLogger: new Logger(LogLevel.NONE), connectionRetries: 1, requestRetries: 1,
     floodSleepThreshold: 0, autoReconnect: false, retryDelay: 500, timeout: 10,
@@ -58,14 +61,15 @@ export const createAccountDriver: AccountFactory = ({ apiId, apiHash, session = 
     available();
     try { return await bounded(fn); }
     catch (error) {
-      const safe = reportAccountError(operation, error);
+      const raw = safeAccountError(error);
+      const safe = reportAccountError(operation, ["auth", "restricted"].includes(raw.kind) ? raw : fatal ?? raw);
       if (["auth", "restricted", "network"].includes(safe.kind)) fatal = safe;
       throw safe;
     }
   };
   const connectionLost = () => {
     if (closed || fatal) return;
-    fatal = new AccountError("The Telegram connection was lost and advertising stopped. Automatic reconnection was blocked. Review Telegram Devices before proceeding.",
+    fatal = new AccountError("The Telegram network connection was interrupted. The old client was closed; bounded recovery may reuse the saved authorization. This alone does not mean Telegram logged you out.",
       "network", 0, "CONNECTION_LOST");
     reportAccountError("background", fatal);
     if (onFailure) onFailure(fatal);
@@ -86,7 +90,11 @@ export const createAccountDriver: AccountFactory = ({ apiId, apiHash, session = 
       const connectSender = next.connect.bind(next);
       next.connect = async (...args) => {
         available();
+        if (preserveAuthorization && (!originalKey || !originalKey.equals(next.authKey.getKey() ?? Buffer.alloc(0))))
+          throw new AccountError("Recovery cannot replace or generate an authorization key.", "auth", 0, "AUTH_KEY_INVALID");
         const result = await connectSender(...args);
+        if (preserveAuthorization && (!originalKey || !originalKey.equals(next.authKey.getKey() ?? Buffer.alloc(0))))
+          throw new AccountError("The authorization key changed during recovery.", "auth", 0, "AUTH_KEY_INVALID");
         if (closed || fatal) { await next.disconnect(); available(); }
         return result;
       };
@@ -102,15 +110,30 @@ export const createAccountDriver: AccountFactory = ({ apiId, apiHash, session = 
   const connect = client.connect.bind(client);
   client.connect = async () => {
     available();
+    if (preserveAuthorization && !originalKey) {
+      // StringSession's constructor only decodes _key. Public authKey is
+      // populated asynchronously by load(), even for a valid saved session.
+      await store.load();
+      available();
+      const key = store.authKey?.getKey();
+      if (!key?.length) throw new AccountError("The saved authorization key is missing. Recovery will not create a new login.",
+        "auth", 0, "AUTH_KEY_INVALID");
+      originalKey = Buffer.from(key);
+    }
     const result = await connect();
     if (closed || fatal) { await client.destroy(); available(); }
     return result;
   };
   const switchDC = client._switchDC.bind(client);
-  client._switchDC = async dc => { available(); return switchDC(dc); };
+  client._switchDC = async dc => {
+    available();
+    if (preserveAuthorization && dc !== store.dcId)
+      throw new AccountError("Recovery will not migrate or replace this authorization. Review the account connection.", "auth", 0, "AUTH_KEY_INVALID");
+    return switchDC(dc);
+  };
   client.onError = async error => {
     if (closed || fatal) return;
-    if (!authorized && (error as { errorMessage?: string }).errorMessage === "AUTH_KEY_UNREGISTERED") return;
+    if (!authorized && !preserveAuthorization && (error as { errorMessage?: string }).errorMessage === "AUTH_KEY_UNREGISTERED") return;
     const safe = reportAccountError("background", error);
     if (["auth", "restricted", "network"].includes(safe.kind)) { fatal = safe; onFailure?.(safe); }
   };

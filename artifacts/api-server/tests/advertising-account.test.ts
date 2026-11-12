@@ -11,6 +11,8 @@ import { processAccountSchedules, stopSelectedAccountSchedules } from "../src/li
 import { exportShopTransfer, previewShopTransfer, importShopTransfer } from "../src/lib/shop-transfer";
 import { decodeShopArchive } from "../src/lib/shop-transfer-archive";
 import { validateShopRelationships } from "../src/lib/shop-transfer-validation";
+import { withAdvertisingLock } from "../src/lib/advertising-store";
+import { recoverAccountConnection, recoveryState } from "../src/lib/advertising-account-recovery";
 
 test("account message includes a plain shop link, never a bot button, and validates its complete length", () => {
   const draft = { text: "Hello", imageUrl: null, buttonText: "Visit shop", buttonUrl: "https://t.me/TEST_ONLY_shop_bot" };
@@ -66,6 +68,7 @@ test("account sign-in, selected-group schedules and transfers are safe without r
         posts.push({ chatId, text: accountMessage(draft).text, randomId });
         if (sendMode === "flood") throw new AccountError("Wait for Telegram.", "rate_limit", 120);
         if (sendMode === "unknown") throw new AccountError("Unconfirmed send.", "network");
+        if (sendMode === "transport") throw new AccountError("TEST_ONLY lost transport", "network", 0, "CONNECTION_LOST");
         if (sendMode === "missing_receipt") return undefined as any;
         return { chatId, messageId: posts.length };
       },
@@ -216,6 +219,24 @@ test("account sign-in, selected-group schedules and transfers are safe without r
       assert.equal((await start([group.id])).status, 400);
       sendMode = "ok";
       await explicitlyAuthorizeAgain();
+    });
+    await t.test("transport recovery never replays an uncertain post or re-enables its stopped group", async () => {
+      sendMode = "transport";
+      await start(groups.slice(0, 2).map(group => group.id)); await resetGlobalWait();
+      await processAccountSchedules(owner, factory);
+      const state = recoveryState((await accountStatus(owner)).error)!;
+      assert.ok(state);
+      const failed = (await pool.query("SELECT group_id,status FROM advertising_account_runs WHERE owner_id=$1 ORDER BY started_at DESC LIMIT 1", [owner])).rows[0];
+      assert.equal(failed.status, "uncertain");
+      assert.equal((await pool.query("SELECT running FROM advertising_schedules WHERE group_id=$1", [failed.group_id])).rows[0].running, false);
+      const before = posts.length;
+      sendMode = "ok";
+      await withAdvertisingLock(owner, client => recoverAccountConnection(owner, client, factory, state.next));
+      assert.equal((await accountStatus(owner)).connected, true);
+      await resetGlobalWait(); await processAccountSchedules(owner, factory);
+      assert.equal(posts.length, before, "no replay or catch-up burst after recovery");
+      assert.equal((await pool.query("SELECT running FROM advertising_schedules WHERE group_id=$1", [failed.group_id])).rows[0].running, false);
+      await stopSelectedAccountSchedules(owner);
     });
     await t.test("a completed send without a receipt is uncertain, stops the account and never repeats", async () => {
       sendMode = "missing_receipt";
