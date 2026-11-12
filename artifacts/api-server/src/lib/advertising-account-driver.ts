@@ -21,6 +21,7 @@ export function safeAccountError(error: unknown): AccountError {
   if (["PHONE_CODE_EXPIRED", "AUTH_TOKEN_EXPIRED", "AUTH_TOKEN_INVALID"].includes(code)) return new AccountError("This sign-in challenge expired. Cancel it and start again.", "expired");
   if (["API_ID_INVALID", "API_ID_PUBLISHED_FLOOD"].includes(code)) return new AccountError("Telegram rejected these API app credentials. Check your API ID and API hash.");
   if (code === "PHONE_NUMBER_INVALID") return new AccountError("Use your phone number in international +country-code format.");
+  if (code === "USER_NOT_PARTICIPANT") return new AccountError("The Telegram account connected in Advertising is not a member of this group. Check that it is the same account you used to join.");
   if (["AUTH_KEY_UNREGISTERED", "AUTH_KEY_DUPLICATED", "SESSION_REVOKED", "SESSION_EXPIRED", "USER_DEACTIVATED", "USER_DEACTIVATED_BAN"].includes(code))
     return new AccountError("The Telegram account session is no longer valid. Posting has stopped; sign in again.", "auth");
   if (["CHAT_WRITE_FORBIDDEN", "USER_BANNED_IN_CHANNEL", "CHAT_ADMIN_REQUIRED", "CHANNEL_PRIVATE", "USER_NOT_PARTICIPANT", "CHAT_SEND_PLAIN_FORBIDDEN", "CHAT_SEND_MEDIA_FORBIDDEN"].includes(code))
@@ -66,21 +67,24 @@ export const createAccountDriver: AccountFactory = ({ apiId, apiHash, session = 
     deviceModel: "Telecart Advertising", appVersion: "1.0",
   });
   let dialogs: Awaited<ReturnType<typeof client.getDialogs>> | null = null;
+  const resolvedGroups = new Map<string, Api.Chat | Api.Channel>();
   const joined = async () => {
     if (!dialogs) dialogs = await client.getDialogs({ limit: 1000, ignoreMigrated: true });
     return dialogs.filter(d => d.entity instanceof Api.Chat || d.entity instanceof Api.Channel);
   };
   const inspect = async (target: string, draft?: AdvertisingDraft) => bounded(async () => {
-    const list = await joined();
-    let dialog = list.find(d => d.id?.toString() === target);
-    if (!dialog && target.startsWith("@")) {
-      const entity = await client.getEntity(target);
-      const id = utils.getPeerId(entity).toString();
-      dialog = list.find(d => d.id?.toString() === id);
+    let entity = resolvedGroups.get(target);
+    if (!entity && target.startsWith("@")) {
+      // Public username resolution plus GetParticipant is authoritative. The
+      // first 1,000 dialogs can omit an older joined group; absence isn't proof.
+      const candidate = await client.getEntity(target);
+      if (candidate instanceof Api.Chat || candidate instanceof Api.Channel) entity = candidate;
     }
-    if (!dialog || !(dialog.entity instanceof Api.Chat || dialog.entity instanceof Api.Channel))
-      throw new AccountError("The account must already be a member of this group. Join it manually in Telegram, then discover/check it again.");
-    const entity = dialog.entity;
+    if (!entity && !target.startsWith("@")) {
+      const dialog = (await joined()).find(d => d.id?.toString() === target);
+      if (dialog?.entity instanceof Api.Chat || dialog?.entity instanceof Api.Channel) entity = dialog.entity;
+    }
+    if (!entity) throw new AccountError("Could not resolve this group for the connected Telegram account. Check the account shown in Advertising, or use the group's public @username.");
     if (entity.left || (entity instanceof Api.Chat && entity.deactivated)) throw new AccountError("This account is no longer a member of this group.");
     let admin = entity.creator || Boolean(entity.adminRights);
     let personalBan: Api.ChatBannedRights | undefined;
@@ -97,14 +101,17 @@ export const createAccountDriver: AccountFactory = ({ apiId, apiHash, session = 
       const me = await client.getMe();
       if (!(full.fullChat instanceof Api.ChatFull)) throw new AccountError("Could not verify group membership.");
       const participants = full.fullChat.participants;
-      if (participants instanceof Api.ChatParticipants && !participants.participants.some(p => p.userId.equals(me.id)))
-        throw new AccountError("The account is not a member of this group.");
+      if (!(participants instanceof Api.ChatParticipants) || !participants.participants.some(p => p.userId.equals(me.id)))
+        throw new AccountError("Could not verify that the connected Telegram account is a member of this group.");
     }
     const restrictions = [personalBan, ...(admin ? [] : [entity.defaultBannedRights])];
     const media = draft?.imageUrl;
     if (restrictions.some(r => r?.sendMessages || r?.sendPlain || (media && (r?.sendMedia || r?.sendPhotos || r?.sendGifs))))
       throw new AccountError("This account lacks permission to send this message/media in the group.");
-    return { chatId: dialog.id!.toString(), target: dialog.id!.toString(), title: dialog.title ?? target };
+    const chatId = utils.getPeerId(entity).toString();
+    resolvedGroups.set(chatId, entity);
+    resolvedGroups.set(target, entity);
+    return { chatId, target: chatId, title: utils.getDisplayName(entity) || target };
   });
   return {
     connect: () => bounded(async () => { await client.connect(); }),
@@ -144,9 +151,9 @@ export const createAccountDriver: AccountFactory = ({ apiId, apiHash, session = 
     inspect,
     send: (chatId, draft, randomId) => bounded(async () => {
       await inspect(chatId, draft);
-      const dialog = (await joined()).find(d => d.id?.toString() === chatId)!;
+      const entity = resolvedGroups.get(chatId)!;
       const message = accountMessage(draft);
-      const common = { peer: dialog.inputEntity!, message: message.text, randomId: bigInt(randomId) };
+      const common = { peer: utils.getInputPeer(entity), message: message.text, randomId: bigInt(randomId) };
       if (message.imageUrl) {
         const gif = new URL(message.imageUrl).pathname.toLowerCase().endsWith(".gif");
         const media = gif ? new Api.InputMediaDocumentExternal({ url: message.imageUrl }) : new Api.InputMediaPhotoExternal({ url: message.imageUrl });

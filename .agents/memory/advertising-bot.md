@@ -27,6 +27,12 @@ A group link does not grant membership or posting permission. Do not automatical
 
 **How to apply:** Segregate and deduplicate before saving, discover only already-joined groups/channels, require permission confirmation, and verify membership/posting rights before sends. Keep unresolved invite links out of active schedules.
 
+Absence from a bounded chat list is not proof that an account has not joined a group.
+
+**Why:** A Telegram account's chat list includes personal conversations as well as groups, so the first 1,000 entries can omit a joined destination.
+
+**How to apply:** For public usernames, resolve the group and verify the connected account's membership directly. Keep the confirmed chat ID fixed when a username is resolved again; never redirect a scheduled advertisement to a different group.
+
 Freeze the exact confirmed message, account, recipients and intervals. Never automatically retry an unconfirmed send, catch up missed intervals in a burst, or resume imported advertising jobs.
 
 **Why:** Advertising is an external action that cannot reliably be undone, and a network timeout can occur after Telegram accepted a message.

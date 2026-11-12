@@ -94,7 +94,7 @@ export async function processAccountSchedules(owner: string, factory: AccountFac
       await withAccountDriver(owner, client, async driver => {
         const me = await driver.me();
         if (!me || me.id !== account.account_id) throw new AccountError("The Telegram account session changed. Sign in again.", "auth");
-        const checked = await driver.inspect(group.chat_id, schedule.draft);
+        const checked = await driver.inspect(group.target, schedule.draft);
         if (checked.chatId !== group.chat_id) throw new AccountError("Group identity changed. Check it again.");
         dispatched = true;
         await driver.send(group.chat_id, schedule.draft, randomId);
