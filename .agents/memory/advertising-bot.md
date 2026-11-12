@@ -33,6 +33,12 @@ Absence from a bounded chat list is not proof that an account has not joined a g
 
 **How to apply:** For public usernames, resolve the group and verify the connected account's membership directly. Keep the confirmed chat ID fixed when a username is resolved again; never redirect a scheduled advertisement to a different group.
 
+The installed GramJS `ignoreMigrated` option incorrectly excludes channels and supergroups from dialog discovery.
+
+**Why:** Its dialog iterator tests for the presence of a migrated-chat property instead of excluding only chats with a migration destination. Discovery can consequently return success with no joined supergroups.
+
+**How to apply:** Fetch unfiltered dialogs and exclude obsolete/left groups explicitly. Retain a regression test through the real SDK dialog iterator, not only a mocked group list, when upgrading GramJS.
+
 Freeze the exact confirmed message, account, recipients and intervals. Never automatically retry an unconfirmed send, catch up missed intervals in a burst, or resume imported advertising jobs.
 
 **Why:** Advertising is an external action that cannot reliably be undone, and a network timeout can occur after Telegram accepted a message.

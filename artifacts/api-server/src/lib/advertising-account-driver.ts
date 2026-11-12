@@ -75,8 +75,14 @@ export const createAccountDriver: AccountFactory = ({ apiId, apiHash, session = 
   });
   const resolvedGroups = new Map<string, Api.Chat | Api.Channel>();
   const joined = async () => {
-    if (!dialogs) dialogs = await client.getDialogs({ limit: 1000, ignoreMigrated: true });
-    return dialogs.filter(d => d.entity instanceof Api.Chat || d.entity instanceof Api.Channel);
+    // GramJS 2.26's ignoreMigrated filter drops channels/supergroups as well.
+    // Fetch normally and exclude only obsolete or left chats ourselves.
+    if (!dialogs) dialogs = await client.getDialogs({ limit: 1000, ignoreMigrated: false });
+    return dialogs.filter(d => {
+      const entity = d.entity;
+      if (entity instanceof Api.Chat) return !entity.left && !entity.deactivated && !entity.migratedTo;
+      return entity instanceof Api.Channel && !entity.left;
+    });
   };
   const inspect = async (target: string, draft?: AdvertisingDraft) => bounded(async () => {
     let entity = resolvedGroups.get(target);

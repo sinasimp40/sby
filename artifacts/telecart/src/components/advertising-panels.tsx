@@ -135,6 +135,7 @@ export function ImportPanel({ ws }: { ws: AdvertisingWorkspace }) {
   const preview = usePreviewAdvertisingGroups();
   const add = useAddAdvertisingGroups();
   const discover = useDiscoverAdvertisingGroups();
+  const [discoveryResult, setDiscoveryResult] = useState("");
   const [text, setText] = useState("");
   const [rows, setRows] = useState<AdvertisingImportRow[] | null>(null);
   const [ok, setOk] = useState(false);
@@ -157,6 +158,22 @@ export function ImportPanel({ ws }: { ws: AdvertisingWorkspace }) {
     try { sync(await add.mutateAsync({ data: { targets: addable.map(r => r.target!), permissionConfirmed: true } })); toast({ title: `${addable.length} groups added` }); setRows(null); setText(""); setOk(false); }
     catch (x) { setErr(errMsg(x)); }
   }
+  async function discoverJoined() {
+    setErr(""); setDiscoveryResult("");
+    try {
+      const next = await discover.mutateAsync();
+      const previousIds = new Set(ws.groups.map(group => group.id));
+      const added = next.groups.filter(group => !previousIds.has(group.id)).length;
+      sync(next);
+      const result = added > 0
+        ? `${added} joined group${added === 1 ? "" : "s"}/channel${added === 1 ? "" : "s"} added. Check posting permissions before starting.`
+        : next.groups.length > 0
+          ? `No new destinations found. ${next.groups.length} already saved. No groups were joined or messages sent.`
+          : "No joined groups or channels found in the first 1,000 chats. Make sure the connected Telegram account is the one that joined them. You can also add a public @username manually.";
+      setDiscoveryResult(result);
+      toast({ title: added > 0 ? "Joined destinations added" : "Discovery completed", description: result });
+    } catch (x) { setErr(errMsg(x)); }
+  }
   const buckets: { key: string; label: string; rows: AdvertisingImportRow[] }[] = rows ? [
     { key: "new", label: "New, ready to check", rows: rows.filter(r => r.status === "new") },
     { key: "needs_setup", label: "Private invites, need setup", rows: rows.filter(r => r.status === "needs_setup") },
@@ -171,9 +188,10 @@ export function ImportPanel({ ws }: { ws: AdvertisingWorkspace }) {
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} data-testid="button-import-txt"><FileUp className="mr-1 h-3.5 w-3.5" />Import .txt</Button>
           <Button size="sm" disabled={!text.trim() || preview.isPending || text.length > 65536} onClick={segregate} data-testid="button-segregate">{preview.isPending && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}Segregate</Button>
-          <Button variant="ghost" size="sm" className="ml-auto" disabled={!ws.account.connected || discover.isPending} onClick={async () => { setErr(""); try { sync(await discover.mutateAsync()); toast({ title: "Joined groups refreshed" }); } catch (x) { setErr(errMsg(x)); } }} data-testid="button-discover-groups">{discover.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Radar className="mr-1 h-3.5 w-3.5" />}Discover joined groups</Button>
+          <Button variant="ghost" size="sm" className="ml-auto" disabled={!ws.account.connected || discover.isPending} onClick={discoverJoined} data-testid="button-discover-groups">{discover.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Radar className="mr-1 h-3.5 w-3.5" />}Discover joined groups</Button>
         </div>
-        <p className="text-xs leading-relaxed text-muted-foreground">Discover lists groups your connected account has already joined. Groups only: no channels or personal chats, and nothing is joined automatically. Private invite links stay in needs setup until you join them yourself in Telegram, then Discover or enter the negative chat ID.</p>
+        <p className="text-xs leading-relaxed text-muted-foreground">Discover scans up to 1,000 chats and lists groups and channels your connected account already belongs to—never personal chats. Nothing is joined or posted automatically. Channel posting may require administrator rights. Private invite links stay in needs setup until you join them yourself in Telegram, then Discover or enter the negative chat ID.</p>
+        {discoveryResult && <p role="status" className="text-sm text-muted-foreground" data-testid="text-discovery-result">{discoveryResult}</p>}
         {err && <p role="alert" className="text-sm text-destructive" data-testid="error-import">{err}</p>}
         {rows && (
           <div className="space-y-3 rounded-lg border bg-muted/30 p-3" data-testid="panel-import-review">
