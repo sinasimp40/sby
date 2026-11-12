@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web", "bash"]
+modules = ["web", "bash", "postgresql-16", "nodejs-22"]
 
 [deployment]
 router = "application"
@@ -28,9 +28,9 @@ TELECART_PUBLIC_URL = "https://sales-bot-dashboard.replit.app"
 [userenv.development]
 TELECART_ADMIN_EMAIL = "admin@admin.com"
 TELECART_ALLOW_WORKSPACE_TESTING = "true"
-TELECART_PUBLIC_URL = "https://c8462a00-1d36-4d97-aefc-4c882dc5ee51-00-24lqiojnd3mnp.pike.replit.dev"
+TELECART_PUBLIC_URL = "https://21c45c74-4a0b-4d69-a97d-e21eb75b371b-00-3aeml8tjcxsei.sisko.replit.dev"
 TELECART_TELEGRAM_DISABLED = "true"
-TELECART_ADMIN_ORIGIN = "https://c8462a00-1d36-4d97-aefc-4c882dc5ee51-00-24lqiojnd3mnp.pike.replit.dev"
+TELECART_ADMIN_ORIGIN = "https://21c45c74-4a0b-4d69-a97d-e21eb75b371b-00-3aeml8tjcxsei.sisko.replit.dev"
 TELECART_OWNER_ID = "local-8f1ba325-02da-4c00-a6b1-6263fa3c50c2"
 
 [nix]
