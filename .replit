@@ -1,4 +1,4 @@
-modules = ["web", "bash", "nodejs-22", "postgresql-16"]
+modules = ["web", "bash", "nodejs-22", "python-base-3.13", "postgresql-16"]
 
 [deployment]
 router = "application"
