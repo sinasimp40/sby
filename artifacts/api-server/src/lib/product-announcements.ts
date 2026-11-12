@@ -101,8 +101,7 @@ export async function announceProductAvailability(ownerId: string, productId: nu
         if (!(await getBotRuntime(ownerId)).enabled) break;
       }
       after = recipient.id;
-      // Media cards can send a heading, photo/animation, and long description.
-      await pause(message.imageUrl ? 3 : 1);
+      await pause();
     }
   }
 

@@ -31,17 +31,16 @@ test("only public HTTPS direct images and GIFs are accepted, including query str
   assert.equal(productMediaMethod(photo), "sendPhoto");
 });
 
-test("stock alerts place escaped name before photo and description under photo, retaining Buy now", async () => {
+test("stock alerts send one photo with name and description in its caption, retaining Buy now", async () => {
   const message = newStockAnnouncement({ ...product, imageUrl: photo }, 2, true);
   const { send, calls } = recorder();
   await sendProductCard("TEST_ONLY", message, send);
-  assert.deepEqual(calls.map(call => call.method), ["sendMessage", "sendPhoto"]);
-  assert.match(String(calls[0]!.body.text), /NEW PRODUCT.*\n\n.*&lt;Product&gt;/);
-  assert.doesNotMatch(String(calls[0]!.body.text), /A &amp; B/);
-  assert.match(String(calls[1]!.body.caption), /^A &amp; B/);
-  assert.equal(calls[1]!.body.photo, photo);
-  assert.deepEqual(calls[1]!.body.reply_markup, message.reply_markup);
-  assert.equal(calls[1]!.body.protect_content, true);
+  assert.deepEqual(calls.map(call => call.method), ["sendPhoto"]);
+  assert.match(String(calls[0]!.body.caption), /NEW PRODUCT.*\n\n.*&lt;Product&gt;/);
+  assert.match(String(calls[0]!.body.caption), /&lt;Product&gt;<\/b>\n\nA &amp; B/);
+  assert.equal(calls[0]!.body.photo, photo);
+  assert.deepEqual(calls[0]!.body.reply_markup, message.reply_markup);
+  assert.equal(calls[0]!.body.protect_content, true);
 });
 
 test("GIF purchase prompts retain typed entry and only Cancel; confirmation edits the animation caption", async () => {
@@ -50,14 +49,15 @@ test("GIF purchase prompts retain typed entry and only Cancel; confirmation edit
   const prompt = await sendProductCard("TEST_ONLY", {
     heading: heading!, body: body.join("\n").trimStart(), imageUrl: gif, reply_markup: markup,
   }, send);
-  assert.deepEqual(calls.map(call => call.method), ["sendMessage", "sendAnimation"]);
-  assert.equal(calls[1]!.body.animation, gif);
-  assert.match(String(calls[1]!.body.caption), /Type a whole number/);
-  assert.deepEqual(calls[1]!.body.reply_markup, { inline_keyboard: [[{ text: "🏠 Cancel", callback_data: "cancel_home" }]] });
+  assert.deepEqual(calls.map(call => call.method), ["sendAnimation"]);
+  assert.equal(calls[0]!.body.animation, gif);
+  assert.match(String(calls[0]!.body.caption), /&lt;Product&gt;<\/b>\n\nA &amp; B/);
+  assert.match(String(calls[0]!.body.caption), /Type a whole number/);
+  assert.deepEqual(calls[0]!.body.reply_markup, { inline_keyboard: [[{ text: "🏠 Cancel", callback_data: "cancel_home" }]] });
   assert.equal(prompt.mediaPrompt, true);
   assert.equal(await editProductQuote("TEST_ONLY", prompt.message_id!, "<b>Confirm</b>", markup, true, send), true);
-  assert.equal(calls[2]!.method, "editMessageCaption");
-  assert.equal(calls[2]!.body.caption, "<b>Confirm</b>");
+  assert.equal(calls[1]!.method, "editMessageCaption");
+  assert.equal(calls[1]!.body.caption, "<b>Confirm</b>");
 });
 
 test("products without images remain a single text message and text confirmation", async () => {
@@ -71,17 +71,29 @@ test("products without images remain a single text message and text confirmation
   assert.equal(calls[1]!.method, "editMessageText");
 });
 
-test("long descriptions and confirmations respect caption limits without losing text or controls", async () => {
+test("maximum product text still fits one purchase caption with its quantity and safety instructions", async () => {
+  const maximal = { ...product, name: "<".repeat(120), description: "&".repeat(2000), price: 100000, stock: 2147483647 };
+  const [heading, ...body] = quantityPrompt(maximal, 2147483647).split("\n");
+  const { send, calls } = recorder();
+  await sendProductCard("TEST_ONLY", { heading: heading!, body: body.join("\n").trimStart(), imageUrl: photo, reply_markup: markup }, send);
+  assert.equal(calls.length, 1);
+  const caption = String(calls[0]!.body.caption);
+  const length = caption.replace(/<\/?(?:b|i|code)>/g, "").replace(/&(?:amp|lt|gt|quot|#39);/g, "x").length;
+  assert.ok(length <= 1024, `Rendered caption length: ${length}`);
+  assert.match(caption, /Type a whole number/);
+  assert.match(caption, /Nothing is charged yet/);
+});
+
+test("HTML escaping does not split a valid long caption into multiple messages", async () => {
   const { send, calls } = recorder();
   const body = "&amp;".repeat(500);
   const result = await sendProductCard("TEST_ONLY", { ...card, imageUrl: photo, body }, send);
-  assert.deepEqual(calls.map(call => call.method), ["sendMessage", "sendPhoto", "sendMessage"]);
-  assert.equal(calls[1]!.body.caption, undefined);
-  assert.equal(calls[2]!.body.text, body);
-  assert.deepEqual(calls[2]!.body.reply_markup, markup);
-  assert.equal(result.mediaPrompt, undefined);
-  assert.equal(await editProductQuote("TEST_ONLY", 2, body, markup, true, send), false);
-  assert.equal(calls[3]!.method, "editMessageReplyMarkup");
+  assert.deepEqual(calls.map(call => call.method), ["sendPhoto"]);
+  assert.equal(calls[0]!.body.caption, `${card.heading}\n\n${body}`);
+  assert.deepEqual(calls[0]!.body.reply_markup, markup);
+  assert.equal(result.mediaPrompt, true);
+  assert.equal(await editProductQuote("TEST_ONLY", 1, body, markup, true, send), true);
+  assert.equal(calls[1]!.method, "editMessageCaption");
 });
 
 test("rejected image links produce a visible warning; uncertain delivery never blindly retries", async () => {
@@ -92,13 +104,15 @@ test("rejected image links produce a visible warning; uncertain delivery never b
   };
   const result = await sendProductCard("TEST_ONLY", { ...card, imageUrl: photo }, rejectPhoto);
   assert.equal(result.mediaPrompt, undefined);
-  assert.match(String(calls[1]!.body.text), /Product image unavailable/);
-  assert.deepEqual(calls[1]!.body.reply_markup, markup);
+  assert.equal(calls.length, 1);
+  assert.match(String(calls[0]!.body.text), /Product image unavailable/);
+  assert.match(String(calls[0]!.body.text), /<b>Product<\/b>/);
+  assert.deepEqual(calls[0]!.body.reply_markup, markup);
   let attempts = 0;
   await assert.rejects(sendProductCard("TEST_ONLY", { ...card, imageUrl: gif }, async (method) => {
     attempts++;
     if (method === "sendAnimation") throw new Error("TEST_ONLY timeout");
     return { message_id: 1 };
   }), /timeout/);
-  assert.equal(attempts, 2);
+  assert.equal(attempts, 1);
 });

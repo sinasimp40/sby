@@ -13,8 +13,8 @@ Use “New product” for the first stocked announcement and “Added stock” f
 
 **How to apply:** Remember the distinction across restarts and sold-out periods; becoming available again does not make an existing product new.
 
-Product images should be configured with an optional direct public HTTPS link in the dashboard, including `.gif` links, not by uploading to a storage bucket. Images belong between the product name and description in stock alerts and the Buy now flow.
+Product images should be configured with an optional direct public HTTPS link in the dashboard, including `.gif` links, not by uploading to a storage bucket. Send each stock alert and Buy now product card as ONE message with the name and description in the photo/GIF caption, not a separate name message.
 
-**Why:** The user explicitly chose image links, including GIFs, instead of creating a bucket. They requested this ordering for real product images, separately from product button emojis.
+**Why:** The user explicitly chose image links, including GIFs, instead of creating a bucket. They corrected the separate name message and said to make it one message.
 
-**How to apply:** Telegram cannot embed an image within text. Preserve the requested order with a name message followed by a photo or GIF animation whose caption contains the description. Long descriptions can follow as a separate message because Telegram captions are limited.
+**How to apply:** Put the name, description and purchase/stock details together in a single media caption, keeping inline actions attached. Keep captions within Telegram's limit by bounding description previews; do not split the product name into its own message.

@@ -31,6 +31,8 @@ export interface ProductCardMessage {
   mediaPrompt?: boolean;
 }
 type Send = (method: string, body: Record<string, unknown>) => Promise<{ message_id?: number }>;
+const captionLength = (html: string) => html.replace(/<\/?(?:b|i|code)>/g, "")
+  .replace(/&(?:amp|lt|gt|quot|#39);/g, "x").length;
 
 export async function sendProductCard(chatId: string, card: ProductCard, send: Send = telegram): Promise<ProductCardMessage> {
   const common = { chat_id: chatId, parse_mode: "HTML", protect_content: true };
@@ -38,35 +40,30 @@ export async function sendProductCard(chatId: string, card: ProductCard, send: S
   if (!card.imageUrl || !validProductMediaUrl(card.imageUrl)) {
     return send("sendMessage", { ...common, text, reply_markup: card.reply_markup });
   }
-  // A separate heading is necessary to put the photo below the name, not above it.
-  await send("sendMessage", { ...common, text: card.heading });
   const method = productMediaMethod(card.imageUrl);
-  const captionFits = card.body.length <= 1024;
   try {
     const message = await send(method, {
       ...common, [method === "sendAnimation" ? "animation" : "photo"]: card.imageUrl,
-      ...(captionFits ? { caption: card.body, reply_markup: card.reply_markup } : {}),
+      caption: text, reply_markup: card.reply_markup,
     });
-    if (captionFits) return { ...message, mediaPrompt: true };
+    return { ...message, mediaPrompt: true };
   } catch (error) {
     // Only a definitive media rejection is safe to recover from automatically.
     // A timeout may already have sent the photo, so do not blindly retry it.
     if (!(error instanceof TelegramRequestError && error.providerStatus === 400)) throw error;
     logger.warn({ method }, "Telegram rejected a product image link; sent an explicit image-unavailable notice.");
     return send("sendMessage", {
-      ...common, text: `⚠️ Product image unavailable. The image link may be broken or not public.\n\n${card.body}`,
+      ...common, text: `⚠️ Product image unavailable. The image link may be broken or not public.\n\n${text}`,
       reply_markup: card.reply_markup,
     });
   }
-  // Keep long descriptions intact without exceeding Telegram's caption limit.
-  return send("sendMessage", { ...common, text: card.body, reply_markup: card.reply_markup });
 }
 
 export async function editProductQuote(
   chatId: string, messageId: number, quote: string, keyboard: object, mediaPrompt: boolean, send: Send = telegram,
 ): Promise<boolean> {
   try {
-    if (mediaPrompt && quote.length > 1024) {
+    if (mediaPrompt && captionLength(quote) > 1024) {
       await send("editMessageReplyMarkup", { chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: [] } });
       return false;
     }
