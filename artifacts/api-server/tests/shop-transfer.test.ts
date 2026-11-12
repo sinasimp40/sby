@@ -67,7 +67,7 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
       const exportedTables = Object.values(database).filter(value => is(value, PgTable)).map(table => getTableConfig(table as PgTable).name);
       const included = Object.values(transferTables).map(table => getTableConfig(table).name);
       // New persistent tables must be explicitly covered or deliberately excluded.
-      assert.deepEqual(new Set(exportedTables), new Set([...included, "admin_sessions", "admin_login_limits", "emoji_import_sessions"]));
+      assert.deepEqual(new Set(exportedTables), new Set([...included, "admin_sessions", "admin_login_limits", "emoji_import_sessions", "advertising_accounts"]));
       assert.deepEqual(Object.keys(unzipSync(exported.zip)).sort(), ["README.txt", "manifest.json", "shop-data.json"]);
       assert.equal(Object.keys(decoded.data).length, tableKeys.length);
       for (const key of tableKeys) assert.equal(decoded.manifest.counts[key], decoded.data[key].length);

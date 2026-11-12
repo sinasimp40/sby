@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  useConnectAdvertisingBot, useDisconnectAdvertisingBot, useCheckAdvertisingBot, useDiscoverAdvertisingGroups,
+  useDiscoverAdvertisingGroups,
   usePreviewAdvertisingGroups, useAddAdvertisingGroups, useCheckAdvertisingGroups, useUpdateAdvertisingGroup,
-  useDeleteAdvertisingGroup, useSaveAdvertisingDraft, useStartAdvertisingCampaign, useGetAdvertisingCampaign,
+  useDeleteAdvertisingGroup, useGetAdvertisingCampaign,
   getGetAdvertisingCampaignQueryKey, getGetAdvertisingWorkspaceQueryKey, useCancelAdvertisingCampaign,
   type AdvertisingWorkspace, type AdvertisingGroup, type AdvertisingImportRow, type AdvertisingDraft,
 } from "@workspace/api-client-react";
-import { Loader2, PlugZap, RefreshCw, Unplug, FileUp, Search, Trash2, Pencil, ShieldCheck, Send, Ban, Megaphone, Radar, X } from "lucide-react";
+import { Loader2, FileUp, Search, Trash2, Pencil, ShieldCheck, Send, Ban, Megaphone, Radar, X, Timer, Link2 } from "lucide-react";
 import { Panel, EmptyState, ErrorState, RowsSkeleton } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ProductMediaPreview, isProductImageUrl } from "@/components/product-media-preview";
 import { useToast } from "@/hooks/use-toast";
-import { errMsg, dateTime, ago } from "@/lib/format";
+import { errMsg, dateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const WS_KEY = getGetAdvertisingWorkspaceQueryKey();
@@ -31,10 +31,10 @@ function useWorkspaceSync() {
   };
 }
 
-const tone: Record<string, string> = {
+export const tone: Record<string, string> = {
   ready: "bg-ok/10 text-ok border-ok/25", sent: "bg-ok/10 text-ok border-ok/25", completed: "bg-ok/10 text-ok border-ok/25", new: "bg-ok/10 text-ok border-ok/25",
   pending: "bg-muted text-muted-foreground border-border", queued: "bg-muted text-muted-foreground border-border", sending: "bg-primary/10 text-primary border-primary/25",
-  needs_setup: "bg-signal-soft text-signal border-signal/30", partial: "bg-signal-soft text-signal border-signal/30", uncertain: "bg-amber-100 text-amber-800 border-amber-300",
+  needs_setup: "bg-signal-soft text-signal border-signal/30", partial: "bg-signal-soft text-signal border-signal/30", uncertain: "bg-amber-100 text-amber-800 border-amber-300", rate_limited: "bg-amber-100 text-amber-800 border-amber-300", running: "bg-primary/10 text-primary border-primary/25", stopped: "bg-muted text-muted-foreground border-border",
   duplicate: "bg-muted text-muted-foreground border-border", cancelled: "bg-muted text-muted-foreground border-border",
   error: "bg-destructive/10 text-destructive border-destructive/25", failed: "bg-destructive/10 text-destructive border-destructive/25", invalid: "bg-destructive/10 text-destructive border-destructive/25",
 };
@@ -42,87 +42,56 @@ export function Tag({ s, testId }: { s: string; testId?: string }) {
   return <span data-testid={testId} className={cn("inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider", tone[s] ?? tone.pending)}>{s.replace("_", " ")}</span>;
 }
 
-/* ---------------- Connection ---------------- */
-export function ConnectionPanel({ ws }: { ws: AdvertisingWorkspace }) {
-  const sync = useWorkspaceSync();
-  const { toast } = useToast();
-  const connect = useConnectAdvertisingBot({ mutation: { gcTime: 0 } });
-  const disconnect = useDisconnectAdvertisingBot();
-  const check = useCheckAdvertisingBot();
-  const [token, setToken] = useState("");
-  const [err, setErr] = useState("");
-  const [confirmOff, setConfirmOff] = useState(false);
-  const b = ws.bot;
-  const verifying = connect.isPending || check.isPending;
-  const busy = verifying || disconnect.isPending;
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (busy) return;
-    setErr("");
-    if (token.trim().length < 20) { setErr("Paste the full advertising bot token from BotFather."); return; }
-    try { const ws2 = await connect.mutateAsync({ data: { token: token.trim() } }); setToken(""); sync(ws2); toast({ title: "Verified and connected", description: `Advertising bot: @${ws2.bot.username}` }); }
-    catch (x) { setErr(`${errMsg(x)}${b.configured ? " Your saved bot connection was not changed." : ""}`); }
-    finally { connect.reset(); }
-  }
-  return (
-    <Panel title="Advertising bot" meta={<span role="status" aria-live="polite" className={cn("inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider", b.connected && !verifying ? "text-ok" : "text-signal")} data-testid="status-ad-bot"><span className={cn("h-1.5 w-1.5 rounded-full", b.connected && !verifying ? "bg-ok" : "bg-signal")} />{verifying ? "Verifying…" : b.connected ? "Verified · Connected" : "Disconnected"}</span>}>
-      {b.configured ? (
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/40 p-3">
-            <div className="grid h-10 w-10 place-items-center rounded-full bg-primary/10 text-primary"><Megaphone className="h-5 w-5" /></div>
-            <div className="min-w-0 flex-1">
-              <div className="truncate font-mono text-sm font-semibold" data-testid="text-ad-bot-username">@{b.username}</div>
-              <div className="text-xs text-muted-foreground">{b.checkedAt ? `Checked ${ago(b.checkedAt)}` : "Not checked yet"} · separate from your shop bot</div>
-            </div>
-            <Button size="sm" variant="outline" disabled={busy} onClick={async () => { setErr(""); try { const result = await check.mutateAsync(); sync(result); toast({ title: result.bot.connected ? "Verified and connected" : "Connection check failed", variant: result.bot.connected ? "default" : "destructive" }); } catch (x) { setErr(errMsg(x)); } }} data-testid="button-check-ad-bot">{check.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-1 h-3.5 w-3.5" />}{check.isPending ? "Verifying…" : "Check connection"}</Button>
-            <Button size="sm" variant="ghost" disabled={busy} className="text-destructive" onClick={() => setConfirmOff(true)} data-testid="button-disconnect-ad-bot"><Unplug className="mr-1 h-3.5 w-3.5" />Disconnect</Button>
-          </div>
-          {b.error && <p role="alert" className="text-sm text-destructive" data-testid="error-ad-bot">{b.error}</p>}
-        </div>
-      ) : null}
-        <form onSubmit={submit} className={cn("space-y-3", b.configured && "mt-4 border-t pt-4")} data-testid="form-connect-ad-bot" autoComplete="off">
-          <p className="text-sm text-muted-foreground">{b.configured ? "Paste a new token to reconnect or replace the advertising bot. Your saved token is never displayed." : "Only the BotFather token is needed. We automatically identify the bot and create its Telegram link."} Your shop bot stays separate.</p>
-          <div>
-            <label className="space-y-1.5 text-sm font-medium">Advertising bot token<Input type="password" autoComplete="new-password" value={token} onChange={e => { setToken(e.target.value); setErr(""); }} placeholder="Paste your BotFather token" className="font-mono" maxLength={200} disabled={busy} required data-testid="input-ad-bot-token" /></label>
-          </div>
-          {err && <p role="alert" className="text-sm text-destructive" data-testid="error-connect-ad-bot">{err}</p>}
-          <p className="text-xs text-muted-foreground">Click Verify and connect after pasting. The status changes only after Telegram verifies the token.</p>
-          <div className="flex justify-end"><Button type="submit" disabled={busy} data-testid="button-connect-ad-bot">{connect.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <PlugZap className="mr-1.5 h-4 w-4" />}{connect.isPending ? "Verifying…" : "Verify and connect"}</Button></div>
-        </form>
-      <AlertDialog open={confirmOff} onOpenChange={setConfirmOff}>
-        <AlertDialogContent>
-          <AlertDialogHeader><AlertDialogTitle>Disconnect advertising bot?</AlertDialogTitle><AlertDialogDescription>The stored token is removed. Groups, draft and history stay. Your shop bot is not affected.</AlertDialogDescription></AlertDialogHeader>
-          <AlertDialogFooter><AlertDialogCancel>Keep</AlertDialogCancel><AlertDialogAction data-testid="button-confirm-disconnect" onClick={async () => { try { sync(await disconnect.mutateAsync()); } catch (x) { setErr(errMsg(x)); } }}>Disconnect</AlertDialogAction></AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </Panel>
-  );
+export function fmtInterval(sec: number): string {
+  if (sec % 86400 === 0) return `${sec / 86400}d`;
+  if (sec % 3600 === 0) return `${sec / 3600}h`;
+  if (sec % 60 === 0) return `${sec / 60}m`;
+  return `${sec}s`;
 }
+
 
 /* ---------------- Draft ---------------- */
 export type DraftState = { text: string; imageUrl: string; buttonText: string; buttonUrl: string };
 export const toDraft = (s: DraftState): AdvertisingDraft => ({ text: s.text, imageUrl: s.imageUrl.trim() || null, buttonText: s.buttonText.trim(), buttonUrl: s.buttonUrl.trim() || null });
+/** Account messages cannot carry inline bot buttons; the optional link is appended to the text. */
+export function composeText(d: DraftState): string {
+  const url = d.buttonUrl.trim();
+  if (!url) return d.text;
+  const label = d.buttonText.trim();
+  return `${d.text}\n\n${label ? `${label}: ` : ""}${url}`;
+}
 export function draftProblem(d: DraftState): string {
+  const full = composeText(d).length;
+  const media = !!d.imageUrl.trim();
   if (!d.text.trim()) return "Write the ad text.";
-  if (d.text.length > 4096) return "Text is over 4,096 characters.";
-  if (d.imageUrl.trim() && d.text.length > 1024) return "With an image, text must be 1,024 characters or less.";
-  if (d.imageUrl.trim() && !isProductImageUrl(d.imageUrl.trim())) return "Image must be a public HTTPS .jpg, .png, .webp or .gif link.";
-  if (d.buttonText.length > 64) return "Button text is over 64 characters.";
-  if (!!d.buttonText.trim() !== !!d.buttonUrl.trim()) return "Button needs both text and a link, or neither.";
-  if (d.buttonUrl.trim() && !/^https:\/\//i.test(d.buttonUrl.trim())) return "Button link must start with https://";
+  if (!media && full > 4096) return `Text plus link is ${full} characters; the limit is 4,096.`;
+  if (media && full > 1024) return `With an image, text plus link must be 1,024 characters or less (now ${full}).`;
+  if (media && !isProductImageUrl(d.imageUrl.trim())) return "Image must be a public HTTPS .jpg, .png, .webp or .gif link.";
+  if (d.buttonUrl.trim()) {
+    if (!d.buttonText.trim()) return "Give the shop link a label.";
+    if (d.buttonText.trim().length > 64) return "Link label is over 64 characters.";
+    try {
+      const url = new URL(d.buttonUrl.trim());
+      if (url.protocol !== "https:" || url.username || url.password) throw new Error();
+    } catch { return "Shop link must be a valid public HTTPS link."; }
+  }
   return "";
 }
 
+function linkify(text: string) {
+  return text.split(/(https:\/\/[^\s]+)/g).map((part, i) => /^https:\/\//.test(part) ? <span key={i} className="text-[#2a8bd0] underline underline-offset-2">{part}</span> : part);
+}
+
 export function MessagePreview({ d }: { d: DraftState }) {
+  const full = composeText(d);
   return (
     <div className="overflow-hidden rounded-[22px] border-[5px] border-ink bg-ink shadow-lg" data-testid="preview-ad">
-      <div className="bg-[#f6f8fa] px-3 py-2 text-[12px] font-semibold text-[#1b2433]">Group chat · preview</div>
+      <div className="bg-[#f6f8fa] px-3 py-2 text-[12px] font-semibold text-[#1b2433]">Group chat · posted from your account</div>
       <div className="tg-wall max-h-[420px] overflow-y-auto p-3 text-[13px] text-[#1b2433]">
         <div className="max-w-[92%] overflow-hidden rounded-2xl rounded-bl-md bg-white shadow-sm">
           {d.imageUrl.trim() && <ProductMediaPreview url={d.imageUrl.trim()} name="Ad image" className="rounded-none border-0" />}
-          <div className="whitespace-pre-wrap break-words px-3 py-2">{d.text || <span className="opacity-50">Your ad text appears here</span>}</div>
+          <div className="whitespace-pre-wrap break-words px-3 py-2">{d.text ? linkify(full) : <span className="opacity-50">Your ad text appears here</span>}</div>
         </div>
-        {d.buttonText.trim() && <div className="mt-1 max-w-[92%] rounded-lg bg-white/80 px-3 py-2 text-center text-[12px] font-medium text-[#2a8bd0] shadow-sm">{d.buttonText}</div>}
       </div>
     </div>
   );
@@ -131,22 +100,28 @@ export function MessagePreview({ d }: { d: DraftState }) {
 export function DraftPanel({ d, setD, dirty, onSave, saving, shopBotUrl }: { d: DraftState; setD: (d: DraftState) => void; dirty: boolean; onSave: () => void; saving: boolean; shopBotUrl: string | null }) {
   const problem = draftProblem(d);
   const limit = d.imageUrl.trim() ? 1024 : 4096;
+  const total = composeText(d).length;
   return (
     <Panel title="Advertisement" meta={dirty ? <span className="text-signal">unsaved</span> : "saved"}>
       <div className="space-y-4">
         <label className="block space-y-1.5 text-sm font-medium">Text
           <Textarea rows={7} value={d.text} onChange={e => setD({ ...d, text: e.target.value })} data-testid="input-ad-text" />
-          <span className={cn("block text-right font-mono text-[11px]", d.text.length > limit ? "text-destructive" : "text-muted-foreground")} data-testid="text-ad-count">{d.text.length} / {limit}</span>
+          <span className={cn("block text-right font-mono text-[11px]", total > limit ? "text-destructive" : "text-muted-foreground")} data-testid="text-ad-count">{total} / {limit}{d.buttonUrl.trim() ? " incl. link" : ""}</span>
         </label>
-        <label className="block space-y-1.5 text-sm font-medium">Image or GIF link <span className="font-normal text-muted-foreground">optional</span>
+        <label className="block space-y-1.5 text-sm font-medium">Image or GIF link <span className="font-normal text-muted-foreground">optional, caption limit 1,024</span>
           <Input type="url" value={d.imageUrl} onChange={e => setD({ ...d, imageUrl: e.target.value })} placeholder="https://example.com/promo.gif" data-testid="input-ad-image-url" />
         </label>
-        <div className="grid gap-3 sm:grid-cols-[1fr_1.4fr]">
-          <label className="space-y-1.5 text-sm font-medium">Button text <span className="font-normal text-muted-foreground">optional</span><Input maxLength={64} value={d.buttonText} onChange={e => setD({ ...d, buttonText: e.target.value })} placeholder="Open shop" data-testid="input-ad-button-text" /></label>
-          <label className="space-y-1.5 text-sm font-medium">Button link<Input type="url" value={d.buttonUrl} onChange={e => setD({ ...d, buttonUrl: e.target.value })} placeholder="https://t.me/yourshop_bot" data-testid="input-ad-button-url" /></label>
+        <div className="rounded-lg border border-dashed p-3">
+          <div className="mb-2 flex items-center gap-1.5 text-sm font-medium"><Link2 className="h-4 w-4 text-primary" />Shop link <span className="font-normal text-muted-foreground">optional</span></div>
+          <p className="mb-3 text-xs text-muted-foreground">Personal accounts cannot attach bot buttons. The link is added at the end of the message as a normal clickable link and counts toward the length limit.</p>
+          <div className="grid gap-3 sm:grid-cols-[1fr_1.4fr]">
+            <label className="space-y-1.5 text-sm font-medium">Label <span className="font-normal text-muted-foreground">optional</span><Input maxLength={64} value={d.buttonText} onChange={e => setD({ ...d, buttonText: e.target.value })} placeholder="Open shop" data-testid="input-ad-button-text" /></label>
+            <label className="space-y-1.5 text-sm font-medium">Link<Input type="url" value={d.buttonUrl} onChange={e => setD({ ...d, buttonUrl: e.target.value })} placeholder="https://t.me/yourshop_bot" data-testid="input-ad-button-url" /></label>
+          </div>
+          {shopBotUrl && !d.buttonUrl && <button type="button" className="mt-2 text-xs font-medium text-primary hover:underline" onClick={() => setD({ ...d, buttonText: d.buttonText || "Open shop", buttonUrl: shopBotUrl })} data-testid="button-use-shop-link">Use shop bot link</button>}
         </div>
-        {shopBotUrl && !d.buttonUrl && <button type="button" className="text-xs font-medium text-primary hover:underline" onClick={() => setD({ ...d, buttonText: d.buttonText || "Open shop", buttonUrl: shopBotUrl })} data-testid="button-use-shop-link">Use shop bot link</button>}
         {problem && d.text && <p className="text-sm text-destructive" data-testid="error-ad-draft">{problem}</p>}
+        <p className="text-xs text-muted-foreground">Running schedules keep the snapshot they were started with. To apply edits, stop and restart the selected groups.</p>
         <div className="flex justify-end"><Button onClick={onSave} disabled={saving || !dirty || !!problem} data-testid="button-save-ad-draft">{saving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}Save draft</Button></div>
       </div>
     </Panel>
@@ -196,9 +171,9 @@ export function ImportPanel({ ws }: { ws: AdvertisingWorkspace }) {
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} data-testid="button-import-txt"><FileUp className="mr-1 h-3.5 w-3.5" />Import .txt</Button>
           <Button size="sm" disabled={!text.trim() || preview.isPending || text.length > 65536} onClick={segregate} data-testid="button-segregate">{preview.isPending && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}Segregate</Button>
-          <Button variant="ghost" size="sm" className="ml-auto" disabled={!ws.bot.connected || discover.isPending} onClick={async () => { setErr(""); try { sync(await discover.mutateAsync()); toast({ title: "Checked recent group additions" }); } catch (x) { setErr(errMsg(x)); } }} data-testid="button-discover-groups">{discover.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Radar className="mr-1 h-3.5 w-3.5" />}Find groups</Button>
+          <Button variant="ghost" size="sm" className="ml-auto" disabled={!ws.account.connected || discover.isPending} onClick={async () => { setErr(""); try { sync(await discover.mutateAsync()); toast({ title: "Joined groups refreshed" }); } catch (x) { setErr(errMsg(x)); } }} data-testid="button-discover-groups">{discover.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Radar className="mr-1 h-3.5 w-3.5" />}Discover joined groups</Button>
         </div>
-        <p className="text-xs leading-relaxed text-muted-foreground">Bots cannot join through invite links. Add the advertising bot to a private group yourself, then enter its negative chat ID or press Find groups to pick up recent additions. Other apps' webhooks are never removed.</p>
+        <p className="text-xs leading-relaxed text-muted-foreground">Discover lists groups your connected account has already joined. Groups only: no channels or personal chats, and nothing is joined automatically. Private invite links stay in needs setup until you join them yourself in Telegram, then Discover or enter the negative chat ID.</p>
         {err && <p role="alert" className="text-sm text-destructive" data-testid="error-import">{err}</p>}
         {rows && (
           <div className="space-y-3 rounded-lg border bg-muted/30 p-3" data-testid="panel-import-review">
@@ -235,6 +210,11 @@ export function GroupsPanel({ ws, selected, setSelected }: { ws: AdvertisingWork
   const [editTarget, setEditTarget] = useState("");
   const [deleting, setDeleting] = useState<AdvertisingGroup | null>(null);
   const [progress, setProgress] = useState("");
+  const [intervalFor, setIntervalFor] = useState<AdvertisingGroup | null>(null);
+  const [ivValue, setIvValue] = useState("");
+  const [ivUnit, setIvUnit] = useState<"m" | "h" | "d">("m");
+  const ivSec = Math.round(Number(ivValue) * (ivUnit === "m" ? 60 : ivUnit === "h" ? 3600 : 86400));
+  const ivBad = !Number.isFinite(ivSec) || ivSec < 60 || ivSec > 2592000;
   const list = useMemo(() => ws.groups.filter(g => (status === "all" || g.status === status) && (!q || `${g.title} ${g.target} ${g.chatId ?? ""}`.toLowerCase().includes(q.toLowerCase()))), [ws.groups, q, status]);
   const toggle = (id: string) => { const n = new Set(selected); if (n.has(id)) n.delete(id); else n.add(id); setSelected(n); };
   async function checkPerms() {
@@ -258,10 +238,10 @@ export function GroupsPanel({ ws, selected, setSelected }: { ws: AdvertisingWork
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <Checkbox checked={list.length > 0 && list.every(g => selected.has(g.id))} onCheckedChange={v => { const n = new Set(selected); list.forEach(g => v === true ? n.add(g.id) : n.delete(g.id)); setSelected(n); }} data-testid="checkbox-select-all" />
-          <span>{selected.size} selected</span>
-          <Button size="sm" variant="outline" className="ml-auto" disabled={!selected.size || check.isPending || !ws.bot.connected} onClick={checkPerms} data-testid="button-check-permissions">{check.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="mr-1 h-3.5 w-3.5" />}{progress ? `Checking ${progress}` : "Check permissions"}</Button>
+          <span data-testid="text-selected-count">{selected.size} selected</span>
+          <Button size="sm" variant="outline" className="ml-auto" disabled={!selected.size || check.isPending || !ws.account.connected} onClick={checkPerms} data-testid="button-check-permissions">{check.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="mr-1 h-3.5 w-3.5" />}{progress ? `Checking ${progress}` : "Check permissions"}</Button>
         </div>
-        {ws.groups.length === 0 ? <EmptyState icon={Megaphone} title="No groups yet" body="Paste links, import a .txt file, or use Find groups after adding the bot." /> :
+        {ws.groups.length === 0 ? <EmptyState icon={Megaphone} title="No groups yet" body="Paste links, import a .txt file, or discover groups your account has already joined." /> :
           list.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">No groups match.</p> :
           <ul className="divide-y rounded-lg border">
             {list.map(g => (
@@ -271,6 +251,13 @@ export function GroupsPanel({ ws, selected, setSelected }: { ws: AdvertisingWork
                   <div className="flex flex-wrap items-center gap-2"><span className="truncate text-sm font-medium">{g.title || g.target}</span><Tag s={g.status} testId={`status-group-${g.id}`} /></div>
                   <div className="truncate font-mono text-[11px] text-muted-foreground">{g.target}{g.chatId && g.chatId !== g.target ? ` · ${g.chatId}` : ""}</div>
                   {g.note && <div className="mt-0.5 text-xs text-muted-foreground">{g.note}</div>}
+                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px]">
+                    <Tag s={g.running ? "running" : "stopped"} testId={`status-schedule-${g.id}`} />
+                    <button type="button" onClick={() => { setIntervalFor(g); setIvValue(String(g.intervalSeconds % 3600 === 0 ? g.intervalSeconds / 3600 : Math.round(g.intervalSeconds / 60))); setIvUnit(g.intervalSeconds % 3600 === 0 ? "h" : "m"); }} className="inline-flex items-center gap-1 text-primary hover:underline" data-testid={`button-interval-group-${g.id}`}><Timer className="h-3 w-3" />every {fmtInterval(g.intervalSeconds)}</button>
+                    {g.running && g.nextSendAt && <span className="text-muted-foreground" data-testid={`text-next-send-${g.id}`}>next {dateTime(g.nextSendAt)}</span>}
+                    {g.lastStatus && <span className="text-muted-foreground">last: {g.lastStatus.replace("_", " ")}</span>}
+                  </div>
+                  {g.scheduleNote && <div className={cn("mt-0.5 text-xs", g.lastStatus === "uncertain" ? "text-amber-800" : "text-muted-foreground")} data-testid={`text-schedule-note-${g.id}`}>{g.scheduleNote}</div>}
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   <Switch checked={g.enabled} onCheckedChange={async v => { try { sync(await update.mutateAsync({ id: g.id, data: { enabled: v } })); } catch (x) { toast({ title: "Update failed", description: errMsg(x), variant: "destructive" }); } }} data-testid={`switch-group-${g.id}`} />
@@ -283,9 +270,20 @@ export function GroupsPanel({ ws, selected, setSelected }: { ws: AdvertisingWork
       </div>
       <Dialog open={!!editing} onOpenChange={o => !o && setEditing(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Edit group target</DialogTitle><DialogDescription>Replace an unresolved invite link with the group's negative chat ID after adding the bot.</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>Edit group target</DialogTitle><DialogDescription>Replace an unresolved invite link with the group's negative chat ID after joining it with your account.</DialogDescription></DialogHeader>
           <Input value={editTarget} onChange={e => setEditTarget(e.target.value)} maxLength={300} className="font-mono" data-testid="input-edit-group-target" />
           <DialogFooter><Button disabled={!editTarget.trim() || update.isPending} onClick={async () => { if (!editing) return; try { sync(await update.mutateAsync({ id: editing.id, data: { target: editTarget.trim() } })); setEditing(null); } catch (x) { toast({ title: "Update failed", description: errMsg(x), variant: "destructive" }); } }} data-testid="button-save-group-target">{update.isPending && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}Save</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!intervalFor} onOpenChange={o => !o && setIntervalFor(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Posting interval</DialogTitle><DialogDescription>{intervalFor?.title || intervalFor?.target}. Between 1 minute and 30 days.{intervalFor?.running ? " Saving stops this group's schedule. Start it again when ready." : ""}</DialogDescription></DialogHeader>
+          <div className="flex gap-2">
+            <Input type="number" min={1} step={1} value={ivValue} onChange={e => setIvValue(e.target.value)} className="font-mono" data-testid="input-group-interval" />
+            <div className="flex shrink-0 gap-1">{(["m", "h", "d"] as const).map(u => <button key={u} type="button" onClick={() => setIvUnit(u)} className={cn("rounded-md px-3 font-mono text-xs uppercase", ivUnit === u ? "bg-ink text-white" : "bg-muted text-muted-foreground")} data-testid={`button-interval-unit-${u}`}>{u === "m" ? "min" : u === "h" ? "hours" : "days"}</button>)}</div>
+          </div>
+          {ivValue && ivBad && <p className="text-sm text-destructive" data-testid="error-group-interval">Choose between 1 minute and 30 days.</p>}
+          <DialogFooter><Button disabled={!ivValue || ivBad || !Number.isInteger(ivSec) || update.isPending} onClick={async () => { if (!intervalFor) return; try { sync(await update.mutateAsync({ id: intervalFor.id, data: { intervalSeconds: ivSec } })); toast({ title: intervalFor.running ? "Interval saved, schedule stopped" : "Interval saved" }); setIntervalFor(null); } catch (x) { toast({ title: "Update failed", description: errMsg(x), variant: "destructive" }); } }} data-testid="button-save-group-interval">{update.isPending && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}Save interval</Button></DialogFooter>
         </DialogContent>
       </Dialog>
       <AlertDialog open={!!deleting} onOpenChange={o => !o && setDeleting(null)}>
@@ -298,61 +296,13 @@ export function GroupsPanel({ ws, selected, setSelected }: { ws: AdvertisingWork
   );
 }
 
-/* ---------------- Send ---------------- */
-export function SendDialog({ open, onOpenChange, ws, d, recipients, onStarted }: { open: boolean; onOpenChange: (o: boolean) => void; ws: AdvertisingWorkspace; d: DraftState; recipients: AdvertisingGroup[]; onStarted: (id: string, fp: string) => void }) {
-  const sync = useWorkspaceSync();
-  const save = useSaveAdvertisingDraft();
-  const start = useStartAdvertisingCampaign();
-  const [ok, setOk] = useState(false);
-  const [err, setErr] = useState("");
-  const keyRef = useRef<string | null>(null);
-  const busyRef = useRef(false);
-  const sig = JSON.stringify([toDraft(d), recipients.map(r => r.id)]);
-  const sigRef = useRef(sig);
-  useEffect(() => { if (sigRef.current !== sig) { sigRef.current = sig; keyRef.current = null; } }, [sig]);
-  useEffect(() => { if (open) { setOk(false); setErr(""); } }, [open]);
-  const active = ws.campaigns.some(c => c.status === "queued" || c.status === "sending");
-  const busy = save.isPending || start.isPending;
-  async function go() {
-    if (busyRef.current) return; busyRef.current = true; setErr("");
-    try {
-      const frozen = toDraft(d);
-      const fp = JSON.stringify(frozen);
-      sync(await save.mutateAsync({ data: frozen }));
-      if (!keyRef.current) keyRef.current = crypto.randomUUID();
-      const camp = await start.mutateAsync({ data: { groupIds: recipients.map(r => r.id), permissionConfirmed: true, idempotencyKey: keyRef.current, draft: frozen } });
-      keyRef.current = null; sync();
-      onStarted(camp.id, fp);
-      onOpenChange(false);
-    } catch (x) { setErr(errMsg(x)); }
-    finally { busyRef.current = false; }
-  }
-  return (
-    <Dialog open={open} onOpenChange={o => !busy && onOpenChange(o)}>
-      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader><DialogTitle>Confirm this exact send</DialogTitle><DialogDescription>One post per group, sent once, now. Nothing is scheduled or repeated.</DialogDescription></DialogHeader>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <MessagePreview d={d} />
-          <div>
-            <div className="mb-1 font-mono text-[11px] uppercase tracking-wider text-muted-foreground" data-testid="text-recipient-count">{recipients.length} recipients</div>
-            <ul className="max-h-72 space-y-1 overflow-y-auto rounded-md border p-2 text-xs">{recipients.map(r => <li key={r.id} className="truncate font-mono">{r.title || r.target}</li>)}</ul>
-          </div>
-        </div>
-        <label className="flex items-start gap-2 text-sm"><Checkbox checked={ok} onCheckedChange={v => setOk(v === true)} data-testid="checkbox-send-permission" /><span>I have permission to post this advertisement in every group listed.</span></label>
-        {active && <p className="text-sm text-signal">A campaign is already running. Wait for it to finish or cancel it.</p>}
-        {err && <p role="alert" className="text-sm text-destructive" data-testid="error-send">{err} {keyRef.current && "Retrying reuses the same request, so nothing is sent twice."}</p>}
-        <DialogFooter><Button disabled={!ok || busy || active || !recipients.length || !ws.bot.connected} onClick={go} data-testid="button-confirm-send">{busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Send className="mr-1.5 h-4 w-4" />}{err ? "Retry send" : `Send to ${recipients.length}`}</Button></DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 /* ---------------- History ---------------- */
 export function HistoryPanel({ ws, selectedId, setSelectedId }: { ws: AdvertisingWorkspace; selectedId: string | null; setSelectedId: (id: string | null) => void }) {
   const camps = [...ws.campaigns].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   return (
-    <Panel title="Delivery history">
-      {camps.length === 0 ? <EmptyState icon={Send} title="No sends yet" body="Confirmed sends appear here with per-group results." /> :
+    <Panel title="Earlier bot campaigns" meta="read only">
+      {camps.length === 0 ? <EmptyState icon={Send} title="No earlier campaigns" body="One-time bot campaigns from before account posting appear here." /> :
         <ul className="divide-y rounded-lg border">{camps.map(c => (
           <li key={c.id}><button onClick={() => setSelectedId(selectedId === c.id ? null : c.id)} className={cn("w-full p-3 text-left hover:bg-muted/40", selectedId === c.id && "bg-muted/60")} data-testid={`row-campaign-${c.id}`}>
             <div className="flex items-center gap-2"><Tag s={c.status} testId={`status-campaign-${c.id}`} /><span className="text-xs text-muted-foreground">{dateTime(c.createdAt)}</span></div>

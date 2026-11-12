@@ -5,12 +5,16 @@
  * Telecart shop administration. Live Telegram and payments are not connected.
  * OpenAPI spec version: 0.1.0
  */
+import type { AdvertisingAccount } from './advertisingAccount';
+import type { AdvertisingAccountRun } from './advertisingAccountRun';
 import type { AdvertisingBot } from './advertisingBot';
 import type { AdvertisingCampaign } from './advertisingCampaign';
 import type { AdvertisingDraft } from './advertisingDraft';
 import type { AdvertisingGroup } from './advertisingGroup';
 
 export interface AdvertisingWorkspace {
+  account: AdvertisingAccount;
+  accountRuns: AdvertisingAccountRun[];
   bot: AdvertisingBot;
   draft: AdvertisingDraft;
   /** @nullable */

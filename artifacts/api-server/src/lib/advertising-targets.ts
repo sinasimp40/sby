@@ -4,7 +4,7 @@ import type { AdvertisingImportRow } from "@workspace/api-zod";
 export function parseAdvertisingTarget(input: string): AdvertisingImportRow {
   const raw = input.trim().replace(/^[<("'[\]]+|[>)"'\].]+$/g, "");
   const invalid = (reason: string): AdvertisingImportRow => ({ input, target: null, kind: "invalid", status: "invalid", reason });
-  if (/^-[1-9]\d{5,15}$/.test(raw)) return { input, target: raw, kind: "chat_id", status: "new", reason: "Group/chat ID; verify that the bot may post." };
+  if (/^-[1-9]\d{5,15}$/.test(raw)) return { input, target: raw, kind: "chat_id", status: "new", reason: "Group/chat ID; verify membership and permission to post." };
   let path = raw;
   const linked = /^(?:https?:\/\/|(?:www\.)?(?:t\.me|telegram\.me)\/)/i.test(raw);
   if (linked) {
@@ -16,7 +16,7 @@ export function parseAdvertisingTarget(input: string): AdvertisingImportRow {
   }
   if (/^(?:\+|joinchat\/)[A-Za-z0-9_-]{5,128}$/.test(path)) return {
     input, target: `https://t.me/+${path.replace(/^(?:\+|joinchat\/)/, "")}`, kind: "private_invite", status: "needs_setup",
-    reason: "Invite links cannot make a bot join. Add the bot, then discover the group or replace this link with its negative chat ID.",
+    reason: "Join the group manually in Telegram, then discover it or replace this link with its negative chat ID. No automatic joining.",
   };
   const username = path.replace(/^@/, "").replace(/\/\d+$/, "");
   if ((!linked && !raw.startsWith("@")) || !/^[a-zA-Z][a-zA-Z0-9_]{4,31}$/.test(username) || ["joinchat", "share", "proxy", "socks", "addstickers", "addemoji", "login"].includes(username.toLowerCase()))

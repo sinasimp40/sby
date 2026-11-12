@@ -6,6 +6,7 @@ import {
   parseTransferData, tableKeys, transferSchemaHash, singleItemTransferSchemaHash, quantityTransferSchemaHash, productEmojiTransferSchemaHash, customEmojiTransferSchemaHash, MAX_TRANSFER_BYTES, MAX_ZIP_BYTES,
   stockAnnouncementTransferSchemaHash, productImageTransferSchemaHash, type TransferData,
   preAdvertisingTransferSchemaHash, advertisingTransferKeys,
+  preAccountTransferSchemaHash, accountTransferKeys,
 } from "./shop-transfer-tables";
 
 const digest = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
@@ -93,20 +94,29 @@ export function decodeShopArchive(zip: Buffer) {
     if (seen.size !== 3 || !files["manifest.json"] || files["manifest.json"].length > 20000 || !files["shop-data.json"]) throw new Error("Required archive files are missing.");
     const manifest = manifestSchema.parse(JSON.parse(strFromU8(files["manifest.json"])));
     const { signature: signed, ...core } = manifest;
-    if (![transferSchemaHash, preAdvertisingTransferSchemaHash, productImageTransferSchemaHash, stockAnnouncementTransferSchemaHash, singleItemTransferSchemaHash, quantityTransferSchemaHash, productEmojiTransferSchemaHash, customEmojiTransferSchemaHash].includes(manifest.schemaHash)) throw new Error("The app schema differs. Use the same Telecart version on source and destination.");
+    if (![transferSchemaHash, preAccountTransferSchemaHash, preAdvertisingTransferSchemaHash, productImageTransferSchemaHash, stockAnnouncementTransferSchemaHash, singleItemTransferSchemaHash, quantityTransferSchemaHash, productEmojiTransferSchemaHash, customEmojiTransferSchemaHash].includes(manifest.schemaHash)) throw new Error("The app schema differs. Use the same Telecart version on source and destination.");
     if (digest(files["shop-data.json"]) !== manifest.dataSha256) throw new Error("Data checksum does not match.");
     if (!timingSafeEqual(Buffer.from(signed, "hex"), Buffer.from(signature(core), "hex"))) {
       throw new Error("Cannot authenticate this archive. Configure the matching original SESSION_SECRET and use an unmodified export.");
     }
     const rawData = JSON.parse(strFromU8(files["shop-data.json"]));
     const legacy = [singleItemTransferSchemaHash, quantityTransferSchemaHash, productEmojiTransferSchemaHash].includes(manifest.schemaHash);
-    const beforeAdvertising = manifest.schemaHash !== transferSchemaHash;
-    const originalKeys = tableKeys.filter(key => !(beforeAdvertising && (advertisingTransferKeys as readonly string[]).includes(key)) && !(legacy && key === "customEmojis"));
+    const beforeAccounts = manifest.schemaHash !== transferSchemaHash;
+    const beforeAdvertising = ![transferSchemaHash, preAccountTransferSchemaHash].includes(manifest.schemaHash);
+    const originalKeys = tableKeys.filter(key => !(beforeAdvertising && (advertisingTransferKeys as readonly string[]).includes(key)) &&
+      !(beforeAccounts && (accountTransferKeys as readonly string[]).includes(key)) && !(legacy && key === "customEmojis"));
     if (!rawData || typeof rawData !== "object" || Object.keys(rawData).length !== originalKeys.length ||
       Object.keys(manifest.counts).length !== originalKeys.length ||
       originalKeys.some(key => !Array.isArray(rawData[key]) || rawData[key].length !== manifest.counts[key]))
       throw new Error("Table counts do not match.");
     if (beforeAdvertising) for (const key of advertisingTransferKeys) rawData[key] = [];
+    if (beforeAccounts) {
+      for (const key of accountTransferKeys) rawData[key] = [];
+      rawData.advertisingGroups = rawData.advertisingGroups.map((row: Record<string, unknown>) => {
+        if ("accountGeneration" in row) throw new Error("Invalid legacy advertising group shape.");
+        return { ...row, accountGeneration: null };
+      });
+    }
     // Verify signed legacy table counts BEFORE introducing safe new defaults.
     if (legacy) {
       rawData.customEmojis = [];
@@ -128,20 +138,20 @@ export function decodeShopArchive(zip: Buffer) {
         return { ...row, quantity: 1, inventoryIds: null };
       });
     }
-    if (![transferSchemaHash, preAdvertisingTransferSchemaHash, productImageTransferSchemaHash, stockAnnouncementTransferSchemaHash].includes(manifest.schemaHash) && Array.isArray(rawData?.products)) {
+    if (![transferSchemaHash, preAccountTransferSchemaHash, preAdvertisingTransferSchemaHash, productImageTransferSchemaHash, stockAnnouncementTransferSchemaHash].includes(manifest.schemaHash) && Array.isArray(rawData?.products)) {
       rawData.products = rawData.products.map((row: Record<string, unknown>) => {
         if (!row || typeof row !== "object" || "stockAnnouncedAt" in row) throw new Error("Invalid legacy product shape.");
         const stocked = Array.isArray(rawData.inventory) && rawData.inventory.some((stock: Record<string, unknown>) => stock.productId === row.id);
         return { ...row, stockAnnouncedAt: stocked ? row.createdAt : null };
       });
     }
-    if (![transferSchemaHash, preAdvertisingTransferSchemaHash, productImageTransferSchemaHash].includes(manifest.schemaHash) && Array.isArray(rawData?.products)) {
+    if (![transferSchemaHash, preAccountTransferSchemaHash, preAdvertisingTransferSchemaHash, productImageTransferSchemaHash].includes(manifest.schemaHash) && Array.isArray(rawData?.products)) {
       rawData.products = rawData.products.map((row: Record<string, unknown>) => {
         if (!row || typeof row !== "object" || "imageUrl" in row) throw new Error("Invalid legacy product shape.");
         return { ...row, imageUrl: null };
       });
     }
-    if (![transferSchemaHash, preAdvertisingTransferSchemaHash].includes(manifest.schemaHash) && Array.isArray(rawData?.products)) {
+    if (![transferSchemaHash, preAccountTransferSchemaHash, preAdvertisingTransferSchemaHash].includes(manifest.schemaHash) && Array.isArray(rawData?.products)) {
       rawData.products = rawData.products.map((row: Record<string, unknown>) => {
         if (!row || typeof row !== "object" || ["groupId", "groupName", "groupDescription", "optionName"].some(key => key in row)) throw new Error("Invalid legacy product shape.");
         return { ...row, groupId: null, groupName: null, groupDescription: null, optionName: null };

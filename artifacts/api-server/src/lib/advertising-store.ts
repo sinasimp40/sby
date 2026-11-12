@@ -3,6 +3,7 @@ import type { AdvertisingWorkspace, AdvertisingCampaign } from "@workspace/api-z
 import type { PoolClient } from "pg";
 import { CommerceError } from "./commerce-providers";
 import { decryptProviderSecret } from "./provider-credentials";
+import { accountStatus } from "./advertising-account-auth";
 
 export type AdvertisingClient = PoolClient;
 export async function withAdvertisingLock<T>(owner: string, fn: (client: AdvertisingClient) => Promise<T>): Promise<T> {
@@ -36,20 +37,27 @@ export async function advertisingCampaigns(owner: string, id?: string): Promise<
 export async function advertisingWorkspace(owner: string): Promise<AdvertisingWorkspace> {
   const [bots, groups, campaigns, shops] = await Promise.all([
     pool.query("SELECT username,token_encrypted IS NOT NULL AS configured, checked_at,last_error FROM advertising_bots WHERE owner_id=$1", [owner]),
-    pool.query(`SELECT id,target,kind,title,chat_id AS "chatId",enabled,status,note,checked_at AS "checkedAt"
-      FROM advertising_groups WHERE owner_id=$1 ORDER BY title,target`, [owner]),
+    pool.query(`SELECT g.id,g.target,g.kind,g.title,g.chat_id AS "chatId",g.enabled,g.status,g.note,g.checked_at AS "checkedAt",
+      COALESCE(s.interval_seconds,1800) AS "intervalSeconds",COALESCE(s.running,false) AS running,s.next_send_at AS "nextSendAt",
+      COALESCE(s.last_status,'stopped') AS "lastStatus",COALESCE(s.note,'Select and start this group to begin.') AS "scheduleNote"
+      FROM advertising_groups g LEFT JOIN advertising_schedules s ON s.group_id=g.id AND s.owner_id=g.owner_id
+      WHERE g.owner_id=$1 ORDER BY g.title,g.target`, [owner]),
     advertisingCampaigns(owner),
     pool.query("SELECT telegram_bot_username AS username FROM provider_credentials WHERE owner_id=$1", [owner]),
   ]);
   const bot = bots.rows[0];
   const draftRow = (await pool.query("SELECT draft FROM advertising_bots WHERE owner_id=$1", [owner])).rows[0];
+  const runs = (await pool.query(`SELECT id,group_id AS "groupId",target,status,note,started_at AS "startedAt",sent_at AS "sentAt"
+    FROM advertising_account_runs WHERE owner_id=$1 ORDER BY started_at DESC LIMIT 100`, [owner])).rows;
   return {
+    account: await accountStatus(owner),
+    accountRuns: runs.map(row => ({ ...row, startedAt: row.startedAt.toISOString(), sentAt: row.sentAt?.toISOString() ?? null })),
     bot: { configured: Boolean(bot?.configured), connected: Boolean(bot?.configured && bot.checked_at && !bot.last_error),
       username: bot?.username ?? "", botLink: bot?.username ? `https://t.me/${bot.username}` : null,
       checkedAt: bot?.checked_at?.toISOString() ?? null, error: bot?.last_error ?? null },
     draft: draftRow?.draft ?? { text: "", imageUrl: null, buttonText: "Visit shop", buttonUrl: null },
     shopBotUrl: shops.rows[0]?.username ? `https://t.me/${shops.rows[0].username}` : null,
-    groups: groups.rows.map(row => ({ ...row, checkedAt: row.checkedAt?.toISOString() ?? null })),
+    groups: groups.rows.map(row => ({ ...row, checkedAt: row.checkedAt?.toISOString() ?? null, nextSendAt: row.nextSendAt?.toISOString() ?? null })),
     campaigns,
   };
 }

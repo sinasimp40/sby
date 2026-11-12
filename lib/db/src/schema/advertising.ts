@@ -24,6 +24,7 @@ export const advertisingGroups = pgTable("advertising_groups", {
   note: text("note").notNull().default("Check posting permissions before sending."),
   checkedAt: timestamp("checked_at", { withTimezone: true }),
   lastSentAt: timestamp("last_sent_at", { withTimezone: true }),
+  accountGeneration: integer("account_generation"),
 }, table => [
   uniqueIndex("advertising_group_target").on(table.ownerId, table.target),
   uniqueIndex("advertising_group_chat").on(table.ownerId, table.chatId),

@@ -9,6 +9,55 @@ tags:
   - name: health
   - name: shop
 paths:
+  /shop/advertising/account/login:
+    post:
+      operationId: beginAdvertisingAccountLogin
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingAccountLoginInput"}}}}
+      responses:
+        "200": {description: Secure login challenge, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
+    delete:
+      operationId: cancelAdvertisingAccountLogin
+      responses:
+        "200": {description: Cancelled login, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
+  /shop/advertising/account/login/verify:
+    post:
+      operationId: verifyAdvertisingAccountLogin
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingAccountVerification"}}}}
+      responses:
+        "200": {description: Code/password verification, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
+  /shop/advertising/account/login/poll:
+    post:
+      operationId: pollAdvertisingAccountLogin
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingAccountPoll"}}}}
+      responses:
+        "200": {description: QR login state, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
+  /shop/advertising/account/check:
+    post:
+      operationId: checkAdvertisingAccount
+      responses:
+        "200": {description: Account session check, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
+  /shop/advertising/account:
+    delete:
+      operationId: disconnectAdvertisingAccount
+      responses:
+        "200": {description: Stopped posting and removed session, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
+  /shop/advertising/schedules/start:
+    post:
+      operationId: startAdvertisingAccountSchedules
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingAccountStartInput"}}}}
+      responses:
+        "200": {description: Selected groups started, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
+  /shop/advertising/schedules/stop:
+    post:
+      operationId: stopAdvertisingAccountSchedules
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingScheduleSelection"}}}}
+      responses:
+        "200": {description: Selected groups stopped, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
+  /shop/advertising/schedules/stop-all:
+    post:
+      operationId: stopAllAdvertisingAccountSchedules
+      responses:
+        "200": {description: All groups stopped, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
   /shop/advertising:
     get:
       operationId: getAdvertisingWorkspace
@@ -662,8 +711,13 @@ components:
         error: {type: [string, "null"]}
     AdvertisingGroup:
       type: object
-      required: [id, target, kind, title, chatId, enabled, status, note, checkedAt]
+      required: [id, target, kind, title, chatId, enabled, status, note, checkedAt, intervalSeconds, running, nextSendAt, lastStatus, scheduleNote]
       properties:
+        intervalSeconds: {type: integer, minimum: 60, maximum: 2592000}
+        running: {type: boolean}
+        nextSendAt: {type: [string, "null"], format: date-time}
+        lastStatus: {type: string}
+        scheduleNote: {type: string}
         id: {type: string, format: uuid}
         target: {type: string}
         kind: {type: string, enum: [public, private_invite, chat_id]}
@@ -706,6 +760,7 @@ components:
     AdvertisingGroupUpdate:
       type: object
       properties:
+        intervalSeconds: {type: integer, minimum: 60, maximum: 2592000}
         target: {type: string, minLength: 1, maxLength: 300}
         enabled: {type: boolean}
     AdvertisingCampaignInput:
@@ -747,13 +802,92 @@ components:
         deliveries: {type: array, items: {$ref: "#/components/schemas/AdvertisingDelivery"}}
     AdvertisingWorkspace:
       type: object
-      required: [bot, draft, shopBotUrl, groups, campaigns]
+      required: [bot, draft, shopBotUrl, groups, campaigns, account, accountRuns]
       properties:
+        account: {$ref: "#/components/schemas/AdvertisingAccount"}
+        accountRuns: {type: array, items: {$ref: "#/components/schemas/AdvertisingAccountRun"}}
         bot: {$ref: "#/components/schemas/AdvertisingBot"}
         draft: {$ref: "#/components/schemas/AdvertisingDraft"}
         shopBotUrl: {type: [string, "null"]}
         groups: {type: array, items: {$ref: "#/components/schemas/AdvertisingGroup"}}
         campaigns: {type: array, items: {$ref: "#/components/schemas/AdvertisingCampaign"}}
+    AdvertisingAccountLoginInput:
+      type: object
+      required: [apiId, apiHash, method]
+      properties:
+        apiId: {type: integer, minimum: 1, maximum: 2147483647}
+        apiHash: {type: string, minLength: 32, maxLength: 32}
+        method: {type: string, enum: [qr, phone]}
+        phone: {type: string, maxLength: 20}
+    AdvertisingAccountVerification:
+      type: object
+      required: [loginId]
+      properties:
+        loginId: {type: string, format: uuid}
+        code: {type: string, minLength: 3, maxLength: 12}
+        password: {type: string, minLength: 1, maxLength: 256}
+    AdvertisingAccountPoll:
+      type: object
+      required: [loginId]
+      properties:
+        loginId: {type: string, format: uuid}
+    AdvertisingAccountLogin:
+      type: object
+      required: [id, method, step, expiresAt, qrImage]
+      properties:
+        id: {type: string, format: uuid}
+        method: {type: string, enum: [qr, phone]}
+        step: {type: string, enum: [qr, code, password, expired]}
+        expiresAt: {type: string, format: date-time}
+        qrImage: {type: [string, "null"]}
+    AdvertisingAccount:
+      type: object
+      required: [configured, connected, accountId, username, displayName, checkedAt, error, login]
+      properties:
+        configured: {type: boolean}
+        connected: {type: boolean}
+        accountId: {type: [string, "null"]}
+        username: {type: string}
+        displayName: {type: string}
+        checkedAt: {type: [string, "null"], format: date-time}
+        error: {type: [string, "null"]}
+        login: {oneOf: [{$ref: "#/components/schemas/AdvertisingAccountLogin"}, {type: "null"}]}
+    AdvertisingScheduleSelection:
+      type: object
+      required: [groupIds]
+      properties:
+        groupIds: {type: array, minItems: 1, maxItems: 500, uniqueItems: true, items: {type: string, format: uuid}}
+    AdvertisingAccountStartInput:
+      type: object
+      required: [accountId, groupIds, expectedGroups, draft, permissionConfirmed, idempotencyKey]
+      properties:
+        accountId: {type: string, pattern: '^[0-9]+$'}
+        expectedGroups:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            type: object
+            required: [id, chatId, intervalSeconds]
+            properties:
+              id: {type: string, format: uuid}
+              chatId: {type: string, pattern: '^-[1-9][0-9]{5,15}$'}
+              intervalSeconds: {type: integer, minimum: 60, maximum: 2592000}
+        groupIds: {type: array, minItems: 1, maxItems: 500, uniqueItems: true, items: {type: string, format: uuid}}
+        draft: {$ref: "#/components/schemas/AdvertisingDraft"}
+        permissionConfirmed: {type: boolean}
+        idempotencyKey: {type: string, format: uuid}
+    AdvertisingAccountRun:
+      type: object
+      required: [id, groupId, target, status, note, startedAt, sentAt]
+      properties:
+        id: {type: string, format: uuid}
+        groupId: {type: string, format: uuid}
+        target: {type: string}
+        status: {type: string, enum: [sending, sent, failed, uncertain, cancelled, rate_limited]}
+        note: {type: string}
+        startedAt: {type: string, format: date-time}
+        sentAt: {type: [string, "null"], format: date-time}
     PaymentMinimum:
       type: object
       required: [coin, fixedUSD, floatingUSD, checkedAt]

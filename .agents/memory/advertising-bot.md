@@ -1,28 +1,28 @@
 ---
-name: Separate advertising bot
-description: Merchant-approved separation of group advertising from shop transactions and the safety requirements behind it.
+name: Separate advertising account
+description: Merchant-required Telegram personal-account advertising, independent of the shop bot, with explicit recurring group controls.
 ---
 
-The user requires a separate advertising bot controlled from the same dashboard, with its own connection status, advertisement text, `.txt` group-link segregation and manual group entry.
+The user now requires advertising through a personal Telegram account, not an advertising bot, inside the same dashboard. Support both phone plus login code and QR login, Telegram two-step verification, selected destination groups, individual group intervals, and Start/Stop controls. Keep advertisement editing, `.txt` group-link segregation and manual group entry.
 
-**Why:** The user was concerned that advertising in different groups could interfere with customers using the shop bot. They explicitly chose separate bots.
+**Why:** The user explicitly replaced the earlier separate-bot approach with an account that can chat in groups. They were concerned about advertisements interfering with customers using the shop bot.
 
-**How to apply:** Never reuse the shop bot identity or shop sending path for advertisements. Authorize the new bot with its own protected BotFather token; a public bot link alone cannot connect it. Shop maintenance must not implicitly control this independent sender.
+**How to apply:** Never reuse or change the shop bot credentials/sending path for advertisements. Keep advertising independent of shop maintenance. Stop legacy advertising-bot jobs during the switch, preserve history, and require explicit selected-group confirmation before any account posting.
 
-Advertising connection requires only the BotFather token. Automatically obtain the bot username and link from Telegram instead of asking the merchant to enter a redundant bot link.
+Account authorization belongs in the protected dashboard, never chat. Explain the API app ID/hash requirement and full-account access, and allow checking connection and revoking the saved session.
 
-**Why:** The user corrected the connection form and asked for clear verification and connected/disconnected feedback after entering a token.
+**Why:** The user requested both login methods and clear connection feedback; personal Telegram sessions grant substantially broader access than bot tokens.
 
-**How to apply:** Keep an explicit Verify and connect action, show verification progress and the saved connection state, and allow reconnecting from the same panel. Validate identity and reject the shop bot on the server.
+**How to apply:** Encrypt sessions and pending challenges per owner; never persist codes/passwords or expose saved credentials. Connecting alone never starts posting. Personal accounts cannot attach inline bot buttons: render the optional shop link as ordinary message/caption text.
 
-A group link does not grant membership or posting permission, and private invite links cannot make a Bot API bot join a group.
+A group link does not grant membership or posting permission. Do not automatically join groups or message personal contacts.
 
 **Why:** The requested import is a list of destinations, not permission to join or advertise. Assuming otherwise would mislead the merchant and risk unsolicited posts.
 
-**How to apply:** Segregate and deduplicate before saving, require permission confirmation, verify membership/posting rights before sends, and keep unresolved private links out of campaigns. Do not remove another app's webhook silently.
+**How to apply:** Segregate and deduplicate before saving, discover only already-joined groups/channels, require permission confirmation, and verify membership/posting rights before sends. Keep unresolved invite links out of active schedules.
 
-Freeze the exact confirmed message and recipients; never automatically retry an unconfirmed send or resume imported advertising campaigns.
+Freeze the exact confirmed message, account, recipients and intervals. Never automatically retry an unconfirmed send, catch up missed intervals in a burst, or resume imported advertising jobs.
 
 **Why:** Advertising is an external action that cannot reliably be undone, and a network timeout can occur after Telegram accepted a message.
 
-**How to apply:** Use a separate durable, paced queue with request deduplication, explicit uncertain outcomes and cancellation of unsent work. Portable imports retain history and encrypted credentials but require reconnection checks and group verification before new campaigns.
+**How to apply:** Use durable request deduplication, selected-only controls, account-wide Telegram wait periods and explicit uncertain outcomes that stop the affected group. Imported schedules stay stopped. Portable ZIPs include business schedules/history but deliberately exclude personal-account sessions, login challenges and API app credentials; require fresh authorization and group checks.

@@ -4,7 +4,7 @@ import { db, providerCredentials, advertisingBots } from "@workspace/db";
 import { configuredOwnerId } from "./admin-bootstrap";
 import { CommerceError } from "./commerce-providers";
 
-type CredentialField = "telegram" | "advertising" | "nowpayments-api-key" | "nowpayments-ipn-secret";
+type CredentialField = "telegram" | "advertising" | "advertising-account" | "nowpayments-api-key" | "nowpayments-ipn-secret";
 export type ProviderCredentialValues = {
   telegramToken: string | null;
   nowpaymentsApiKey: string | null;

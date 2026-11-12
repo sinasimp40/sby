@@ -63,6 +63,16 @@ export const AdvertisingGroupStatus = {
 } as const;
 
 export interface AdvertisingGroup {
+  /**
+     * @minimum 60
+     * @maximum 2592000
+     */
+  intervalSeconds: number;
+  running: boolean;
+  /** @nullable */
+  nextSendAt: string | null;
+  lastStatus: string;
+  scheduleNote: string;
   id: string;
   target: string;
   kind: AdvertisingGroupKind;
@@ -137,6 +147,11 @@ export interface AdvertisingGroupSelection {
 
 export interface AdvertisingGroupUpdate {
   /**
+     * @minimum 60
+     * @maximum 2592000
+     */
+  intervalSeconds?: number;
+  /**
      * @minLength 1
      * @maxLength 300
      */
@@ -205,13 +220,158 @@ export interface AdvertisingCampaignDetail {
   deliveries: AdvertisingDelivery[];
 }
 
+export type AdvertisingAccountLoginMethod = typeof AdvertisingAccountLoginMethod[keyof typeof AdvertisingAccountLoginMethod];
+
+
+export const AdvertisingAccountLoginMethod = {
+  qr: 'qr',
+  phone: 'phone',
+} as const;
+
+export type AdvertisingAccountLoginStep = typeof AdvertisingAccountLoginStep[keyof typeof AdvertisingAccountLoginStep];
+
+
+export const AdvertisingAccountLoginStep = {
+  qr: 'qr',
+  code: 'code',
+  password: 'password',
+  expired: 'expired',
+} as const;
+
+export interface AdvertisingAccountLogin {
+  id: string;
+  method: AdvertisingAccountLoginMethod;
+  step: AdvertisingAccountLoginStep;
+  expiresAt: string;
+  /** @nullable */
+  qrImage: string | null;
+}
+
+export interface AdvertisingAccount {
+  configured: boolean;
+  connected: boolean;
+  /** @nullable */
+  accountId: string | null;
+  username: string;
+  displayName: string;
+  /** @nullable */
+  checkedAt: string | null;
+  /** @nullable */
+  error: string | null;
+  login: AdvertisingAccountLogin | null;
+}
+
+export type AdvertisingAccountRunStatus = typeof AdvertisingAccountRunStatus[keyof typeof AdvertisingAccountRunStatus];
+
+
+export const AdvertisingAccountRunStatus = {
+  sending: 'sending',
+  sent: 'sent',
+  failed: 'failed',
+  uncertain: 'uncertain',
+  cancelled: 'cancelled',
+  rate_limited: 'rate_limited',
+} as const;
+
+export interface AdvertisingAccountRun {
+  id: string;
+  groupId: string;
+  target: string;
+  status: AdvertisingAccountRunStatus;
+  note: string;
+  startedAt: string;
+  /** @nullable */
+  sentAt: string | null;
+}
+
 export interface AdvertisingWorkspace {
+  account: AdvertisingAccount;
+  accountRuns: AdvertisingAccountRun[];
   bot: AdvertisingBot;
   draft: AdvertisingDraft;
   /** @nullable */
   shopBotUrl: string | null;
   groups: AdvertisingGroup[];
   campaigns: AdvertisingCampaign[];
+}
+
+export type AdvertisingAccountLoginInputMethod = typeof AdvertisingAccountLoginInputMethod[keyof typeof AdvertisingAccountLoginInputMethod];
+
+
+export const AdvertisingAccountLoginInputMethod = {
+  qr: 'qr',
+  phone: 'phone',
+} as const;
+
+export interface AdvertisingAccountLoginInput {
+  /**
+     * @minimum 1
+     * @maximum 2147483647
+     */
+  apiId: number;
+  /**
+     * @minLength 32
+     * @maxLength 32
+     */
+  apiHash: string;
+  method: AdvertisingAccountLoginInputMethod;
+  /** @maxLength 20 */
+  phone?: string;
+}
+
+export interface AdvertisingAccountVerification {
+  loginId: string;
+  /**
+     * @minLength 3
+     * @maxLength 12
+     */
+  code?: string;
+  /**
+     * @minLength 1
+     * @maxLength 256
+     */
+  password?: string;
+}
+
+export interface AdvertisingAccountPoll {
+  loginId: string;
+}
+
+export interface AdvertisingScheduleSelection {
+  /**
+     * @minItems 1
+     * @maxItems 500
+     */
+  groupIds: string[];
+}
+
+export type AdvertisingAccountStartInputExpectedGroupsItem = {
+  id: string;
+  /** @pattern ^-[1-9][0-9]{5,15}$ */
+  chatId: string;
+  /**
+     * @minimum 60
+     * @maximum 2592000
+     */
+  intervalSeconds: number;
+};
+
+export interface AdvertisingAccountStartInput {
+  /** @pattern ^[0-9]+$ */
+  accountId: string;
+  /**
+     * @minItems 1
+     * @maxItems 500
+     */
+  expectedGroups: AdvertisingAccountStartInputExpectedGroupsItem[];
+  /**
+     * @minItems 1
+     * @maxItems 500
+     */
+  groupIds: string[];
+  draft: AdvertisingDraft;
+  permissionConfirmed: boolean;
+  idempotencyKey: string;
 }
 
 export interface PaymentMinimum {

@@ -8,6 +8,11 @@
 
 export interface AdvertisingGroupUpdate {
   /**
+     * @minimum 60
+     * @maximum 2592000
+     */
+  intervalSeconds?: number;
+  /**
      * @minLength 1
      * @maxLength 300
      */

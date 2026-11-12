@@ -3,7 +3,9 @@ import { logger } from "./lib/logger";
 import { initializeAdminBootstrap } from "./lib/admin-bootstrap";
 import { runWorkspacePolling } from "./lib/workspace-polling";
 import { runPaymentReconciliation } from "./lib/payment-reconciliation";
-import { runAdvertisingWorker } from "./lib/advertising-campaigns";
+import { runAccountAdvertisingWorker } from "./lib/advertising-account-schedules";
+import { initializeAccountAdvertising } from "./lib/advertising-account-auth";
+import { configuredOwnerId } from "./lib/admin-bootstrap";
 
 const rawPort = process.env["PORT"];
 
@@ -23,6 +25,8 @@ if (Number.isNaN(port) || port <= 0) {
 // Production Clerk credentials never need to be copied into the workspace.
 try {
   await initializeAdminBootstrap();
+  const owner = configuredOwnerId();
+  if (owner) await initializeAccountAdvertising(owner);
 } catch {
   logger.error("Admin bootstrap failed. No existing user was granted access or had its password changed. Check the configured admin email, binding and Clerk requirements.");
   process.exit(1);
@@ -37,5 +41,5 @@ app.listen(port, process.env.TELECART_LOCAL_ONLY === "true" ? "127.0.0.1" : "0.0
   logger.info({ port }, "Server listening");
   void runWorkspacePolling().catch(() => logger.error("Workspace Telegram poller stopped."));
   void runPaymentReconciliation().catch(() => logger.error("Payment reconciliation stopped."));
-  void runAdvertisingWorker().catch(() => logger.error("Advertising sender stopped."));
+  void runAccountAdvertisingWorker().catch(() => logger.error("Account advertising sender stopped."));
 });

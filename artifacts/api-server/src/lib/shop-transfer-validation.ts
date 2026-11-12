@@ -12,6 +12,7 @@ import { validProductMediaUrl } from "./product-media";
 import { parseAdvertisingTarget } from "./advertising-targets";
 import { validateAdvertisingDraft } from "./advertising-telegram";
 import type { AdvertisingDraft } from "@workspace/api-zod";
+import { accountMessage } from "./advertising-account-driver";
 
 export function validateShopRelationships(data: TransferData, ownerId: string) {
   let area = "ownership";
@@ -150,6 +151,25 @@ export function validateShopRelationships(data: TransferData, ownerId: string) {
         !["pending", "sending", "sent", "failed", "uncertain", "cancelled"].includes(String(delivery.status))) throw new Error();
       recipients.add(key);
     }
+    area = "account advertising schedules and history";
+    const adGroups = indexed(data.advertisingGroups);
+    indexed(data.advertisingAccountSchedules, "groupId");
+    for (const schedule of data.advertisingAccountSchedules) {
+      if (!adGroups.has(schedule.groupId) || Number(schedule.intervalSeconds) < 60 || Number(schedule.intervalSeconds) > 2592000 ||
+        Number(schedule.revision) < 0 || Number(schedule.accountGeneration) < 0 || (schedule.running && (!schedule.draft || !schedule.nextSendAt))) throw new Error();
+      if (schedule.draft !== null) accountMessage(jsonDraft(schedule.draft));
+    }
+    indexed(data.advertisingAccountRuns);
+    const occurrences = new Set<string>();
+    for (const run of data.advertisingAccountRuns) {
+      const key = `${run.groupId}:${run.revision}:${run.scheduledFor}`;
+      if (occurrences.has(key) || !/^-[1-9]\d{5,15}$/.test(String(run.chatId)) ||
+        !/^-?\d{1,20}$/.test(String(run.randomId)) ||
+        !["sending", "sent", "failed", "uncertain", "cancelled", "rate_limited"].includes(String(run.status))) throw new Error();
+      occurrences.add(key); accountMessage(jsonDraft(run.draft));
+    }
+    indexed(data.advertisingAccountCommands); indexed(data.advertisingAccountCommands, "requestKey");
+    if (data.advertisingAccountCommands.some(row => !/^[a-f0-9]{64}$/.test(String(row.payloadHash)))) throw new Error();
     const credentials = data.providerCredentials[0];
     if (credentials) {
       for (const [field, purpose] of [

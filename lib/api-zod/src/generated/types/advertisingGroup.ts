@@ -9,6 +9,16 @@ import type { AdvertisingGroupKind } from './advertisingGroupKind';
 import type { AdvertisingGroupStatus } from './advertisingGroupStatus';
 
 export interface AdvertisingGroup {
+  /**
+     * @minimum 60
+     * @maximum 2592000
+     */
+  intervalSeconds: number;
+  running: boolean;
+  /** @nullable */
+  nextSendAt: Date | null;
+  lastStatus: string;
+  scheduleNote: string;
   id: string;
   target: string;
   kind: AdvertisingGroupKind;

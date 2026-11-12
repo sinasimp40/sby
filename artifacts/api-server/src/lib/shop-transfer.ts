@@ -21,6 +21,7 @@ const warnings = [
   "The destination bot and payment processing stay paused for review. Stop the source server before resuming; never run both copies.",
   "Public callback URLs and unfinished Telegram selections are cleared. Historical payments, balances, stock and delivery records are retained.",
   "Advertising credentials, groups, draft and history are included. Imported campaigns never resume automatically; check the bot and group permissions again.",
+  "Personal Telegram account sessions, login challenges and API app credentials are never exported. Imported group schedules are stopped; sign in and verify groups before starting.",
 ];
 
 async function advertisingImportBlocker(client: PoolClient, owner: string, data: TransferData) {
@@ -148,7 +149,7 @@ async function importRows(client: PoolClient, data: TransferData, source: string
     checkedAt: null, lastError: "Imported advertising connection. Review the transfer, then check the bot before sending.", updateOffset: 0,
   });
   await write("advertisingGroups", data.advertisingGroups.map(row => ({
-    ...row, id: groupIds.get(String(row.id)), ownerId: owner, status: "pending", checkedAt: null,
+    ...row, id: groupIds.get(String(row.id)), ownerId: owner, status: "pending", checkedAt: null, accountGeneration: null,
     note: "Imported group. Verify membership and posting permissions before sending.",
   })));
   await write("advertisingCampaigns", data.advertisingCampaigns.map(row => ({
@@ -161,6 +162,18 @@ async function importRows(client: PoolClient, data: TransferData, source: string
     status: row.status === "pending" ? "cancelled" : row.status === "sending" ? "uncertain" : row.status,
     note: ["pending", "sending"].includes(String(row.status)) ? "Imported history. No automatic resend; check the target group." : row.note,
   })));
+  await write("advertisingAccountSchedules", data.advertisingAccountSchedules.map(row => ({
+    ...row, groupId: groupIds.get(String(row.groupId)), ownerId: owner, running: false, nextSendAt: null,
+    accountGeneration: 0, revision: Number(row.revision) + 1, lastStatus: "stopped",
+    note: "Imported schedule is stopped. Sign in, verify membership and explicitly start selected groups.",
+  })));
+  for (const row of data.advertisingAccountRuns) if (!groupIds.has(String(row.groupId))) groupIds.set(String(row.groupId), randomUUID());
+  await write("advertisingAccountRuns", data.advertisingAccountRuns.map(row => ({
+    ...row, id: randomUUID(), ownerId: owner, groupId: groupIds.get(String(row.groupId)),
+    status: row.status === "sending" ? "uncertain" : row.status,
+    note: row.status === "sending" ? "Imported interrupted post. Check Telegram; no automatic resend." : row.note,
+  })));
+  await write("advertisingAccountCommands", data.advertisingAccountCommands.map(row => ({ ...row, id: randomUUID(), ownerId: owner })));
 }
 
 export async function importShopTransfer(ownerId: string | null, zip: Buffer, token: string) {
@@ -182,7 +195,8 @@ export async function importShopTransfer(ownerId: string | null, zip: Buffer, to
     await client.query(`LOCK TABLE shop_products, shop_inventory, bot_customers, shop_payments,
       wallet_entries, shop_records, shop_settings, shop_activity, provider_credentials,
       bot_runtime_settings, bot_connections, bot_updates, shop_custom_emojis, emoji_import_sessions,
-      advertising_bots, advertising_groups, advertising_campaigns, advertising_deliveries IN SHARE ROW EXCLUSIVE MODE`);
+      advertising_bots, advertising_groups, advertising_campaigns, advertising_deliveries,
+      advertising_accounts, advertising_schedules, advertising_account_runs, advertising_account_commands IN SHARE ROW EXCLUSIVE MODE`);
     const state = await destinationTransferState(client, ownerId);
     if (state.blockers.length) throw new CommerceError(state.blockers.join(" "), 409);
     if (archive.data.connection.length && state.connectionOwner && state.connectionOwner !== ownerId) throw new CommerceError("The bot is bound to another shop. Nothing was imported.", 409);

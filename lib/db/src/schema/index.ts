@@ -26,3 +26,4 @@ export * from "./shop-commerce";
 export * from "./admin-sessions";
 export * from "./provider-credentials";
 export * from "./advertising";
+export * from "./advertising-accounts";

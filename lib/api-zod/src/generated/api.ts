@@ -8,6 +8,849 @@
 import * as zod from 'zod';
 
 
+export const beginAdvertisingAccountLoginBodyApiIdMax = 2147483647;
+
+export const beginAdvertisingAccountLoginBodyApiHashMin = 32;
+export const beginAdvertisingAccountLoginBodyApiHashMax = 32;
+
+export const beginAdvertisingAccountLoginBodyPhoneMax = 20;
+
+
+
+export const BeginAdvertisingAccountLoginBody = zod.object({
+  "apiId": zod.number().int().min(1).max(beginAdvertisingAccountLoginBodyApiIdMax),
+  "apiHash": zod.string().min(beginAdvertisingAccountLoginBodyApiHashMin).max(beginAdvertisingAccountLoginBodyApiHashMax),
+  "method": zod.enum(['qr', 'phone']),
+  "phone": zod.string().max(beginAdvertisingAccountLoginBodyPhoneMax).optional()
+})
+
+export const beginAdvertisingAccountLoginResponseDraftTextMax = 4096;
+
+export const beginAdvertisingAccountLoginResponseDraftImageUrlMax = 2048;
+
+export const beginAdvertisingAccountLoginResponseDraftButtonTextMax = 64;
+
+export const beginAdvertisingAccountLoginResponseDraftButtonUrlMax = 2048;
+
+export const beginAdvertisingAccountLoginResponseGroupsItemIntervalSecondsMin = 60;
+export const beginAdvertisingAccountLoginResponseGroupsItemIntervalSecondsMax = 2592000;
+
+
+
+export const BeginAdvertisingAccountLoginResponse = zod.object({
+  "account": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "accountId": zod.string().nullable(),
+  "username": zod.string(),
+  "displayName": zod.string(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable(),
+  "login": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "method": zod.enum(['qr', 'phone']),
+  "step": zod.enum(['qr', 'code', 'password', 'expired']),
+  "expiresAt": zod.coerce.date(),
+  "qrImage": zod.string().nullable()
+}),zod.null()])
+}),
+  "accountRuns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().uuid(),
+  "target": zod.string(),
+  "status": zod.enum(['sending', 'sent', 'failed', 'uncertain', 'cancelled', 'rate_limited']),
+  "note": zod.string(),
+  "startedAt": zod.coerce.date(),
+  "sentAt": zod.coerce.date().nullable()
+})),
+  "bot": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "username": zod.string(),
+  "botLink": zod.string().nullable(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable()
+}),
+  "draft": zod.object({
+  "text": zod.string().max(beginAdvertisingAccountLoginResponseDraftTextMax),
+  "imageUrl": zod.string().max(beginAdvertisingAccountLoginResponseDraftImageUrlMax).nullable(),
+  "buttonText": zod.string().max(beginAdvertisingAccountLoginResponseDraftButtonTextMax),
+  "buttonUrl": zod.string().max(beginAdvertisingAccountLoginResponseDraftButtonUrlMax).nullable()
+}),
+  "shopBotUrl": zod.string().nullable(),
+  "groups": zod.array(zod.object({
+  "intervalSeconds": zod.number().int().min(beginAdvertisingAccountLoginResponseGroupsItemIntervalSecondsMin).max(beginAdvertisingAccountLoginResponseGroupsItemIntervalSecondsMax),
+  "running": zod.boolean(),
+  "nextSendAt": zod.coerce.date().nullable(),
+  "lastStatus": zod.string(),
+  "scheduleNote": zod.string(),
+  "id": zod.string().uuid(),
+  "target": zod.string(),
+  "kind": zod.enum(['public', 'private_invite', 'chat_id']),
+  "title": zod.string(),
+  "chatId": zod.string().nullable(),
+  "enabled": zod.boolean(),
+  "status": zod.enum(['pending', 'ready', 'needs_setup', 'duplicate', 'error']),
+  "note": zod.string(),
+  "checkedAt": zod.coerce.date().nullable()
+})),
+  "campaigns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['queued', 'sending', 'completed', 'partial', 'cancelled']),
+  "text": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "total": zod.number().int(),
+  "sent": zod.number().int(),
+  "failed": zod.number().int(),
+  "uncertain": zod.number().int(),
+  "pending": zod.number().int(),
+  "cancelled": zod.number().int()
+}))
+})
+
+
+export const cancelAdvertisingAccountLoginResponseDraftTextMax = 4096;
+
+export const cancelAdvertisingAccountLoginResponseDraftImageUrlMax = 2048;
+
+export const cancelAdvertisingAccountLoginResponseDraftButtonTextMax = 64;
+
+export const cancelAdvertisingAccountLoginResponseDraftButtonUrlMax = 2048;
+
+export const cancelAdvertisingAccountLoginResponseGroupsItemIntervalSecondsMin = 60;
+export const cancelAdvertisingAccountLoginResponseGroupsItemIntervalSecondsMax = 2592000;
+
+
+
+export const CancelAdvertisingAccountLoginResponse = zod.object({
+  "account": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "accountId": zod.string().nullable(),
+  "username": zod.string(),
+  "displayName": zod.string(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable(),
+  "login": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "method": zod.enum(['qr', 'phone']),
+  "step": zod.enum(['qr', 'code', 'password', 'expired']),
+  "expiresAt": zod.coerce.date(),
+  "qrImage": zod.string().nullable()
+}),zod.null()])
+}),
+  "accountRuns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().uuid(),
+  "target": zod.string(),
+  "status": zod.enum(['sending', 'sent', 'failed', 'uncertain', 'cancelled', 'rate_limited']),
+  "note": zod.string(),
+  "startedAt": zod.coerce.date(),
+  "sentAt": zod.coerce.date().nullable()
+})),
+  "bot": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "username": zod.string(),
+  "botLink": zod.string().nullable(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable()
+}),
+  "draft": zod.object({
+  "text": zod.string().max(cancelAdvertisingAccountLoginResponseDraftTextMax),
+  "imageUrl": zod.string().max(cancelAdvertisingAccountLoginResponseDraftImageUrlMax).nullable(),
+  "buttonText": zod.string().max(cancelAdvertisingAccountLoginResponseDraftButtonTextMax),
+  "buttonUrl": zod.string().max(cancelAdvertisingAccountLoginResponseDraftButtonUrlMax).nullable()
+}),
+  "shopBotUrl": zod.string().nullable(),
+  "groups": zod.array(zod.object({
+  "intervalSeconds": zod.number().int().min(cancelAdvertisingAccountLoginResponseGroupsItemIntervalSecondsMin).max(cancelAdvertisingAccountLoginResponseGroupsItemIntervalSecondsMax),
+  "running": zod.boolean(),
+  "nextSendAt": zod.coerce.date().nullable(),
+  "lastStatus": zod.string(),
+  "scheduleNote": zod.string(),
+  "id": zod.string().uuid(),
+  "target": zod.string(),
+  "kind": zod.enum(['public', 'private_invite', 'chat_id']),
+  "title": zod.string(),
+  "chatId": zod.string().nullable(),
+  "enabled": zod.boolean(),
+  "status": zod.enum(['pending', 'ready', 'needs_setup', 'duplicate', 'error']),
+  "note": zod.string(),
+  "checkedAt": zod.coerce.date().nullable()
+})),
+  "campaigns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['queued', 'sending', 'completed', 'partial', 'cancelled']),
+  "text": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "total": zod.number().int(),
+  "sent": zod.number().int(),
+  "failed": zod.number().int(),
+  "uncertain": zod.number().int(),
+  "pending": zod.number().int(),
+  "cancelled": zod.number().int()
+}))
+})
+
+
+export const verifyAdvertisingAccountLoginBodyCodeMin = 3;
+export const verifyAdvertisingAccountLoginBodyCodeMax = 12;
+
+export const verifyAdvertisingAccountLoginBodyPasswordMax = 256;
+
+
+
+export const VerifyAdvertisingAccountLoginBody = zod.object({
+  "loginId": zod.string().uuid(),
+  "code": zod.string().min(verifyAdvertisingAccountLoginBodyCodeMin).max(verifyAdvertisingAccountLoginBodyCodeMax).optional(),
+  "password": zod.string().min(1).max(verifyAdvertisingAccountLoginBodyPasswordMax).optional()
+})
+
+export const verifyAdvertisingAccountLoginResponseDraftTextMax = 4096;
+
+export const verifyAdvertisingAccountLoginResponseDraftImageUrlMax = 2048;
+
+export const verifyAdvertisingAccountLoginResponseDraftButtonTextMax = 64;
+
+export const verifyAdvertisingAccountLoginResponseDraftButtonUrlMax = 2048;
+
+export const verifyAdvertisingAccountLoginResponseGroupsItemIntervalSecondsMin = 60;
+export const verifyAdvertisingAccountLoginResponseGroupsItemIntervalSecondsMax = 2592000;
+
+
+
+export const VerifyAdvertisingAccountLoginResponse = zod.object({
+  "account": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "accountId": zod.string().nullable(),
+  "username": zod.string(),
+  "displayName": zod.string(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable(),
+  "login": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "method": zod.enum(['qr', 'phone']),
+  "step": zod.enum(['qr', 'code', 'password', 'expired']),
+  "expiresAt": zod.coerce.date(),
+  "qrImage": zod.string().nullable()
+}),zod.null()])
+}),
+  "accountRuns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().uuid(),
+  "target": zod.string(),
+  "status": zod.enum(['sending', 'sent', 'failed', 'uncertain', 'cancelled', 'rate_limited']),
+  "note": zod.string(),
+  "startedAt": zod.coerce.date(),
+  "sentAt": zod.coerce.date().nullable()
+})),
+  "bot": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "username": zod.string(),
+  "botLink": zod.string().nullable(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable()
+}),
+  "draft": zod.object({
+  "text": zod.string().max(verifyAdvertisingAccountLoginResponseDraftTextMax),
+  "imageUrl": zod.string().max(verifyAdvertisingAccountLoginResponseDraftImageUrlMax).nullable(),
+  "buttonText": zod.string().max(verifyAdvertisingAccountLoginResponseDraftButtonTextMax),
+  "buttonUrl": zod.string().max(verifyAdvertisingAccountLoginResponseDraftButtonUrlMax).nullable()
+}),
+  "shopBotUrl": zod.string().nullable(),
+  "groups": zod.array(zod.object({
+  "intervalSeconds": zod.number().int().min(verifyAdvertisingAccountLoginResponseGroupsItemIntervalSecondsMin).max(verifyAdvertisingAccountLoginResponseGroupsItemIntervalSecondsMax),
+  "running": zod.boolean(),
+  "nextSendAt": zod.coerce.date().nullable(),
+  "lastStatus": zod.string(),
+  "scheduleNote": zod.string(),
+  "id": zod.string().uuid(),
+  "target": zod.string(),
+  "kind": zod.enum(['public', 'private_invite', 'chat_id']),
+  "title": zod.string(),
+  "chatId": zod.string().nullable(),
+  "enabled": zod.boolean(),
+  "status": zod.enum(['pending', 'ready', 'needs_setup', 'duplicate', 'error']),
+  "note": zod.string(),
+  "checkedAt": zod.coerce.date().nullable()
+})),
+  "campaigns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['queued', 'sending', 'completed', 'partial', 'cancelled']),
+  "text": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "total": zod.number().int(),
+  "sent": zod.number().int(),
+  "failed": zod.number().int(),
+  "uncertain": zod.number().int(),
+  "pending": zod.number().int(),
+  "cancelled": zod.number().int()
+}))
+})
+
+
+export const PollAdvertisingAccountLoginBody = zod.object({
+  "loginId": zod.string().uuid()
+})
+
+export const pollAdvertisingAccountLoginResponseDraftTextMax = 4096;
+
+export const pollAdvertisingAccountLoginResponseDraftImageUrlMax = 2048;
+
+export const pollAdvertisingAccountLoginResponseDraftButtonTextMax = 64;
+
+export const pollAdvertisingAccountLoginResponseDraftButtonUrlMax = 2048;
+
+export const pollAdvertisingAccountLoginResponseGroupsItemIntervalSecondsMin = 60;
+export const pollAdvertisingAccountLoginResponseGroupsItemIntervalSecondsMax = 2592000;
+
+
+
+export const PollAdvertisingAccountLoginResponse = zod.object({
+  "account": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "accountId": zod.string().nullable(),
+  "username": zod.string(),
+  "displayName": zod.string(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable(),
+  "login": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "method": zod.enum(['qr', 'phone']),
+  "step": zod.enum(['qr', 'code', 'password', 'expired']),
+  "expiresAt": zod.coerce.date(),
+  "qrImage": zod.string().nullable()
+}),zod.null()])
+}),
+  "accountRuns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().uuid(),
+  "target": zod.string(),
+  "status": zod.enum(['sending', 'sent', 'failed', 'uncertain', 'cancelled', 'rate_limited']),
+  "note": zod.string(),
+  "startedAt": zod.coerce.date(),
+  "sentAt": zod.coerce.date().nullable()
+})),
+  "bot": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "username": zod.string(),
+  "botLink": zod.string().nullable(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable()
+}),
+  "draft": zod.object({
+  "text": zod.string().max(pollAdvertisingAccountLoginResponseDraftTextMax),
+  "imageUrl": zod.string().max(pollAdvertisingAccountLoginResponseDraftImageUrlMax).nullable(),
+  "buttonText": zod.string().max(pollAdvertisingAccountLoginResponseDraftButtonTextMax),
+  "buttonUrl": zod.string().max(pollAdvertisingAccountLoginResponseDraftButtonUrlMax).nullable()
+}),
+  "shopBotUrl": zod.string().nullable(),
+  "groups": zod.array(zod.object({
+  "intervalSeconds": zod.number().int().min(pollAdvertisingAccountLoginResponseGroupsItemIntervalSecondsMin).max(pollAdvertisingAccountLoginResponseGroupsItemIntervalSecondsMax),
+  "running": zod.boolean(),
+  "nextSendAt": zod.coerce.date().nullable(),
+  "lastStatus": zod.string(),
+  "scheduleNote": zod.string(),
+  "id": zod.string().uuid(),
+  "target": zod.string(),
+  "kind": zod.enum(['public', 'private_invite', 'chat_id']),
+  "title": zod.string(),
+  "chatId": zod.string().nullable(),
+  "enabled": zod.boolean(),
+  "status": zod.enum(['pending', 'ready', 'needs_setup', 'duplicate', 'error']),
+  "note": zod.string(),
+  "checkedAt": zod.coerce.date().nullable()
+})),
+  "campaigns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['queued', 'sending', 'completed', 'partial', 'cancelled']),
+  "text": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "total": zod.number().int(),
+  "sent": zod.number().int(),
+  "failed": zod.number().int(),
+  "uncertain": zod.number().int(),
+  "pending": zod.number().int(),
+  "cancelled": zod.number().int()
+}))
+})
+
+
+export const checkAdvertisingAccountResponseDraftTextMax = 4096;
+
+export const checkAdvertisingAccountResponseDraftImageUrlMax = 2048;
+
+export const checkAdvertisingAccountResponseDraftButtonTextMax = 64;
+
+export const checkAdvertisingAccountResponseDraftButtonUrlMax = 2048;
+
+export const checkAdvertisingAccountResponseGroupsItemIntervalSecondsMin = 60;
+export const checkAdvertisingAccountResponseGroupsItemIntervalSecondsMax = 2592000;
+
+
+
+export const CheckAdvertisingAccountResponse = zod.object({
+  "account": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "accountId": zod.string().nullable(),
+  "username": zod.string(),
+  "displayName": zod.string(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable(),
+  "login": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "method": zod.enum(['qr', 'phone']),
+  "step": zod.enum(['qr', 'code', 'password', 'expired']),
+  "expiresAt": zod.coerce.date(),
+  "qrImage": zod.string().nullable()
+}),zod.null()])
+}),
+  "accountRuns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().uuid(),
+  "target": zod.string(),
+  "status": zod.enum(['sending', 'sent', 'failed', 'uncertain', 'cancelled', 'rate_limited']),
+  "note": zod.string(),
+  "startedAt": zod.coerce.date(),
+  "sentAt": zod.coerce.date().nullable()
+})),
+  "bot": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "username": zod.string(),
+  "botLink": zod.string().nullable(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable()
+}),
+  "draft": zod.object({
+  "text": zod.string().max(checkAdvertisingAccountResponseDraftTextMax),
+  "imageUrl": zod.string().max(checkAdvertisingAccountResponseDraftImageUrlMax).nullable(),
+  "buttonText": zod.string().max(checkAdvertisingAccountResponseDraftButtonTextMax),
+  "buttonUrl": zod.string().max(checkAdvertisingAccountResponseDraftButtonUrlMax).nullable()
+}),
+  "shopBotUrl": zod.string().nullable(),
+  "groups": zod.array(zod.object({
+  "intervalSeconds": zod.number().int().min(checkAdvertisingAccountResponseGroupsItemIntervalSecondsMin).max(checkAdvertisingAccountResponseGroupsItemIntervalSecondsMax),
+  "running": zod.boolean(),
+  "nextSendAt": zod.coerce.date().nullable(),
+  "lastStatus": zod.string(),
+  "scheduleNote": zod.string(),
+  "id": zod.string().uuid(),
+  "target": zod.string(),
+  "kind": zod.enum(['public', 'private_invite', 'chat_id']),
+  "title": zod.string(),
+  "chatId": zod.string().nullable(),
+  "enabled": zod.boolean(),
+  "status": zod.enum(['pending', 'ready', 'needs_setup', 'duplicate', 'error']),
+  "note": zod.string(),
+  "checkedAt": zod.coerce.date().nullable()
+})),
+  "campaigns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['queued', 'sending', 'completed', 'partial', 'cancelled']),
+  "text": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "total": zod.number().int(),
+  "sent": zod.number().int(),
+  "failed": zod.number().int(),
+  "uncertain": zod.number().int(),
+  "pending": zod.number().int(),
+  "cancelled": zod.number().int()
+}))
+})
+
+
+export const disconnectAdvertisingAccountResponseDraftTextMax = 4096;
+
+export const disconnectAdvertisingAccountResponseDraftImageUrlMax = 2048;
+
+export const disconnectAdvertisingAccountResponseDraftButtonTextMax = 64;
+
+export const disconnectAdvertisingAccountResponseDraftButtonUrlMax = 2048;
+
+export const disconnectAdvertisingAccountResponseGroupsItemIntervalSecondsMin = 60;
+export const disconnectAdvertisingAccountResponseGroupsItemIntervalSecondsMax = 2592000;
+
+
+
+export const DisconnectAdvertisingAccountResponse = zod.object({
+  "account": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "accountId": zod.string().nullable(),
+  "username": zod.string(),
+  "displayName": zod.string(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable(),
+  "login": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "method": zod.enum(['qr', 'phone']),
+  "step": zod.enum(['qr', 'code', 'password', 'expired']),
+  "expiresAt": zod.coerce.date(),
+  "qrImage": zod.string().nullable()
+}),zod.null()])
+}),
+  "accountRuns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().uuid(),
+  "target": zod.string(),
+  "status": zod.enum(['sending', 'sent', 'failed', 'uncertain', 'cancelled', 'rate_limited']),
+  "note": zod.string(),
+  "startedAt": zod.coerce.date(),
+  "sentAt": zod.coerce.date().nullable()
+})),
+  "bot": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "username": zod.string(),
+  "botLink": zod.string().nullable(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable()
+}),
+  "draft": zod.object({
+  "text": zod.string().max(disconnectAdvertisingAccountResponseDraftTextMax),
+  "imageUrl": zod.string().max(disconnectAdvertisingAccountResponseDraftImageUrlMax).nullable(),
+  "buttonText": zod.string().max(disconnectAdvertisingAccountResponseDraftButtonTextMax),
+  "buttonUrl": zod.string().max(disconnectAdvertisingAccountResponseDraftButtonUrlMax).nullable()
+}),
+  "shopBotUrl": zod.string().nullable(),
+  "groups": zod.array(zod.object({
+  "intervalSeconds": zod.number().int().min(disconnectAdvertisingAccountResponseGroupsItemIntervalSecondsMin).max(disconnectAdvertisingAccountResponseGroupsItemIntervalSecondsMax),
+  "running": zod.boolean(),
+  "nextSendAt": zod.coerce.date().nullable(),
+  "lastStatus": zod.string(),
+  "scheduleNote": zod.string(),
+  "id": zod.string().uuid(),
+  "target": zod.string(),
+  "kind": zod.enum(['public', 'private_invite', 'chat_id']),
+  "title": zod.string(),
+  "chatId": zod.string().nullable(),
+  "enabled": zod.boolean(),
+  "status": zod.enum(['pending', 'ready', 'needs_setup', 'duplicate', 'error']),
+  "note": zod.string(),
+  "checkedAt": zod.coerce.date().nullable()
+})),
+  "campaigns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['queued', 'sending', 'completed', 'partial', 'cancelled']),
+  "text": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "total": zod.number().int(),
+  "sent": zod.number().int(),
+  "failed": zod.number().int(),
+  "uncertain": zod.number().int(),
+  "pending": zod.number().int(),
+  "cancelled": zod.number().int()
+}))
+})
+
+
+export const startAdvertisingAccountSchedulesBodyAccountIdRegExp = new RegExp('^[0-9]+$');
+export const startAdvertisingAccountSchedulesBodyExpectedGroupsItemChatIdRegExp = new RegExp('^-[1-9][0-9]{5,15}$');
+export const startAdvertisingAccountSchedulesBodyExpectedGroupsItemIntervalSecondsMin = 60;
+export const startAdvertisingAccountSchedulesBodyExpectedGroupsItemIntervalSecondsMax = 2592000;
+
+export const startAdvertisingAccountSchedulesBodyExpectedGroupsMax = 500;
+
+export const startAdvertisingAccountSchedulesBodyGroupIdsMax = 500;
+
+export const startAdvertisingAccountSchedulesBodyDraftTextMax = 4096;
+
+export const startAdvertisingAccountSchedulesBodyDraftImageUrlMax = 2048;
+
+export const startAdvertisingAccountSchedulesBodyDraftButtonTextMax = 64;
+
+export const startAdvertisingAccountSchedulesBodyDraftButtonUrlMax = 2048;
+
+
+
+export const StartAdvertisingAccountSchedulesBody = zod.object({
+  "accountId": zod.string().regex(startAdvertisingAccountSchedulesBodyAccountIdRegExp),
+  "expectedGroups": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "chatId": zod.string().regex(startAdvertisingAccountSchedulesBodyExpectedGroupsItemChatIdRegExp),
+  "intervalSeconds": zod.number().int().min(startAdvertisingAccountSchedulesBodyExpectedGroupsItemIntervalSecondsMin).max(startAdvertisingAccountSchedulesBodyExpectedGroupsItemIntervalSecondsMax)
+})).min(1).max(startAdvertisingAccountSchedulesBodyExpectedGroupsMax),
+  "groupIds": zod.array(zod.string().uuid()).min(1).max(startAdvertisingAccountSchedulesBodyGroupIdsMax),
+  "draft": zod.object({
+  "text": zod.string().max(startAdvertisingAccountSchedulesBodyDraftTextMax),
+  "imageUrl": zod.string().max(startAdvertisingAccountSchedulesBodyDraftImageUrlMax).nullable(),
+  "buttonText": zod.string().max(startAdvertisingAccountSchedulesBodyDraftButtonTextMax),
+  "buttonUrl": zod.string().max(startAdvertisingAccountSchedulesBodyDraftButtonUrlMax).nullable()
+}),
+  "permissionConfirmed": zod.boolean(),
+  "idempotencyKey": zod.string().uuid()
+})
+
+export const startAdvertisingAccountSchedulesResponseDraftTextMax = 4096;
+
+export const startAdvertisingAccountSchedulesResponseDraftImageUrlMax = 2048;
+
+export const startAdvertisingAccountSchedulesResponseDraftButtonTextMax = 64;
+
+export const startAdvertisingAccountSchedulesResponseDraftButtonUrlMax = 2048;
+
+export const startAdvertisingAccountSchedulesResponseGroupsItemIntervalSecondsMin = 60;
+export const startAdvertisingAccountSchedulesResponseGroupsItemIntervalSecondsMax = 2592000;
+
+
+
+export const StartAdvertisingAccountSchedulesResponse = zod.object({
+  "account": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "accountId": zod.string().nullable(),
+  "username": zod.string(),
+  "displayName": zod.string(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable(),
+  "login": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "method": zod.enum(['qr', 'phone']),
+  "step": zod.enum(['qr', 'code', 'password', 'expired']),
+  "expiresAt": zod.coerce.date(),
+  "qrImage": zod.string().nullable()
+}),zod.null()])
+}),
+  "accountRuns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().uuid(),
+  "target": zod.string(),
+  "status": zod.enum(['sending', 'sent', 'failed', 'uncertain', 'cancelled', 'rate_limited']),
+  "note": zod.string(),
+  "startedAt": zod.coerce.date(),
+  "sentAt": zod.coerce.date().nullable()
+})),
+  "bot": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "username": zod.string(),
+  "botLink": zod.string().nullable(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable()
+}),
+  "draft": zod.object({
+  "text": zod.string().max(startAdvertisingAccountSchedulesResponseDraftTextMax),
+  "imageUrl": zod.string().max(startAdvertisingAccountSchedulesResponseDraftImageUrlMax).nullable(),
+  "buttonText": zod.string().max(startAdvertisingAccountSchedulesResponseDraftButtonTextMax),
+  "buttonUrl": zod.string().max(startAdvertisingAccountSchedulesResponseDraftButtonUrlMax).nullable()
+}),
+  "shopBotUrl": zod.string().nullable(),
+  "groups": zod.array(zod.object({
+  "intervalSeconds": zod.number().int().min(startAdvertisingAccountSchedulesResponseGroupsItemIntervalSecondsMin).max(startAdvertisingAccountSchedulesResponseGroupsItemIntervalSecondsMax),
+  "running": zod.boolean(),
+  "nextSendAt": zod.coerce.date().nullable(),
+  "lastStatus": zod.string(),
+  "scheduleNote": zod.string(),
+  "id": zod.string().uuid(),
+  "target": zod.string(),
+  "kind": zod.enum(['public', 'private_invite', 'chat_id']),
+  "title": zod.string(),
+  "chatId": zod.string().nullable(),
+  "enabled": zod.boolean(),
+  "status": zod.enum(['pending', 'ready', 'needs_setup', 'duplicate', 'error']),
+  "note": zod.string(),
+  "checkedAt": zod.coerce.date().nullable()
+})),
+  "campaigns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['queued', 'sending', 'completed', 'partial', 'cancelled']),
+  "text": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "total": zod.number().int(),
+  "sent": zod.number().int(),
+  "failed": zod.number().int(),
+  "uncertain": zod.number().int(),
+  "pending": zod.number().int(),
+  "cancelled": zod.number().int()
+}))
+})
+
+
+export const stopAdvertisingAccountSchedulesBodyGroupIdsMax = 500;
+
+
+
+export const StopAdvertisingAccountSchedulesBody = zod.object({
+  "groupIds": zod.array(zod.string().uuid()).min(1).max(stopAdvertisingAccountSchedulesBodyGroupIdsMax)
+})
+
+export const stopAdvertisingAccountSchedulesResponseDraftTextMax = 4096;
+
+export const stopAdvertisingAccountSchedulesResponseDraftImageUrlMax = 2048;
+
+export const stopAdvertisingAccountSchedulesResponseDraftButtonTextMax = 64;
+
+export const stopAdvertisingAccountSchedulesResponseDraftButtonUrlMax = 2048;
+
+export const stopAdvertisingAccountSchedulesResponseGroupsItemIntervalSecondsMin = 60;
+export const stopAdvertisingAccountSchedulesResponseGroupsItemIntervalSecondsMax = 2592000;
+
+
+
+export const StopAdvertisingAccountSchedulesResponse = zod.object({
+  "account": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "accountId": zod.string().nullable(),
+  "username": zod.string(),
+  "displayName": zod.string(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable(),
+  "login": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "method": zod.enum(['qr', 'phone']),
+  "step": zod.enum(['qr', 'code', 'password', 'expired']),
+  "expiresAt": zod.coerce.date(),
+  "qrImage": zod.string().nullable()
+}),zod.null()])
+}),
+  "accountRuns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().uuid(),
+  "target": zod.string(),
+  "status": zod.enum(['sending', 'sent', 'failed', 'uncertain', 'cancelled', 'rate_limited']),
+  "note": zod.string(),
+  "startedAt": zod.coerce.date(),
+  "sentAt": zod.coerce.date().nullable()
+})),
+  "bot": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "username": zod.string(),
+  "botLink": zod.string().nullable(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable()
+}),
+  "draft": zod.object({
+  "text": zod.string().max(stopAdvertisingAccountSchedulesResponseDraftTextMax),
+  "imageUrl": zod.string().max(stopAdvertisingAccountSchedulesResponseDraftImageUrlMax).nullable(),
+  "buttonText": zod.string().max(stopAdvertisingAccountSchedulesResponseDraftButtonTextMax),
+  "buttonUrl": zod.string().max(stopAdvertisingAccountSchedulesResponseDraftButtonUrlMax).nullable()
+}),
+  "shopBotUrl": zod.string().nullable(),
+  "groups": zod.array(zod.object({
+  "intervalSeconds": zod.number().int().min(stopAdvertisingAccountSchedulesResponseGroupsItemIntervalSecondsMin).max(stopAdvertisingAccountSchedulesResponseGroupsItemIntervalSecondsMax),
+  "running": zod.boolean(),
+  "nextSendAt": zod.coerce.date().nullable(),
+  "lastStatus": zod.string(),
+  "scheduleNote": zod.string(),
+  "id": zod.string().uuid(),
+  "target": zod.string(),
+  "kind": zod.enum(['public', 'private_invite', 'chat_id']),
+  "title": zod.string(),
+  "chatId": zod.string().nullable(),
+  "enabled": zod.boolean(),
+  "status": zod.enum(['pending', 'ready', 'needs_setup', 'duplicate', 'error']),
+  "note": zod.string(),
+  "checkedAt": zod.coerce.date().nullable()
+})),
+  "campaigns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['queued', 'sending', 'completed', 'partial', 'cancelled']),
+  "text": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "total": zod.number().int(),
+  "sent": zod.number().int(),
+  "failed": zod.number().int(),
+  "uncertain": zod.number().int(),
+  "pending": zod.number().int(),
+  "cancelled": zod.number().int()
+}))
+})
+
+
+export const stopAllAdvertisingAccountSchedulesResponseDraftTextMax = 4096;
+
+export const stopAllAdvertisingAccountSchedulesResponseDraftImageUrlMax = 2048;
+
+export const stopAllAdvertisingAccountSchedulesResponseDraftButtonTextMax = 64;
+
+export const stopAllAdvertisingAccountSchedulesResponseDraftButtonUrlMax = 2048;
+
+export const stopAllAdvertisingAccountSchedulesResponseGroupsItemIntervalSecondsMin = 60;
+export const stopAllAdvertisingAccountSchedulesResponseGroupsItemIntervalSecondsMax = 2592000;
+
+
+
+export const StopAllAdvertisingAccountSchedulesResponse = zod.object({
+  "account": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "accountId": zod.string().nullable(),
+  "username": zod.string(),
+  "displayName": zod.string(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable(),
+  "login": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "method": zod.enum(['qr', 'phone']),
+  "step": zod.enum(['qr', 'code', 'password', 'expired']),
+  "expiresAt": zod.coerce.date(),
+  "qrImage": zod.string().nullable()
+}),zod.null()])
+}),
+  "accountRuns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().uuid(),
+  "target": zod.string(),
+  "status": zod.enum(['sending', 'sent', 'failed', 'uncertain', 'cancelled', 'rate_limited']),
+  "note": zod.string(),
+  "startedAt": zod.coerce.date(),
+  "sentAt": zod.coerce.date().nullable()
+})),
+  "bot": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "username": zod.string(),
+  "botLink": zod.string().nullable(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable()
+}),
+  "draft": zod.object({
+  "text": zod.string().max(stopAllAdvertisingAccountSchedulesResponseDraftTextMax),
+  "imageUrl": zod.string().max(stopAllAdvertisingAccountSchedulesResponseDraftImageUrlMax).nullable(),
+  "buttonText": zod.string().max(stopAllAdvertisingAccountSchedulesResponseDraftButtonTextMax),
+  "buttonUrl": zod.string().max(stopAllAdvertisingAccountSchedulesResponseDraftButtonUrlMax).nullable()
+}),
+  "shopBotUrl": zod.string().nullable(),
+  "groups": zod.array(zod.object({
+  "intervalSeconds": zod.number().int().min(stopAllAdvertisingAccountSchedulesResponseGroupsItemIntervalSecondsMin).max(stopAllAdvertisingAccountSchedulesResponseGroupsItemIntervalSecondsMax),
+  "running": zod.boolean(),
+  "nextSendAt": zod.coerce.date().nullable(),
+  "lastStatus": zod.string(),
+  "scheduleNote": zod.string(),
+  "id": zod.string().uuid(),
+  "target": zod.string(),
+  "kind": zod.enum(['public', 'private_invite', 'chat_id']),
+  "title": zod.string(),
+  "chatId": zod.string().nullable(),
+  "enabled": zod.boolean(),
+  "status": zod.enum(['pending', 'ready', 'needs_setup', 'duplicate', 'error']),
+  "note": zod.string(),
+  "checkedAt": zod.coerce.date().nullable()
+})),
+  "campaigns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['queued', 'sending', 'completed', 'partial', 'cancelled']),
+  "text": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "total": zod.number().int(),
+  "sent": zod.number().int(),
+  "failed": zod.number().int(),
+  "uncertain": zod.number().int(),
+  "pending": zod.number().int(),
+  "cancelled": zod.number().int()
+}))
+})
+
+
 export const getAdvertisingWorkspaceResponseDraftTextMax = 4096;
 
 export const getAdvertisingWorkspaceResponseDraftImageUrlMax = 2048;
@@ -16,9 +859,37 @@ export const getAdvertisingWorkspaceResponseDraftButtonTextMax = 64;
 
 export const getAdvertisingWorkspaceResponseDraftButtonUrlMax = 2048;
 
+export const getAdvertisingWorkspaceResponseGroupsItemIntervalSecondsMin = 60;
+export const getAdvertisingWorkspaceResponseGroupsItemIntervalSecondsMax = 2592000;
+
 
 
 export const GetAdvertisingWorkspaceResponse = zod.object({
+  "account": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "accountId": zod.string().nullable(),
+  "username": zod.string(),
+  "displayName": zod.string(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable(),
+  "login": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "method": zod.enum(['qr', 'phone']),
+  "step": zod.enum(['qr', 'code', 'password', 'expired']),
+  "expiresAt": zod.coerce.date(),
+  "qrImage": zod.string().nullable()
+}),zod.null()])
+}),
+  "accountRuns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().uuid(),
+  "target": zod.string(),
+  "status": zod.enum(['sending', 'sent', 'failed', 'uncertain', 'cancelled', 'rate_limited']),
+  "note": zod.string(),
+  "startedAt": zod.coerce.date(),
+  "sentAt": zod.coerce.date().nullable()
+})),
   "bot": zod.object({
   "configured": zod.boolean(),
   "connected": zod.boolean(),
@@ -35,6 +906,11 @@ export const GetAdvertisingWorkspaceResponse = zod.object({
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
+  "intervalSeconds": zod.number().int().min(getAdvertisingWorkspaceResponseGroupsItemIntervalSecondsMin).max(getAdvertisingWorkspaceResponseGroupsItemIntervalSecondsMax),
+  "running": zod.boolean(),
+  "nextSendAt": zod.coerce.date().nullable(),
+  "lastStatus": zod.string(),
+  "scheduleNote": zod.string(),
   "id": zod.string().uuid(),
   "target": zod.string(),
   "kind": zod.enum(['public', 'private_invite', 'chat_id']),
@@ -77,9 +953,37 @@ export const connectAdvertisingBotResponseDraftButtonTextMax = 64;
 
 export const connectAdvertisingBotResponseDraftButtonUrlMax = 2048;
 
+export const connectAdvertisingBotResponseGroupsItemIntervalSecondsMin = 60;
+export const connectAdvertisingBotResponseGroupsItemIntervalSecondsMax = 2592000;
+
 
 
 export const ConnectAdvertisingBotResponse = zod.object({
+  "account": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "accountId": zod.string().nullable(),
+  "username": zod.string(),
+  "displayName": zod.string(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable(),
+  "login": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "method": zod.enum(['qr', 'phone']),
+  "step": zod.enum(['qr', 'code', 'password', 'expired']),
+  "expiresAt": zod.coerce.date(),
+  "qrImage": zod.string().nullable()
+}),zod.null()])
+}),
+  "accountRuns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().uuid(),
+  "target": zod.string(),
+  "status": zod.enum(['sending', 'sent', 'failed', 'uncertain', 'cancelled', 'rate_limited']),
+  "note": zod.string(),
+  "startedAt": zod.coerce.date(),
+  "sentAt": zod.coerce.date().nullable()
+})),
   "bot": zod.object({
   "configured": zod.boolean(),
   "connected": zod.boolean(),
@@ -96,6 +1000,11 @@ export const ConnectAdvertisingBotResponse = zod.object({
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
+  "intervalSeconds": zod.number().int().min(connectAdvertisingBotResponseGroupsItemIntervalSecondsMin).max(connectAdvertisingBotResponseGroupsItemIntervalSecondsMax),
+  "running": zod.boolean(),
+  "nextSendAt": zod.coerce.date().nullable(),
+  "lastStatus": zod.string(),
+  "scheduleNote": zod.string(),
   "id": zod.string().uuid(),
   "target": zod.string(),
   "kind": zod.enum(['public', 'private_invite', 'chat_id']),
@@ -129,9 +1038,37 @@ export const disconnectAdvertisingBotResponseDraftButtonTextMax = 64;
 
 export const disconnectAdvertisingBotResponseDraftButtonUrlMax = 2048;
 
+export const disconnectAdvertisingBotResponseGroupsItemIntervalSecondsMin = 60;
+export const disconnectAdvertisingBotResponseGroupsItemIntervalSecondsMax = 2592000;
+
 
 
 export const DisconnectAdvertisingBotResponse = zod.object({
+  "account": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "accountId": zod.string().nullable(),
+  "username": zod.string(),
+  "displayName": zod.string(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable(),
+  "login": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "method": zod.enum(['qr', 'phone']),
+  "step": zod.enum(['qr', 'code', 'password', 'expired']),
+  "expiresAt": zod.coerce.date(),
+  "qrImage": zod.string().nullable()
+}),zod.null()])
+}),
+  "accountRuns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().uuid(),
+  "target": zod.string(),
+  "status": zod.enum(['sending', 'sent', 'failed', 'uncertain', 'cancelled', 'rate_limited']),
+  "note": zod.string(),
+  "startedAt": zod.coerce.date(),
+  "sentAt": zod.coerce.date().nullable()
+})),
   "bot": zod.object({
   "configured": zod.boolean(),
   "connected": zod.boolean(),
@@ -148,6 +1085,11 @@ export const DisconnectAdvertisingBotResponse = zod.object({
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
+  "intervalSeconds": zod.number().int().min(disconnectAdvertisingBotResponseGroupsItemIntervalSecondsMin).max(disconnectAdvertisingBotResponseGroupsItemIntervalSecondsMax),
+  "running": zod.boolean(),
+  "nextSendAt": zod.coerce.date().nullable(),
+  "lastStatus": zod.string(),
+  "scheduleNote": zod.string(),
   "id": zod.string().uuid(),
   "target": zod.string(),
   "kind": zod.enum(['public', 'private_invite', 'chat_id']),
@@ -181,9 +1123,37 @@ export const checkAdvertisingBotResponseDraftButtonTextMax = 64;
 
 export const checkAdvertisingBotResponseDraftButtonUrlMax = 2048;
 
+export const checkAdvertisingBotResponseGroupsItemIntervalSecondsMin = 60;
+export const checkAdvertisingBotResponseGroupsItemIntervalSecondsMax = 2592000;
+
 
 
 export const CheckAdvertisingBotResponse = zod.object({
+  "account": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "accountId": zod.string().nullable(),
+  "username": zod.string(),
+  "displayName": zod.string(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable(),
+  "login": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "method": zod.enum(['qr', 'phone']),
+  "step": zod.enum(['qr', 'code', 'password', 'expired']),
+  "expiresAt": zod.coerce.date(),
+  "qrImage": zod.string().nullable()
+}),zod.null()])
+}),
+  "accountRuns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().uuid(),
+  "target": zod.string(),
+  "status": zod.enum(['sending', 'sent', 'failed', 'uncertain', 'cancelled', 'rate_limited']),
+  "note": zod.string(),
+  "startedAt": zod.coerce.date(),
+  "sentAt": zod.coerce.date().nullable()
+})),
   "bot": zod.object({
   "configured": zod.boolean(),
   "connected": zod.boolean(),
@@ -200,6 +1170,11 @@ export const CheckAdvertisingBotResponse = zod.object({
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
+  "intervalSeconds": zod.number().int().min(checkAdvertisingBotResponseGroupsItemIntervalSecondsMin).max(checkAdvertisingBotResponseGroupsItemIntervalSecondsMax),
+  "running": zod.boolean(),
+  "nextSendAt": zod.coerce.date().nullable(),
+  "lastStatus": zod.string(),
+  "scheduleNote": zod.string(),
   "id": zod.string().uuid(),
   "target": zod.string(),
   "kind": zod.enum(['public', 'private_invite', 'chat_id']),
@@ -233,9 +1208,37 @@ export const discoverAdvertisingGroupsResponseDraftButtonTextMax = 64;
 
 export const discoverAdvertisingGroupsResponseDraftButtonUrlMax = 2048;
 
+export const discoverAdvertisingGroupsResponseGroupsItemIntervalSecondsMin = 60;
+export const discoverAdvertisingGroupsResponseGroupsItemIntervalSecondsMax = 2592000;
+
 
 
 export const DiscoverAdvertisingGroupsResponse = zod.object({
+  "account": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "accountId": zod.string().nullable(),
+  "username": zod.string(),
+  "displayName": zod.string(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable(),
+  "login": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "method": zod.enum(['qr', 'phone']),
+  "step": zod.enum(['qr', 'code', 'password', 'expired']),
+  "expiresAt": zod.coerce.date(),
+  "qrImage": zod.string().nullable()
+}),zod.null()])
+}),
+  "accountRuns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().uuid(),
+  "target": zod.string(),
+  "status": zod.enum(['sending', 'sent', 'failed', 'uncertain', 'cancelled', 'rate_limited']),
+  "note": zod.string(),
+  "startedAt": zod.coerce.date(),
+  "sentAt": zod.coerce.date().nullable()
+})),
   "bot": zod.object({
   "configured": zod.boolean(),
   "connected": zod.boolean(),
@@ -252,6 +1255,11 @@ export const DiscoverAdvertisingGroupsResponse = zod.object({
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
+  "intervalSeconds": zod.number().int().min(discoverAdvertisingGroupsResponseGroupsItemIntervalSecondsMin).max(discoverAdvertisingGroupsResponseGroupsItemIntervalSecondsMax),
+  "running": zod.boolean(),
+  "nextSendAt": zod.coerce.date().nullable(),
+  "lastStatus": zod.string(),
+  "scheduleNote": zod.string(),
   "id": zod.string().uuid(),
   "target": zod.string(),
   "kind": zod.enum(['public', 'private_invite', 'chat_id']),
@@ -315,9 +1323,37 @@ export const addAdvertisingGroupsResponseDraftButtonTextMax = 64;
 
 export const addAdvertisingGroupsResponseDraftButtonUrlMax = 2048;
 
+export const addAdvertisingGroupsResponseGroupsItemIntervalSecondsMin = 60;
+export const addAdvertisingGroupsResponseGroupsItemIntervalSecondsMax = 2592000;
+
 
 
 export const AddAdvertisingGroupsResponse = zod.object({
+  "account": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "accountId": zod.string().nullable(),
+  "username": zod.string(),
+  "displayName": zod.string(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable(),
+  "login": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "method": zod.enum(['qr', 'phone']),
+  "step": zod.enum(['qr', 'code', 'password', 'expired']),
+  "expiresAt": zod.coerce.date(),
+  "qrImage": zod.string().nullable()
+}),zod.null()])
+}),
+  "accountRuns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().uuid(),
+  "target": zod.string(),
+  "status": zod.enum(['sending', 'sent', 'failed', 'uncertain', 'cancelled', 'rate_limited']),
+  "note": zod.string(),
+  "startedAt": zod.coerce.date(),
+  "sentAt": zod.coerce.date().nullable()
+})),
   "bot": zod.object({
   "configured": zod.boolean(),
   "connected": zod.boolean(),
@@ -334,6 +1370,11 @@ export const AddAdvertisingGroupsResponse = zod.object({
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
+  "intervalSeconds": zod.number().int().min(addAdvertisingGroupsResponseGroupsItemIntervalSecondsMin).max(addAdvertisingGroupsResponseGroupsItemIntervalSecondsMax),
+  "running": zod.boolean(),
+  "nextSendAt": zod.coerce.date().nullable(),
+  "lastStatus": zod.string(),
+  "scheduleNote": zod.string(),
   "id": zod.string().uuid(),
   "target": zod.string(),
   "kind": zod.enum(['public', 'private_invite', 'chat_id']),
@@ -375,9 +1416,37 @@ export const checkAdvertisingGroupsResponseDraftButtonTextMax = 64;
 
 export const checkAdvertisingGroupsResponseDraftButtonUrlMax = 2048;
 
+export const checkAdvertisingGroupsResponseGroupsItemIntervalSecondsMin = 60;
+export const checkAdvertisingGroupsResponseGroupsItemIntervalSecondsMax = 2592000;
+
 
 
 export const CheckAdvertisingGroupsResponse = zod.object({
+  "account": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "accountId": zod.string().nullable(),
+  "username": zod.string(),
+  "displayName": zod.string(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable(),
+  "login": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "method": zod.enum(['qr', 'phone']),
+  "step": zod.enum(['qr', 'code', 'password', 'expired']),
+  "expiresAt": zod.coerce.date(),
+  "qrImage": zod.string().nullable()
+}),zod.null()])
+}),
+  "accountRuns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().uuid(),
+  "target": zod.string(),
+  "status": zod.enum(['sending', 'sent', 'failed', 'uncertain', 'cancelled', 'rate_limited']),
+  "note": zod.string(),
+  "startedAt": zod.coerce.date(),
+  "sentAt": zod.coerce.date().nullable()
+})),
   "bot": zod.object({
   "configured": zod.boolean(),
   "connected": zod.boolean(),
@@ -394,6 +1463,11 @@ export const CheckAdvertisingGroupsResponse = zod.object({
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
+  "intervalSeconds": zod.number().int().min(checkAdvertisingGroupsResponseGroupsItemIntervalSecondsMin).max(checkAdvertisingGroupsResponseGroupsItemIntervalSecondsMax),
+  "running": zod.boolean(),
+  "nextSendAt": zod.coerce.date().nullable(),
+  "lastStatus": zod.string(),
+  "scheduleNote": zod.string(),
   "id": zod.string().uuid(),
   "target": zod.string(),
   "kind": zod.enum(['public', 'private_invite', 'chat_id']),
@@ -423,11 +1497,15 @@ export const UpdateAdvertisingGroupParams = zod.object({
   "id": zod.coerce.string().uuid()
 })
 
+export const updateAdvertisingGroupBodyIntervalSecondsMin = 60;
+export const updateAdvertisingGroupBodyIntervalSecondsMax = 2592000;
+
 export const updateAdvertisingGroupBodyTargetMax = 300;
 
 
 
 export const UpdateAdvertisingGroupBody = zod.object({
+  "intervalSeconds": zod.number().int().min(updateAdvertisingGroupBodyIntervalSecondsMin).max(updateAdvertisingGroupBodyIntervalSecondsMax).optional(),
   "target": zod.string().min(1).max(updateAdvertisingGroupBodyTargetMax).optional(),
   "enabled": zod.boolean().optional()
 })
@@ -440,9 +1518,37 @@ export const updateAdvertisingGroupResponseDraftButtonTextMax = 64;
 
 export const updateAdvertisingGroupResponseDraftButtonUrlMax = 2048;
 
+export const updateAdvertisingGroupResponseGroupsItemIntervalSecondsMin = 60;
+export const updateAdvertisingGroupResponseGroupsItemIntervalSecondsMax = 2592000;
+
 
 
 export const UpdateAdvertisingGroupResponse = zod.object({
+  "account": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "accountId": zod.string().nullable(),
+  "username": zod.string(),
+  "displayName": zod.string(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable(),
+  "login": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "method": zod.enum(['qr', 'phone']),
+  "step": zod.enum(['qr', 'code', 'password', 'expired']),
+  "expiresAt": zod.coerce.date(),
+  "qrImage": zod.string().nullable()
+}),zod.null()])
+}),
+  "accountRuns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().uuid(),
+  "target": zod.string(),
+  "status": zod.enum(['sending', 'sent', 'failed', 'uncertain', 'cancelled', 'rate_limited']),
+  "note": zod.string(),
+  "startedAt": zod.coerce.date(),
+  "sentAt": zod.coerce.date().nullable()
+})),
   "bot": zod.object({
   "configured": zod.boolean(),
   "connected": zod.boolean(),
@@ -459,6 +1565,11 @@ export const UpdateAdvertisingGroupResponse = zod.object({
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
+  "intervalSeconds": zod.number().int().min(updateAdvertisingGroupResponseGroupsItemIntervalSecondsMin).max(updateAdvertisingGroupResponseGroupsItemIntervalSecondsMax),
+  "running": zod.boolean(),
+  "nextSendAt": zod.coerce.date().nullable(),
+  "lastStatus": zod.string(),
+  "scheduleNote": zod.string(),
   "id": zod.string().uuid(),
   "target": zod.string(),
   "kind": zod.enum(['public', 'private_invite', 'chat_id']),
@@ -496,9 +1607,37 @@ export const deleteAdvertisingGroupResponseDraftButtonTextMax = 64;
 
 export const deleteAdvertisingGroupResponseDraftButtonUrlMax = 2048;
 
+export const deleteAdvertisingGroupResponseGroupsItemIntervalSecondsMin = 60;
+export const deleteAdvertisingGroupResponseGroupsItemIntervalSecondsMax = 2592000;
+
 
 
 export const DeleteAdvertisingGroupResponse = zod.object({
+  "account": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "accountId": zod.string().nullable(),
+  "username": zod.string(),
+  "displayName": zod.string(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable(),
+  "login": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "method": zod.enum(['qr', 'phone']),
+  "step": zod.enum(['qr', 'code', 'password', 'expired']),
+  "expiresAt": zod.coerce.date(),
+  "qrImage": zod.string().nullable()
+}),zod.null()])
+}),
+  "accountRuns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().uuid(),
+  "target": zod.string(),
+  "status": zod.enum(['sending', 'sent', 'failed', 'uncertain', 'cancelled', 'rate_limited']),
+  "note": zod.string(),
+  "startedAt": zod.coerce.date(),
+  "sentAt": zod.coerce.date().nullable()
+})),
   "bot": zod.object({
   "configured": zod.boolean(),
   "connected": zod.boolean(),
@@ -515,6 +1654,11 @@ export const DeleteAdvertisingGroupResponse = zod.object({
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
+  "intervalSeconds": zod.number().int().min(deleteAdvertisingGroupResponseGroupsItemIntervalSecondsMin).max(deleteAdvertisingGroupResponseGroupsItemIntervalSecondsMax),
+  "running": zod.boolean(),
+  "nextSendAt": zod.coerce.date().nullable(),
+  "lastStatus": zod.string(),
+  "scheduleNote": zod.string(),
   "id": zod.string().uuid(),
   "target": zod.string(),
   "kind": zod.enum(['public', 'private_invite', 'chat_id']),
@@ -565,9 +1709,37 @@ export const saveAdvertisingDraftResponseDraftButtonTextMax = 64;
 
 export const saveAdvertisingDraftResponseDraftButtonUrlMax = 2048;
 
+export const saveAdvertisingDraftResponseGroupsItemIntervalSecondsMin = 60;
+export const saveAdvertisingDraftResponseGroupsItemIntervalSecondsMax = 2592000;
+
 
 
 export const SaveAdvertisingDraftResponse = zod.object({
+  "account": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "accountId": zod.string().nullable(),
+  "username": zod.string(),
+  "displayName": zod.string(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable(),
+  "login": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "method": zod.enum(['qr', 'phone']),
+  "step": zod.enum(['qr', 'code', 'password', 'expired']),
+  "expiresAt": zod.coerce.date(),
+  "qrImage": zod.string().nullable()
+}),zod.null()])
+}),
+  "accountRuns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().uuid(),
+  "target": zod.string(),
+  "status": zod.enum(['sending', 'sent', 'failed', 'uncertain', 'cancelled', 'rate_limited']),
+  "note": zod.string(),
+  "startedAt": zod.coerce.date(),
+  "sentAt": zod.coerce.date().nullable()
+})),
   "bot": zod.object({
   "configured": zod.boolean(),
   "connected": zod.boolean(),
@@ -584,6 +1756,11 @@ export const SaveAdvertisingDraftResponse = zod.object({
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
+  "intervalSeconds": zod.number().int().min(saveAdvertisingDraftResponseGroupsItemIntervalSecondsMin).max(saveAdvertisingDraftResponseGroupsItemIntervalSecondsMax),
+  "running": zod.boolean(),
+  "nextSendAt": zod.coerce.date().nullable(),
+  "lastStatus": zod.string(),
+  "scheduleNote": zod.string(),
   "id": zod.string().uuid(),
   "target": zod.string(),
   "kind": zod.enum(['public', 'private_invite', 'chat_id']),
@@ -686,9 +1863,37 @@ export const cancelAdvertisingCampaignResponseDraftButtonTextMax = 64;
 
 export const cancelAdvertisingCampaignResponseDraftButtonUrlMax = 2048;
 
+export const cancelAdvertisingCampaignResponseGroupsItemIntervalSecondsMin = 60;
+export const cancelAdvertisingCampaignResponseGroupsItemIntervalSecondsMax = 2592000;
+
 
 
 export const CancelAdvertisingCampaignResponse = zod.object({
+  "account": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "accountId": zod.string().nullable(),
+  "username": zod.string(),
+  "displayName": zod.string(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable(),
+  "login": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "method": zod.enum(['qr', 'phone']),
+  "step": zod.enum(['qr', 'code', 'password', 'expired']),
+  "expiresAt": zod.coerce.date(),
+  "qrImage": zod.string().nullable()
+}),zod.null()])
+}),
+  "accountRuns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().uuid(),
+  "target": zod.string(),
+  "status": zod.enum(['sending', 'sent', 'failed', 'uncertain', 'cancelled', 'rate_limited']),
+  "note": zod.string(),
+  "startedAt": zod.coerce.date(),
+  "sentAt": zod.coerce.date().nullable()
+})),
   "bot": zod.object({
   "configured": zod.boolean(),
   "connected": zod.boolean(),
@@ -705,6 +1910,11 @@ export const CancelAdvertisingCampaignResponse = zod.object({
 }),
   "shopBotUrl": zod.string().nullable(),
   "groups": zod.array(zod.object({
+  "intervalSeconds": zod.number().int().min(cancelAdvertisingCampaignResponseGroupsItemIntervalSecondsMin).max(cancelAdvertisingCampaignResponseGroupsItemIntervalSecondsMax),
+  "running": zod.boolean(),
+  "nextSendAt": zod.coerce.date().nullable(),
+  "lastStatus": zod.string(),
+  "scheduleNote": zod.string(),
   "id": zod.string().uuid(),
   "target": zod.string(),
   "kind": zod.enum(['public', 'private_invite', 'chat_id']),

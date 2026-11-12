@@ -57,7 +57,7 @@ export async function insertTransferRows(client: PoolClient, key: TransferTable,
 }
 
 export async function destinationTransferState(client: PoolClient, ownerId: string) {
-  const keys: TransferTable[] = ["products", "inventory", "customers", "payments", "records", "customEmojis", "advertisingBots", "advertisingGroups", "advertisingCampaigns", "advertisingDeliveries"];
+  const keys: TransferTable[] = ["products", "inventory", "customers", "payments", "records", "customEmojis", "advertisingBots", "advertisingGroups", "advertisingCampaigns", "advertisingDeliveries", "advertisingAccountSchedules", "advertisingAccountRuns", "advertisingAccountCommands"];
   const counts: Record<string, number> = {};
   for (const key of keys) {
     const result = await client.query(`SELECT count(*)::integer AS count FROM ${quote(tableInfo(key).name)} WHERE owner_id = $1`, [ownerId]);
@@ -70,5 +70,7 @@ export async function destinationTransferState(client: PoolClient, ownerId: stri
   const blockers: string[] = [];
   if (Object.values(counts).some(n => n > 0)) blockers.push("This shop already contains business data. Import is restricted to an empty shop; nothing will be overwritten.");
   if (runtime.rows[0]?.enabled || (connection.rows[0]?.owner_id === ownerId && connection.rows[0]?.active === "yes")) blockers.push("Disable Telegram processing before importing.");
+  if ((await client.query("SELECT 1 FROM advertising_accounts WHERE owner_id=$1 AND (session_encrypted IS NOT NULL OR login_encrypted IS NOT NULL)", [ownerId])).rowCount)
+    blockers.push("Disconnect the advertising account and cancel pending login before importing.");
   return { counts, empty: !Object.values(counts).some(n => n > 0), blockers, reviewRequired: runtime.rows[0]?.transfer_review_required === true, connectionOwner: connection.rows[0]?.owner_id as string | undefined };
 }
