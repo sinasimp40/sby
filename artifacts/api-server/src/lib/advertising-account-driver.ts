@@ -116,7 +116,15 @@ export const createAccountDriver: AccountFactory = ({ apiId, apiHash, session = 
       if (!(user instanceof Api.User) || user.bot) throw new AccountError("Sign in with a personal Telegram account, not a bot.");
       return { id: user.id.toString(), username: user.username ?? "", displayName: [user.firstName, user.lastName].filter(Boolean).join(" ").slice(0, 200) };
     }),
-    sendCode: phone => bounded(async () => (await client.sendCode({ apiId, apiHash }, phone)).phoneCodeHash),
+    sendCode: phone => bounded(async () => {
+      // GramJS counts a Telegram data-centre redirect as an attempt. A single
+      // attempt switches DC but never submits SendCode on the destination.
+      // Scope extra attempts to login: unconfirmed advertising sends must not retry.
+      const attempts = client._requestRetries;
+      client._requestRetries = 3;
+      try { return (await client.sendCode({ apiId, apiHash }, phone)).phoneCodeHash; }
+      finally { client._requestRetries = attempts; }
+    }),
     code: (phone, hash, code) => bounded(async () => {
       const result = await client.invoke(new Api.auth.SignIn({ phoneNumber: phone, phoneCodeHash: hash, phoneCode: code }));
       if (!(result instanceof Api.auth.Authorization)) throw new AccountError("Use an existing Telegram account. This dashboard does not create Telegram accounts.");

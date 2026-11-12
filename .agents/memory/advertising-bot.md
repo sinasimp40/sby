@@ -32,3 +32,9 @@ Freeze the exact confirmed message, account, recipients and intervals. Never aut
 **Why:** Advertising is an external action that cannot reliably be undone, and a network timeout can occur after Telegram accepted a message.
 
 **How to apply:** Use durable request deduplication, selected-only controls, account-wide Telegram wait periods and explicit uncertain outcomes that stop the affected group. Imported schedules stay stopped. Portable ZIPs include business schedules/history but deliberately exclude personal-account sessions, login challenges and API app credentials; require fresh authorization and group checks.
+
+Phone-code login needs a separate request-attempt policy from advertising sends.
+
+**Why:** GramJS counts a phone data-centre migration as a request attempt. With one attempt it switches servers but exits before requesting the code there, returning an unhelpful generic failure.
+
+**How to apply:** Allow bounded additional attempts only during phone-code initiation and restore the single-attempt policy afterward, including on failure. Do not solve login routing by globally enabling advertising-message retries.
