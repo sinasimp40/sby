@@ -306,7 +306,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         await db.update(botCustomers).set({ state: { type: "deposit", token, amountCents, expires: Date.now() + 10 * 60000 } }).where(eq(botCustomers.id, customer!.id));
         await sendDepositCoinMenu(
           keyboard => send(depositCoinPrompt(amountCents), keyboard, "HTML"),
-          settings.acceptedCoins, token,
+          settings.acceptedCoins, token, settings.coinButtonIcons,
         );
       } else {
         await send("Use /start to open the menu, or /cancel to cancel a deposit.");

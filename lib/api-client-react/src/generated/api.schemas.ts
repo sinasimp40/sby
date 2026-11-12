@@ -571,6 +571,21 @@ export const SettingsInputAcceptedCoinsItem = {
   SOL: 'SOL',
 } as const;
 
+export interface CoinButtonIcon {
+  /** @maxLength 32 */
+  emoji?: string;
+  /**
+     * @nullable
+     * @pattern ^[0-9]{1,32}$
+     */
+  customEmojiId?: string | null;
+}
+
+/**
+ * Optional per-coin button icons. Omission preserves saved icons. Empty emoji clears the normal fallback; null customEmojiId clears the custom icon.
+ */
+export type SettingsInputCoinButtonIcons = {[key: string]: CoinButtonIcon};
+
 export type SettingsInputRateMode = typeof SettingsInputRateMode[keyof typeof SettingsInputRateMode];
 
 
@@ -611,6 +626,8 @@ export interface SettingsInput {
   minDeposit: number;
   /** @minItems 1 */
   acceptedCoins: SettingsInputAcceptedCoinsItem[];
+  /** Optional per-coin button icons. Omission preserves saved icons. Empty emoji clears the normal fallback; null customEmojiId clears the custom icon. */
+  coinButtonIcons?: SettingsInputCoinButtonIcons;
   rateMode: SettingsInputRateMode;
   /**
      * @minimum 10

@@ -22,6 +22,7 @@ export function toInput(s: ShopSettings): SettingsInput {
     minDeposit: s.minDeposit,
     rateMode: s.rateMode,
     acceptedCoins: s.acceptedCoins,
+    coinButtonIcons: s.coinButtonIcons ?? {},
     invoiceExpiryMinutes: s.invoiceExpiryMinutes,
     maintenanceMode: s.maintenanceMode,
     productsLabel: s.productsLabel,

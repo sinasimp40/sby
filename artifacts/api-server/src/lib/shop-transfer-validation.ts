@@ -5,6 +5,9 @@ import { tableKeys, type TransferData, type TransferRow } from "./shop-transfer-
 import { assignedInventoryIds } from "./payment-inventory";
 import { isProductEmoji } from "./product-emoji";
 import { customEmojiIdValid, MAX_CUSTOM_EMOJIS } from "./custom-emoji-library";
+import { SaveSettingsBody } from "@workspace/api-zod";
+import { validCoinNormalIcon } from "./coin-button-icons";
+import { coinNames } from "./deposit-coin-buttons";
 
 export function validateShopRelationships(data: TransferData, ownerId: string) {
   let area = "ownership";
@@ -43,6 +46,19 @@ export function validateShopRelationships(data: TransferData, ownerId: string) {
       if (!Number.isSafeInteger(p.id) || Number(p.id) <= 0 || Number(p.priceCents) < 0 ||
         !["active", "draft", "archived"].includes(String(p.status)) || (p.buttonEmoji !== "" && !isProductEmoji(p.buttonEmoji)) ||
         (p.buttonCustomEmojiId !== null && !customEmojis.has(p.buttonCustomEmojiId))) throw new Error();
+    }
+    area = "deposit coin icons";
+    for (const settings of data.settings) {
+      // Inspect only; never reserialize the original lossless JSONB text.
+      const preferences = JSON.parse(settings.preferences as string) as Record<string, unknown>;
+      const parsed = SaveSettingsBody.shape.coinButtonIcons.safeParse(preferences?.coinButtonIcons);
+      if (!parsed.success) throw new Error();
+      const icons = parsed.data ?? {};
+      if (Object.keys(icons).length > 7) throw new Error();
+      for (const [coin, icon] of Object.entries(icons)) {
+        if (!Object.hasOwn(coinNames, coin) || !validCoinNormalIcon(icon.emoji) ||
+          (icon.customEmojiId != null && !customEmojis.has(icon.customEmojiId))) throw new Error();
+      }
     }
     area = "product option groups";
     const groups = new Map<string, string>();

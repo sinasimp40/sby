@@ -1,5 +1,6 @@
 import { and, asc, eq, gt, sql } from "drizzle-orm";
-import { db, shopCustomEmojis, shopProducts, emojiImportSessions } from "@workspace/db";
+import { db, shopCustomEmojis, shopProducts, shopSettings, emojiImportSessions } from "@workspace/db";
+import type { CoinButtonIcon } from "@workspace/api-zod";
 import { activeConnection, requireOperator } from "./commerce-connection";
 import { CommerceError, telegramControl, TelegramRequestError } from "./commerce-providers";
 import { isProductEmoji } from "./product-emoji";
@@ -120,6 +121,14 @@ export async function removeCustomEmoji(owner: string | null, id: string) {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${owner}, 71))`);
     await tx.update(shopProducts).set({ buttonCustomEmojiId: null }).where(and(
       eq(shopProducts.ownerId, owner), eq(shopProducts.buttonCustomEmojiId, id)));
+    const [settings] = await tx.select().from(shopSettings).where(eq(shopSettings.ownerId, owner)).for("update");
+    const icons = settings?.preferences.coinButtonIcons as Record<string, CoinButtonIcon> | undefined;
+    if (settings && icons && Object.values(icons).some(icon => icon.customEmojiId === id)) {
+      const coinButtonIcons = Object.fromEntries(Object.entries(icons).map(([coin, icon]) =>
+        [coin, icon.customEmojiId === id ? { ...icon, customEmojiId: null } : icon]));
+      await tx.update(shopSettings).set({ preferences: { ...settings.preferences, coinButtonIcons }, updatedAt: new Date() })
+        .where(eq(shopSettings.ownerId, owner));
+    }
     const [row] = await tx.delete(shopCustomEmojis).where(and(eq(shopCustomEmojis.ownerId, owner),
       eq(shopCustomEmojis.customEmojiId, id))).returning();
     if (!row) throw new CommerceError("Emoji not found in your library.", 404);

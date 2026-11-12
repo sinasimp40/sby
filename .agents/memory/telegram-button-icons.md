@@ -1,15 +1,15 @@
 ---
 name: Telegram button icon eligibility
-description: Static deposit symbols versus explicitly requested custom product emojis.
+description: Selectable product and coin icons, bot-owner eligibility and optional normal fallbacks.
 ---
 
-The user replaced the animated-coin requirement with static coin logos, concerned about Premium restrictions.
+The user initially replaced animated coin icons with static symbols, concerned about Premium restrictions. They later explicitly approved per-coin normal/custom emoji selection in the Payments dashboard.
 
 **Why:** Ordinary buyers must be able to choose a deposit coin without Premium-dependent behavior. Customers do not need Premium to pay. Telegram restricts custom button icons, including static custom emoji, by the bot owner's Premium subscription or additional bot usernames purchased on Fragment.
 
-**How to apply:** Use standard Unicode coin symbols and full coin names; do not reintroduce custom emoji unless asked. Telegram does not provide an ordinary PNG/image field inside inline buttons, so distinguish static symbols from actual logo images. Official reference: https://core.telegram.org/bots/api#inlinekeyboardbutton
+**How to apply:** Default to standard coin symbols, but allow the user to select a normal or imported custom emoji per accepted coin. Always retain full coin/network names and unchanged payment callbacks. Retry with normal icons only after a definite Telegram custom-icon rejection, never after an uncertain send. Telegram does not provide an ordinary PNG/image field inside inline buttons. Official reference: https://core.telegram.org/bots/api#inlinekeyboardbutton
 
-The user later explicitly requested custom Telegram emojis for individual product buttons, supporting both emoji-pack imports and sending emojis through a private bot-import link. This does not replace the static deposit-coin requirement.
+The user explicitly requested custom Telegram emojis for individual product buttons and later for accepted-coin buttons, using the shared emoji library with pack imports and private bot-import links.
 
 **Why:** They want to choose their own product icons in the dashboard, not be restricted to ordinary emoji presets.
 

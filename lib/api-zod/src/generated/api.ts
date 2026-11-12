@@ -634,6 +634,9 @@ export const getSettingsResponseOneMinDepositMin = 5;
 export const getSettingsResponseOneMinDepositMax = 100000;
 
 
+export const getSettingsResponseOneCoinButtonIconsEmojiMax = 32;
+
+export const getSettingsResponseOneCoinButtonIconsCustomEmojiIdRegExp = new RegExp('^[0-9]{1,32}$');
 export const getSettingsResponseOneInvoiceExpiryMinutesMin = 10;
 export const getSettingsResponseOneInvoiceExpiryMinutesMax = 120;
 
@@ -656,6 +659,10 @@ export const GetSettingsResponse = zod.object({
   "currency": zod.enum(['USD']),
   "minDeposit": zod.number().min(getSettingsResponseOneMinDepositMin).max(getSettingsResponseOneMinDepositMax).describe('Shop deposit minimum in USD, at least $5. Provider coin minimums may be higher.'),
   "acceptedCoins": zod.array(zod.enum(['BTC', 'ETH', 'LTC', 'USDTTRC20', 'USDTERC20', 'BNBBSC', 'SOL'])).min(1),
+  "coinButtonIcons": zod.record(zod.string(), zod.object({
+  "emoji": zod.string().max(getSettingsResponseOneCoinButtonIconsEmojiMax).optional(),
+  "customEmojiId": zod.string().regex(getSettingsResponseOneCoinButtonIconsCustomEmojiIdRegExp).nullish()
+})).optional().describe('Optional per-coin button icons. Omission preserves saved icons. Empty emoji clears the normal fallback; null customEmojiId clears the custom icon.'),
   "rateMode": zod.enum(['fixed', 'floating']),
   "invoiceExpiryMinutes": zod.number().int().min(getSettingsResponseOneInvoiceExpiryMinutesMin).max(getSettingsResponseOneInvoiceExpiryMinutesMax),
   "maintenanceMode": zod.boolean(),
@@ -689,6 +696,9 @@ export const saveSettingsBodyMinDepositMin = 5;
 export const saveSettingsBodyMinDepositMax = 100000;
 
 
+export const saveSettingsBodyCoinButtonIconsEmojiMax = 32;
+
+export const saveSettingsBodyCoinButtonIconsCustomEmojiIdRegExp = new RegExp('^[0-9]{1,32}$');
 export const saveSettingsBodyInvoiceExpiryMinutesMin = 10;
 export const saveSettingsBodyInvoiceExpiryMinutesMax = 120;
 
@@ -711,6 +721,10 @@ export const SaveSettingsBody = zod.object({
   "currency": zod.enum(['USD']),
   "minDeposit": zod.number().min(saveSettingsBodyMinDepositMin).max(saveSettingsBodyMinDepositMax).describe('Shop deposit minimum in USD, at least $5. Provider coin minimums may be higher.'),
   "acceptedCoins": zod.array(zod.enum(['BTC', 'ETH', 'LTC', 'USDTTRC20', 'USDTERC20', 'BNBBSC', 'SOL'])).min(1),
+  "coinButtonIcons": zod.record(zod.string(), zod.object({
+  "emoji": zod.string().max(saveSettingsBodyCoinButtonIconsEmojiMax).optional(),
+  "customEmojiId": zod.string().regex(saveSettingsBodyCoinButtonIconsCustomEmojiIdRegExp).nullish()
+})).optional().describe('Optional per-coin button icons. Omission preserves saved icons. Empty emoji clears the normal fallback; null customEmojiId clears the custom icon.'),
   "rateMode": zod.enum(['fixed', 'floating']),
   "invoiceExpiryMinutes": zod.number().int().min(saveSettingsBodyInvoiceExpiryMinutesMin).max(saveSettingsBodyInvoiceExpiryMinutesMax),
   "maintenanceMode": zod.boolean(),
@@ -738,6 +752,9 @@ export const saveSettingsResponseOneMinDepositMin = 5;
 export const saveSettingsResponseOneMinDepositMax = 100000;
 
 
+export const saveSettingsResponseOneCoinButtonIconsEmojiMax = 32;
+
+export const saveSettingsResponseOneCoinButtonIconsCustomEmojiIdRegExp = new RegExp('^[0-9]{1,32}$');
 export const saveSettingsResponseOneInvoiceExpiryMinutesMin = 10;
 export const saveSettingsResponseOneInvoiceExpiryMinutesMax = 120;
 
@@ -760,6 +777,10 @@ export const SaveSettingsResponse = zod.object({
   "currency": zod.enum(['USD']),
   "minDeposit": zod.number().min(saveSettingsResponseOneMinDepositMin).max(saveSettingsResponseOneMinDepositMax).describe('Shop deposit minimum in USD, at least $5. Provider coin minimums may be higher.'),
   "acceptedCoins": zod.array(zod.enum(['BTC', 'ETH', 'LTC', 'USDTTRC20', 'USDTERC20', 'BNBBSC', 'SOL'])).min(1),
+  "coinButtonIcons": zod.record(zod.string(), zod.object({
+  "emoji": zod.string().max(saveSettingsResponseOneCoinButtonIconsEmojiMax).optional(),
+  "customEmojiId": zod.string().regex(saveSettingsResponseOneCoinButtonIconsCustomEmojiIdRegExp).nullish()
+})).optional().describe('Optional per-coin button icons. Omission preserves saved icons. Empty emoji clears the normal fallback; null customEmojiId clears the custom icon.'),
   "rateMode": zod.enum(['fixed', 'floating']),
   "invoiceExpiryMinutes": zod.number().int().min(saveSettingsResponseOneInvoiceExpiryMinutesMin).max(saveSettingsResponseOneInvoiceExpiryMinutesMax),
   "maintenanceMode": zod.boolean(),

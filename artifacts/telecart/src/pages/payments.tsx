@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { IntegrationPanel } from "@/components/integration-panel";
 import { PaymentAttemptsPanel } from "@/components/payment-attempts";
 import { PaymentMinimumsPanel } from "@/components/payment-minimums";
+import { CoinIconEditor } from "@/components/coin-icon-editor";
 
 const COINS = [
   { id: "BTC", name: "Bitcoin" }, { id: "ETH", name: "Ethereum" }, { id: "LTC", name: "Litecoin" },
@@ -22,6 +23,7 @@ const schema = z.object({
   rateMode: z.enum(["fixed", "floating"]),
   invoiceExpiryMinutes: z.coerce.number().int("Whole minutes").min(10, "Minimum 10 minutes").max(120, "Maximum 120 minutes"),
   acceptedCoins: z.array(z.enum(["BTC", "ETH", "LTC", "USDTTRC20", "USDTERC20", "BNBBSC", "SOL"])).min(1, "Select at least one coin"),
+  coinButtonIcons: z.record(z.string(), z.object({ emoji: z.string().max(32).optional(), customEmojiId: z.string().regex(/^[0-9]{1,32}$/).nullable().optional() })),
 });
 type V = z.infer<typeof schema>;
 
@@ -34,12 +36,13 @@ const steps = [
 
 export default function PaymentsPage() {
   const { settings, savePartial, saving } = useShopSettings();
-  const form = useForm<V>({ resolver: zodResolver(schema), defaultValues: { minDeposit: 5, invoiceExpiryMinutes: 30, rateMode: "floating", acceptedCoins: ["BTC"] } });
-  const inited = useRef(false);
+  const form = useForm<V>({ resolver: zodResolver(schema), defaultValues: { minDeposit: 5, invoiceExpiryMinutes: 30, rateMode: "floating", acceptedCoins: ["BTC"], coinButtonIcons: {} } });
+  const inited = useRef<boolean | null>(null);
+  const dirty = form.formState.isDirty;
   useEffect(() => {
     const s = settings.data;
-    if (s && !inited.current) { inited.current = true; form.reset({ minDeposit: s.minDeposit, invoiceExpiryMinutes: s.invoiceExpiryMinutes, rateMode: s.rateMode, acceptedCoins: s.acceptedCoins }); }
-  }, [settings.data, form]);
+    if (s && (inited.current !== s.isDemo || !dirty)) { inited.current = s.isDemo; form.reset({ minDeposit: s.minDeposit, invoiceExpiryMinutes: s.invoiceExpiryMinutes, rateMode: s.rateMode, acceptedCoins: s.acceptedCoins, coinButtonIcons: s.coinButtonIcons ?? {} }); }
+  }, [settings.data, form, dirty]);
 
   return (
     <div>
@@ -72,6 +75,11 @@ export default function PaymentsPage() {
                     </div>
                     <FormMessage />
                   </FormItem>
+                )} />
+              </Panel>
+              <Panel title="Coin button icons" meta="Wallet deposit menu">
+                <FormField control={form.control} name="coinButtonIcons" render={({ field }) => (
+                  <FormItem><CoinIconEditor value={field.value} onChange={field.onChange} accepted={form.watch("acceptedCoins")} /><FormMessage /></FormItem>
                 )} />
               </Panel>
               <Panel title="Deposit rules">

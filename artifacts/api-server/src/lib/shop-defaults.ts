@@ -10,6 +10,7 @@ export const defaultSettings: SettingsInput = {
   minDeposit: 5,
   rateMode: "floating",
   acceptedCoins: ["BTC", "ETH", "SOL", "LTC"],
+  coinButtonIcons: {},
   invoiceExpiryMinutes: 30,
   maintenanceMode: false,
   productsLabel: "Products",

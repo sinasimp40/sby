@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { getShopAuth as getAuth, requireSameOrigin } from "../lib/admin-auth";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db, shopSettings, shopActivity } from "@workspace/db";
 import {
   GetOverviewResponse, ListOrdersResponse, ListCustomersResponse, ListDepositsResponse,
@@ -14,6 +14,7 @@ import commerceRouter from "./shop-commerce";
 import { revealDeliveredInventory } from "../lib/order-delivery";
 import transferRouter from "./shop-transfer";
 import emojiRouter from "./shop-emojis";
+import { validateCoinButtonIcons } from "../lib/coin-button-icons";
 
 const router: IRouter = Router();
 const writes = new Map<string, { count: number; expires: number }>();
@@ -86,9 +87,15 @@ router.put("/settings", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Choose each payment currency only once." }); return;
   }
   const ownerId = getAuth(req).userId!;
-  const preferences = { ...body.data, shopName: body.data.shopName.trim() };
-  await db.insert(shopSettings).values({ ownerId, preferences }).onConflictDoUpdate({
-    target: shopSettings.ownerId, set: { preferences, updatedAt: new Date() },
+  const previous = await settingsForOwner(ownerId);
+  const coinButtonIcons = body.data.coinButtonIcons ?? previous.coinButtonIcons ?? {};
+  const preferences = { ...body.data, coinButtonIcons, shopName: body.data.shopName.trim() };
+  await db.transaction(async tx => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${ownerId}, 71))`);
+    await validateCoinButtonIcons(ownerId, coinButtonIcons, tx);
+    await tx.insert(shopSettings).values({ ownerId, preferences }).onConflictDoUpdate({
+      target: shopSettings.ownerId, set: { preferences, updatedAt: new Date() },
+    });
   });
   await recordActivity(ownerId, "Shop settings saved", "Bot copy and payment preferences updated.", "settings");
   res.json(SaveSettingsResponse.parse(await settingsForOwner(ownerId)));

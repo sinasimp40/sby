@@ -4,6 +4,7 @@ import { db, shopProducts, shopInventory, shopSettings, shopRecords, shopActivit
 import { GetSettingsResponse, ListProductsResponse } from "@workspace/api-zod";
 import { defaultSettings, sampleProducts } from "./shop-defaults";
 import { integrationStatus } from "./commerce-connection";
+import { availableCoinButtonIcons } from "./coin-button-icons";
 
 export async function productsForOwner(ownerId: string | null) {
   if (!ownerId) return sampleProducts;
@@ -40,7 +41,7 @@ export async function settingsForOwner(ownerId: string | null) {
   const [row] = ownerId
     ? await db.select().from(shopSettings).where(eq(shopSettings.ownerId, ownerId))
     : [];
-  return GetSettingsResponse.parse({
+  const settings = GetSettingsResponse.parse({
     ...defaultSettings,
     ...(row?.preferences ?? {}),
     isDemo: !ownerId,
@@ -48,6 +49,7 @@ export async function settingsForOwner(ownerId: string | null) {
     paymentsConnected: connection.connected && connection.apiKeyPresent && connection.ipnSecretPresent,
     paymentProvider: "NOWPayments",
   });
+  return { ...settings, coinButtonIcons: await availableCoinButtonIcons(ownerId, settings.coinButtonIcons ?? {}) };
 }
 
 export async function recordsForOwner(ownerId: string | null, kind: "order" | "customer" | "deposit") {

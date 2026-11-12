@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { SettingsInputAcceptedCoinsItem } from './settingsInputAcceptedCoinsItem';
+import type { SettingsInputCoinButtonIcons } from './settingsInputCoinButtonIcons';
 import type { SettingsInputCurrency } from './settingsInputCurrency';
 import type { SettingsInputRateMode } from './settingsInputRateMode';
 
@@ -41,6 +42,8 @@ export interface SettingsInput {
   minDeposit: number;
   /** @minItems 1 */
   acceptedCoins: SettingsInputAcceptedCoinsItem[];
+  /** Optional per-coin button icons. Omission preserves saved icons. Empty emoji clears the normal fallback; null customEmojiId clears the custom icon. */
+  coinButtonIcons?: SettingsInputCoinButtonIcons;
   rateMode: SettingsInputRateMode;
   /**
      * @minimum 10

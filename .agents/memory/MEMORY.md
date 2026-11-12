@@ -3,7 +3,7 @@
 - [Checkout integrity](commerce-integrity.md) — shared bot credentials need explicit owner binding; ambiguous provider/delivery results must not consume new stock.
 - [Dashboard sign-in requirement](admin-access.md) — user explicitly requires admin-and-password dashboard access without OTP.
 - [Self-hosting and portable transfers](self-hosting.md) — Dashboard-managed controls and complete portable shop-data ZIPs support the planned move to localhost.
-- [Telegram icon eligibility](telegram-button-icons.md) — Keep deposit symbols static; user-requested custom product emojis need bot-owner eligibility and a normal fallback.
+- [Telegram icon eligibility](telegram-button-icons.md) — Selectable product/coin custom icons need bot-owner eligibility; normal fallbacks can be cleared.
 - [Product organization](product-organization.md) — The user wants product names without category fields or category requirements.
 - [Product options](product-options.md) — One product entry can contain independently named, priced and stocked options; grouping must preserve existing inventory identity.
 - [Product alerts](product-alerts.md) — Wait for stock; label the first announcement “New product” and subsequent restocks “Added stock.”
