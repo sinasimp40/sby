@@ -25,9 +25,10 @@ export function productCatalogMenu(input: CatalogProduct[], requestedPage = 0, c
     const customId = customIcons && typeof product.buttonCustomEmojiId === "string" &&
       /^[0-9]{1,30}$/.test(product.buttonCustomEmojiId) ? product.buttonCustomEmojiId : null;
     const productName = Array.from(customerMessageText(product.name)).slice(0, 20).join("");
+    const normalEmoji = product.buttonEmoji === "" ? "" : isProductEmoji(product.buttonEmoji) ? product.buttonEmoji : "🛍";
     return {
     ...(customId ? { icon_custom_emoji_id: customId } : {}),
-    text: `${customId ? "" : `${isProductEmoji(product.buttonEmoji) ? product.buttonEmoji : "🛍"} `}${productName} · $${product.price.toFixed(2)}`,
+    text: `${!customId && normalEmoji ? `${normalEmoji} ` : ""}${productName} · $${product.price.toFixed(2)}`,
     callback_data: `buy:${product.id}`,
   }; });
   const inline_keyboard = Array.from({ length: Math.ceil(buttons.length / 2) },

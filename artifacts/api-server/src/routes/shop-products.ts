@@ -34,7 +34,7 @@ router.post("/products", async (req, res): Promise<void> => {
     res.status(400).json({ error: PRODUCT_MEDIA_ERROR }); return;
   }
   await assertOwnedCustomEmoji(ownerId, input.buttonCustomEmojiId);
-  if (input.buttonEmoji !== undefined && !isProductEmoji(input.buttonEmoji)) {
+  if (input.buttonEmoji !== undefined && input.buttonEmoji !== "" && !isProductEmoji(input.buttonEmoji)) {
     res.status(400).json({ error: "Choose or paste one ordinary emoji for the product button." }); return;
   }
   const [product] = await db.insert(shopProducts).values({
@@ -61,7 +61,7 @@ router.patch("/products/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: PRODUCT_MEDIA_ERROR }); return;
   }
   await assertOwnedCustomEmoji(ownerId, input.buttonCustomEmojiId);
-  if (input.buttonEmoji !== undefined && !isProductEmoji(input.buttonEmoji)) {
+  if (input.buttonEmoji !== undefined && input.buttonEmoji !== "" && !isProductEmoji(input.buttonEmoji)) {
     res.status(400).json({ error: "Choose or paste one ordinary emoji for the product button." }); return;
   }
   const [product] = await db.update(shopProducts).set({

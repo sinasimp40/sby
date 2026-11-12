@@ -183,7 +183,7 @@ export const CreateProductBody = zod.object({
   "price": zod.number().min(createProductBodyPriceMin).max(createProductBodyPriceMax),
   "status": zod.enum(['active', 'draft', 'archived']),
   "deliveryFormat": zod.enum(['email:pass', 'user:pass']),
-  "buttonEmoji": zod.string().min(1).max(createProductBodyButtonEmojiMax).optional().describe('One ordinary Unicode emoji for the Telegram product button.'),
+  "buttonEmoji": zod.string().max(createProductBodyButtonEmojiMax).optional().describe('One ordinary Unicode emoji as the optional fallback. An empty string disables the normal emoji.'),
   "buttonCustomEmojiId": zod.string().regex(createProductBodyButtonCustomEmojiIdRegExp).nullish()
 })
 
@@ -235,7 +235,7 @@ export const UpdateProductBody = zod.object({
   "price": zod.number().min(updateProductBodyPriceMin).max(updateProductBodyPriceMax),
   "status": zod.enum(['active', 'draft', 'archived']),
   "deliveryFormat": zod.enum(['email:pass', 'user:pass']),
-  "buttonEmoji": zod.string().min(1).max(updateProductBodyButtonEmojiMax).optional().describe('One ordinary Unicode emoji for the Telegram product button.'),
+  "buttonEmoji": zod.string().max(updateProductBodyButtonEmojiMax).optional().describe('One ordinary Unicode emoji as the optional fallback. An empty string disables the normal emoji.'),
   "buttonCustomEmojiId": zod.string().regex(updateProductBodyButtonCustomEmojiIdRegExp).nullish()
 })
 

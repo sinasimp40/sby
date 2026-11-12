@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { validProductMediaUrl, productMediaMethod, sendProductCard, editProductQuote } from "../src/lib/product-media";
 import { TelegramRequestError } from "../src/lib/commerce-providers";
 import { newStockAnnouncement } from "../src/lib/product-announcements";
-import { quantityPrompt, quantityKeyboard } from "../src/lib/purchase-copy";
+import { quantityPrompt, quantityKeyboard, purchaseConfirmation } from "../src/lib/purchase-copy";
+import { productNameHtml } from "../src/lib/product-name";
 
 const photo = "https://cdn.example.com/product.png";
 const gif = "https://cdn.example.com/product.GIF?v=1";
@@ -16,6 +17,41 @@ function recorder() {
     calls.push({ method, body }); return { message_id: calls.length };
   } };
 }
+
+test("product-name headings honor selected normal/custom icons and a cleared normal icon", () => {
+  const selected = { ...product, buttonEmoji: "🎮", buttonCustomEmojiId: "12345" };
+  const normal = { ...selected, buttonCustomEmojiId: null };
+  assert.ok(quantityPrompt(normal, 1000).startsWith("🎮 <b>&lt;Product&gt;</b>"));
+  assert.match(purchaseConfirmation(normal, 1, 1000), /🎮 <b>&lt;Product&gt;<\/b>/);
+  const customName = '<tg-emoji emoji-id="12345">🎮</tg-emoji> <b>&lt;Product&gt;</b>';
+  assert.ok(quantityPrompt(selected, 1000).startsWith(customName));
+  assert.ok(purchaseConfirmation(selected, 1, 1000).includes(customName));
+  assert.ok(newStockAnnouncement(selected, 1).heading.includes(customName));
+  assert.equal(productNameHtml({ ...normal, buttonEmoji: "" }), "<b>&lt;Product&gt;</b>");
+  assert.equal(productNameHtml({ ...selected, buttonEmoji: "" }, false), "<b>&lt;Product&gt;</b>");
+});
+
+test("custom caption rejection uses the configured normal icon without dropping the image or sending another text message", async () => {
+  const selected = { ...product, buttonEmoji: "🎮", buttonCustomEmojiId: "12345", imageUrl: photo };
+  const announcement = newStockAnnouncement(selected, 2);
+  const attempts: { method: string; body: Record<string, unknown> }[] = [];
+  const send = async (method: string, body: Record<string, unknown>) => {
+    attempts.push({ method, body });
+    if (String(body.caption).includes("<tg-emoji")) throw new TelegramRequestError(method, 400, "custom_emoji_unavailable");
+    return { message_id: 99 };
+  };
+  const result = await sendProductCard("TEST_ONLY", announcement, send);
+  assert.equal(result.message_id, 99);
+  assert.equal(result.mediaPrompt, true);
+  assert.deepEqual(attempts.map(call => call.method), ["sendPhoto", "sendPhoto"]);
+  assert.match(String(attempts[1]!.body.caption), /🎮 <b>&lt;Product&gt;/);
+  assert.doesNotMatch(String(attempts[1]!.body.caption), /tg-emoji|image unavailable/);
+  const quote = purchaseConfirmation(selected, 1, 1000);
+  const normalQuote = purchaseConfirmation(selected, 1, 1000, false);
+  assert.equal(await editProductQuote("TEST_ONLY", 99, quote, markup, true, send, normalQuote), true);
+  assert.deepEqual(attempts.slice(2).map(call => call.method), ["editMessageCaption", "editMessageCaption"]);
+  assert.equal(attempts[3]!.body.caption, normalQuote);
+});
 
 test("only public HTTPS direct images and GIFs are accepted, including query strings", () => {
   for (const url of [photo, gif, "https://images.example.com/file.jpeg?token=synthetic", "https://images.example.com/file.webp"]) {

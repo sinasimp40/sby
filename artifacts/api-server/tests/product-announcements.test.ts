@@ -97,4 +97,10 @@ test("catalog buttons show icon, name and price without stock count or Buy now l
   assert.equal(custom.text, "test1 · $1.00");
   const fallback = productCatalogMenu([{ ...musicProduct, buttonCustomEmojiId: "12345" }], 0, false).reply_markup.inline_keyboard[0]![0]!;
   assert.equal(fallback.text, "🎵 test1 · $1.00");
+  const cleared = productCatalogMenu([{ ...musicProduct, buttonEmoji: "" }]).reply_markup.inline_keyboard[0]![0]!;
+  assert.equal(cleared.text, "test1 · $1.00");
+  const customOnly = { ...musicProduct, buttonEmoji: "", buttonCustomEmojiId: "12345" };
+  const customOnlyButton = productCatalogMenu([customOnly]).reply_markup.inline_keyboard[0]![0]!;
+  assert.equal("icon_custom_emoji_id" in customOnlyButton && customOnlyButton.icon_custom_emoji_id, "12345");
+  assert.equal(productCatalogMenu([customOnly], 0, false).reply_markup.inline_keyboard[0]![0]!.text, "test1 · $1.00");
 });

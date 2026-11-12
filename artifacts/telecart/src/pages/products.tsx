@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuthGate } from "@/components/auth-gate";
 import { money, shortDate, errMsg } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { CustomEmojiPicker } from "@/components/custom-emoji-picker";
+import { CustomEmojiPicker, EmojiPreview } from "@/components/custom-emoji-picker";
 import { ProductMediaPreview, isProductImageUrl } from "@/components/product-media-preview";
 
 const schema = z.object({
@@ -29,8 +29,8 @@ const schema = z.object({
   price: z.coerce.number({ invalid_type_error: "Enter a price" }).min(0.01, "Minimum $0.01").max(100000, "Maximum $100,000"),
   status: z.enum(["active", "draft", "archived"]),
   deliveryFormat: z.enum(["email:pass", "user:pass"]),
-  buttonEmoji: z.string().min(1, "Choose an emoji").max(32).emoji("Enter an emoji, not text or an image URL")
-    .refine(value => Array.from(new Intl.Segmenter("en", { granularity: "grapheme" }).segment(value)).length === 1, "Choose just one emoji"),
+  buttonEmoji: z.union([z.literal(""), z.string().max(32).emoji("Enter an emoji, not text or an image URL")
+    .refine(value => Array.from(new Intl.Segmenter("en", { granularity: "grapheme" }).segment(value)).length === 1, "Choose just one emoji")]),
   buttonCustomEmojiId: z.string().regex(/^[0-9]{1,30}$/).nullable(),
 });
 type FormValues = z.infer<typeof schema>;
@@ -88,26 +88,30 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
             )} />
             <FormField control={form.control} name="buttonEmoji" render={({ field }) => (
               <FormItem>
-                <FormLabel>Normal button emoji / fallback</FormLabel>
+                <FormLabel>Normal emoji / fallback <span className="font-normal text-muted-foreground">(optional)</span></FormLabel>
                 <div className="flex flex-wrap gap-1.5" role="group" aria-label="Suggested product emojis">
                   {["🛍", "🎮", "🔑", "🎬", "🎵", "📚", "💎", "⚡", "🚀", "🎨"].map(emoji => (
                     <Button key={emoji} type="button" variant={field.value === emoji ? "default" : "outline"}
                       size="icon" disabled={pending} aria-label={`Use ${emoji}`} aria-pressed={field.value === emoji}
-                      onClick={() => form.setValue("buttonEmoji", emoji, { shouldDirty: true, shouldValidate: true })}>
+                      onClick={() => form.setValue("buttonEmoji", field.value === emoji ? "" : emoji, { shouldDirty: true, shouldValidate: true })}>
                       {emoji}
                     </Button>
                   ))}
                 </div>
                 <FormControl><Input {...field} disabled={pending} maxLength={32} placeholder="Paste your own emoji" aria-label="Custom product emoji" data-testid="input-product-emoji" /></FormControl>
-                <p className="text-xs text-muted-foreground">Choose a preset or paste one emoji. No Premium needed. Photos cannot appear inside Telegram buttons.</p>
+                <p className="text-xs text-muted-foreground">Click the selected preset again or clear the input for no normal emoji. A selected custom icon takes priority; the normal emoji is only its fallback.</p>
+                <Button type="button" variant="ghost" size="sm" disabled={pending || !field.value}
+                  onClick={() => form.setValue("buttonEmoji", "", { shouldDirty: true, shouldValidate: true })}
+                  data-testid="button-clear-normal-emoji">Clear normal emoji</Button>
                 <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm" data-testid="product-button-preview">
-                  {field.value || "🛍"} {form.watch("name") || "Product name"} · ${Number(form.watch("price") || 0).toFixed(2)}
+                  <EmojiPreview customEmojiId={form.watch("buttonCustomEmojiId")} fallback={field.value} className="mr-1 h-5 w-5" />
+                  {form.watch("name") || "Product name"} · ${Number(form.watch("price") || 0).toFixed(2)}
                 </div>
                 <FormMessage />
               </FormItem>
             )} />
             <FormField control={form.control} name="buttonCustomEmojiId" render={({ field }) => (
-              <CustomEmojiPicker open={open} value={field.value} disabled={pending} fallbackEmoji={form.watch("buttonEmoji") || "🛍"}
+              <CustomEmojiPicker open={open} value={field.value} disabled={pending} fallbackEmoji={form.watch("buttonEmoji")}
                 onChange={id => form.setValue("buttonCustomEmojiId", id, { shouldDirty: true })} />
             )} />
             <div>
@@ -190,7 +194,10 @@ export default function ProductsPage() {
               <tbody className="divide-y divide-border/60">
                 {rows.map((p) => (
                   <tr key={p.id} className="group transition-colors hover:bg-muted/40" data-testid={`row-product-${p.id}`}>
-                    <td className="max-w-[320px] px-4 py-3"><div className="truncate font-medium">{p.buttonEmoji ?? "🛍"} {p.name}</div><div className="truncate text-xs text-muted-foreground">Added {shortDate(p.createdAt)}</div></td>
+                    <td className="max-w-[320px] px-4 py-3"><div className="flex items-center gap-1.5 font-medium">
+                      <EmojiPreview customEmojiId={p.buttonCustomEmojiId} fallback={p.buttonEmoji ?? "🛍"} className="h-5 w-5" />
+                      <span className="truncate">{p.name}</span>
+                    </div><div className="truncate text-xs text-muted-foreground">Added {shortDate(p.createdAt)}</div></td>
                     <td className="px-3 py-3"><StatusPill status={p.status} /></td>
                     <td className="px-3 py-3 font-mono text-xs text-muted-foreground">{p.deliveryFormat}</td>
                     <td className={cn("tabular px-3 py-3 text-right font-mono", p.stock === 0 && "text-signal")}>{p.stock}</td>

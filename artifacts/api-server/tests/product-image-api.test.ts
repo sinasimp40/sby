@@ -29,15 +29,21 @@ test("product image links persist through create/edit/reload, omission preserves
   const gifUrl = "https://cdn.example.com/product.gif?v=1";
   try {
     assert.equal((await request("", "POST", { ...input, imageUrl }, "")).status, 401);
-    const created = await request("", "POST", { ...input, imageUrl });
+    const created = await request("", "POST", { ...input, imageUrl, buttonEmoji: "" });
     assert.equal(created.status, 201);
     const product = await created.json();
     assert.equal(product.imageUrl, imageUrl);
+    assert.equal(product.buttonEmoji, "");
     const path = `/${product.id}`;
-    const read = async () => (await (await request()).json() as { id: number; imageUrl: string | null }[]).find(row => row.id === product.id)!;
+    const read = async () => (await (await request()).json() as { id: number; imageUrl: string | null; buttonEmoji: string }[]).find(row => row.id === product.id)!;
     assert.equal((await read()).imageUrl, imageUrl);
     assert.equal((await (await request(path, "PATCH", { ...input, imageUrl: gifUrl })).json()).imageUrl, gifUrl);
     assert.equal((await read()).imageUrl, gifUrl);
+    assert.equal((await read()).buttonEmoji, "");
+    assert.equal((await (await request(path, "PATCH", { ...input, buttonEmoji: "🎵" })).json()).buttonEmoji, "🎵");
+    assert.equal((await (await request(path, "PATCH", { ...input, buttonEmoji: "" })).json()).buttonEmoji, "");
+    assert.equal((await read()).buttonEmoji, "");
+    assert.equal((await request(path, "PATCH", { ...input, buttonEmoji: "not an emoji" })).status, 400);
     assert.equal((await (await request(path, "PATCH", { ...input, name: "TEST_ONLY renamed" })).json()).imageUrl, gifUrl);
     const rejected = await request(path, "PATCH", { ...input, imageUrl: "https://127.0.0.1/private.png" });
     assert.equal(rejected.status, 400);

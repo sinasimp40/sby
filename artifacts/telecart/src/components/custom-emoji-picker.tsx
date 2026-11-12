@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   useListCustomEmojis, getListCustomEmojisQueryKey, useImportCustomEmojiPack, useStartEmojiImport,
   useStopEmojiImport, useDeleteCustomEmoji, getListProductsQueryKey,
+  getPreviewCustomEmojiUrl,
 } from "@workspace/api-client-react";
 import type { CustomEmoji } from "@workspace/api-client-react";
 import { Search, RefreshCw, Link2, Send, X, Trash2, Loader2, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
@@ -15,11 +16,15 @@ import { cn } from "@/lib/utils";
 
 const PAGE = 48;
 
-export function EmojiPreview({ item, fallback, className }: { item?: CustomEmoji | null; fallback: string; className?: string }) {
+export function EmojiPreview({ item, customEmojiId, fallback, className }: { item?: CustomEmoji | null; customEmojiId?: string | null; fallback: string; className?: string }) {
   const [failed, setFailed] = useState(false);
-  useEffect(() => setFailed(false), [item?.previewUrl]);
-  if (!item || failed) return <span className={cn("inline-grid place-items-center", className)} aria-hidden>{item?.emoji || fallback}</span>;
-  return <img src={item.previewUrl} alt={item.emoji} loading="lazy" decoding="async" onError={() => setFailed(true)} className={cn("object-contain", className)} />;
+  const previewUrl = item?.previewUrl || (customEmojiId ? getPreviewCustomEmojiUrl(customEmojiId) : null);
+  useEffect(() => setFailed(false), [previewUrl]);
+  if (!previewUrl || failed) {
+    const emoji = item?.emoji || fallback;
+    return emoji ? <span className={cn("inline-grid place-items-center", className)} aria-hidden>{emoji}</span> : null;
+  }
+  return <img src={previewUrl} alt="Selected custom product icon" loading="lazy" decoding="async" onError={() => setFailed(true)} className={cn("inline-block shrink-0 object-contain align-middle", className)} />;
 }
 
 export function CustomEmojiPicker({ open, value, onChange, fallbackEmoji, disabled }: {
@@ -85,7 +90,7 @@ export function CustomEmojiPicker({ open, value, onChange, fallbackEmoji, disabl
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-medium">Custom Telegram icon <span className="font-normal text-muted-foreground">(optional)</span></p>
-          <p className="mt-0.5 text-xs text-muted-foreground">Needs the bot owner to have Telegram Premium or a Fragment username. Customers don't need Premium. Sticker packs and photos can't be button icons. If ineligible, the bot shows the normal emoji above.</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Needs the bot owner to have Telegram Premium or a Fragment username. Customers don't need Premium. Sticker packs and photos can't be button icons. If unavailable, the bot uses your normal fallback or no icon if cleared.</p>
         </div>
         <Button type="button" size="sm" variant="ghost" onClick={() => lib.refetch()} disabled={lib.isFetching} data-testid="button-refresh-emojis" aria-label="Refresh library">
           <RefreshCw className={cn("h-3.5 w-3.5", lib.isFetching && "animate-spin")} />
@@ -94,10 +99,10 @@ export function CustomEmojiPicker({ open, value, onChange, fallbackEmoji, disabl
 
       <div className="flex items-center gap-2 rounded-md bg-muted/50 px-2.5 py-2 text-sm" data-testid="text-custom-selection">
         {value ? <>
-          <EmojiPreview item={selected} fallback={fallbackEmoji} className="h-6 w-6 text-lg" />
+          <EmojiPreview item={selected} customEmojiId={value} fallback={fallbackEmoji} className="h-6 w-6 text-lg" />
           <span className="min-w-0 flex-1 truncate">{selected ? (selected.setName ?? "Imported icon") : "Saved icon (not in loaded library)"} <span className="font-mono text-[11px] text-muted-foreground">#{value}</span></span>
-          <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={() => onChange(null)} data-testid="button-clear-custom-emoji">Use normal emoji</Button>
-        </> : <span className="text-muted-foreground">None selected — button uses the normal emoji.</span>}
+          <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={() => onChange(null)} data-testid="button-clear-custom-emoji">Remove custom icon</Button>
+        </> : <span className="text-muted-foreground">{fallbackEmoji ? "None selected — button uses the normal emoji." : "None selected — button has no icon."}</span>}
       </div>
 
       <div className="grid gap-2 sm:grid-cols-2">

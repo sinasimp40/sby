@@ -565,7 +565,7 @@ components:
         price: { type: number, minimum: 0.01, maximum: 100000 }
         status: { type: string, enum: [active, draft, archived] }
         deliveryFormat: { type: string, enum: ["email:pass", "user:pass"] }
-        buttonEmoji: { type: string, minLength: 1, maxLength: 32, description: "One ordinary Unicode emoji for the Telegram product button." }
+        buttonEmoji: { type: string, maxLength: 32, description: "One ordinary Unicode emoji as the optional fallback. An empty string disables the normal emoji." }
         buttonCustomEmojiId: { type: [string, "null"], pattern: '^[0-9]{1,30}$' }
     Product:
       type: object

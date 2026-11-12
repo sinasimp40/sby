@@ -1,12 +1,13 @@
 import { escapeHtml } from "./payment-message";
 import { customerMessageText } from "./telegram-copy";
 import { MAX_PURCHASE_QUANTITY } from "./checkout-allocation";
+import { productNameHtml, type ProductName } from "./product-name";
 
-interface ProductView { name: string; description: string; stock: number; price: number }
+interface ProductView extends ProductName { description: string; stock: number; price: number }
 const name = (product: { name: string }) => escapeHtml(customerMessageText(product.name).slice(0, 120));
-export function quantityPrompt(product: ProductView, balanceCents: number) {
+export function quantityPrompt(product: ProductView, balanceCents: number, customIcons = true) {
   return [
-    `🛍 <b>${name(product)}</b>`,
+    productNameHtml(product, customIcons),
     ...(product.description ? ["", escapeHtml(customerMessageText(product.description).slice(0, 500))] : []),
     "", `💵 Unit price: <b>$${product.price.toFixed(2)}</b>`,
     `📦 Stock left: <b>${product.stock}</b>`,
@@ -21,11 +22,11 @@ export function quantityKeyboard() {
     [{ text: "🏠 Cancel", callback_data: "cancel_home" }],
   ] };
 }
-export function purchaseConfirmation(product: ProductView, quantity: number, balanceCents: number) {
+export function purchaseConfirmation(product: ProductView, quantity: number, balanceCents: number, customIcons = true) {
   const total = Math.round(product.price * 100) * quantity;
   const shortfall = Math.max(0, total - balanceCents);
   return [
-    "🧾 <b>Confirm your purchase</b>", "", `🛍 <b>${name(product)}</b>`,
+    "🧾 <b>Confirm your purchase</b>", "", productNameHtml(product, customIcons),
     `📦 Stock left: <b>${product.stock}</b>`,
     `🔢 Quantity: <b>${quantity}</b>`,
     `💵 Unit price: <b>$${product.price.toFixed(2)}</b>`,

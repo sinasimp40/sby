@@ -161,8 +161,7 @@ export interface ProductInput {
   status: ProductInputStatus;
   deliveryFormat: ProductInputDeliveryFormat;
   /**
-     * One ordinary Unicode emoji for the Telegram product button.
-     * @minLength 1
+     * One ordinary Unicode emoji as the optional fallback. An empty string disables the normal emoji.
      * @maxLength 32
      */
   buttonEmoji?: string;

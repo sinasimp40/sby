@@ -109,11 +109,12 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         [{ text: "🏠 Cancel", callback_data: "cancel_home" }],
       ] };
       const quote = purchaseConfirmation(product, quantity, customer!.balanceCents);
+      const normalQuote = purchaseConfirmation(product, quantity, customer!.balanceCents, false);
       const messageId = update.callback_query ? message.message_id : Number(state.promptMessageId);
       if (Number.isSafeInteger(messageId) && messageId! > 0) {
-        if (await editProductQuote(customer!.chatId, messageId!, quote, keyboard, state.promptIsMedia === true)) return;
+        if (await editProductQuote(customer!.chatId, messageId!, quote, keyboard, state.promptIsMedia === true, telegram, normalQuote)) return;
       }
-      await send(quote, keyboard, "HTML");
+      await withCustomEmojiFallback(() => send(quote, keyboard, "HTML"), () => send(normalQuote, keyboard, "HTML"));
     };
     const showPending = async () => {
       const menu = pendingPaymentsMenu(await customerPendingPayments(connection.ownerId, customer!.id));
@@ -218,6 +219,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate) {
         const [heading, ...lines] = quantityPrompt(product, customer!.balanceCents).split("\n");
         const prompt = await sendProductCard(customer!.chatId, {
           heading: heading!, body: lines.join("\n").trimStart(), imageUrl: product.imageUrl,
+          fallbackHeading: quantityPrompt(product, customer!.balanceCents, false).split("\n")[0],
           reply_markup: quantityKeyboard(),
         });
         if (Number.isSafeInteger(prompt.message_id)) await db.update(botCustomers).set({
