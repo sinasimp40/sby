@@ -30,6 +30,7 @@ import type {
   AdminSession,
   AdvertisingAccountLoginInput,
   AdvertisingAccountPoll,
+  AdvertisingAccountRun,
   AdvertisingAccountStartInput,
   AdvertisingAccountVerification,
   AdvertisingAppCredentialsInput,
@@ -57,6 +58,7 @@ import type {
   EmojiImportLink,
   EmojiImportResult,
   EmojiPackInput,
+  GetAdvertisingActivityParams,
   HealthStatus,
   ImportResult,
   IntegrationInput,
@@ -112,6 +114,108 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetAdvertisingActivityUrl = (params?: GetAdvertisingActivityParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/shop/advertising/activity?${stringifiedParams}` : `/api/shop/advertising/activity`
+}
+
+export const getAdvertisingActivity = async (params?: GetAdvertisingActivityParams, options?: Parameters<typeof customFetch>[1]): Promise<AdvertisingAccountRun[]> => {
+
+  return customFetch<AdvertisingAccountRun[]>(getGetAdvertisingActivityUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdvertisingActivityQueryKey = (params?: GetAdvertisingActivityParams,) => {
+    return [
+    `/api/shop/advertising/activity`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAdvertisingActivityQueryOptions = <TData = Awaited<ReturnType<typeof getAdvertisingActivity>>, TError = ErrorType<unknown>>(params?: GetAdvertisingActivityParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdvertisingActivity>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdvertisingActivityQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdvertisingActivity>>> = ({ signal }) => getAdvertisingActivity(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdvertisingActivity>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAdvertisingActivityQueryResult = NonNullable<Awaited<ReturnType<typeof getAdvertisingActivity>>>
+export type GetAdvertisingActivityQueryError = ErrorType<unknown>
+
+
+export function useGetAdvertisingActivity<TData = Awaited<ReturnType<typeof getAdvertisingActivity>>, TError = ErrorType<unknown>>(
+ params: undefined |  GetAdvertisingActivityParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdvertisingActivity>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdvertisingActivity>>,
+          TError,
+          Awaited<ReturnType<typeof getAdvertisingActivity>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAdvertisingActivity<TData = Awaited<ReturnType<typeof getAdvertisingActivity>>, TError = ErrorType<unknown>>(
+ params?: GetAdvertisingActivityParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdvertisingActivity>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdvertisingActivity>>,
+          TError,
+          Awaited<ReturnType<typeof getAdvertisingActivity>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAdvertisingActivity<TData = Awaited<ReturnType<typeof getAdvertisingActivity>>, TError = ErrorType<unknown>>(
+ params?: GetAdvertisingActivityParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdvertisingActivity>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetAdvertisingActivity<TData = Awaited<ReturnType<typeof getAdvertisingActivity>>, TError = ErrorType<unknown>>(
+ params?: GetAdvertisingActivityParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdvertisingActivity>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAdvertisingActivityQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getSaveAdvertisingAppCredentialsUrl = () => {
 

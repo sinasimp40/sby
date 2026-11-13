@@ -9,6 +9,18 @@ tags:
   - name: health
   - name: shop
 paths:
+  /shop/advertising/activity:
+    get:
+      operationId: getAdvertisingActivity
+      parameters:
+        - {name: from, in: query, schema: {type: string, format: date-time}}
+        - {name: to, in: query, schema: {type: string, format: date-time}}
+      responses:
+        "200":
+          description: Latest ten posting records within five days, optionally filtered by a local calendar day's UTC boundaries.
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/AdvertisingAccountRun"}}
   /shop/advertising/account/app:
     put:
       operationId: saveAdvertisingAppCredentials

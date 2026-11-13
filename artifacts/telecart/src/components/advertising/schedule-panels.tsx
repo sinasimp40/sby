@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   useStartAdvertisingAccountSchedules, useStopAdvertisingAccountSchedules, useStopAllAdvertisingAccountSchedules,
-  useSaveAdvertisingDraft, type AdvertisingWorkspace, type AdvertisingGroup, type AdvertisingDraft,
+  useSaveAdvertisingDraft, useGetAdvertisingActivity, type AdvertisingWorkspace, type AdvertisingGroup, type AdvertisingDraft,
 } from "@workspace/api-client-react";
-import { Loader2, Play, Square, OctagonX, Activity } from "lucide-react";
+import { Loader2, Play, Square, OctagonX, Activity, Filter } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Panel, EmptyState } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -120,14 +121,40 @@ export function StartDialog({ open, onOpenChange, ws, d, toDraft, selected, onSt
 }
 
 export function RunsPanel({ ws }: { ws: AdvertisingWorkspace }) {
-  const runs = [...ws.accountRuns].sort((a, b) => b.startedAt.localeCompare(a.startedAt)).slice(0, 60);
-  const uncertain = ws.accountRuns.filter(r => r.status === "uncertain").length;
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [date, setDate] = useState("");
+  const range = useMemo(() => {
+    if (!date) return undefined;
+    const [year, month, day] = date.split("-").map(Number);
+    const from = new Date(year!, month! - 1, day);
+    const to = new Date(year!, month! - 1, day! + 1);
+    if (!Number.isFinite(from.getTime()) || !Number.isFinite(to.getTime())) return undefined;
+    return { from: from.toISOString(), to: to.toISOString() };
+  }, [date]);
+  const filtered = useGetAdvertisingActivity(range, { query: { enabled: !!range, refetchInterval: 5000 } });
+  const runs = [...(range ? filtered.data ?? [] : ws.accountRuns)]
+    .sort((a, b) => (b.sentAt ?? b.startedAt).localeCompare(a.sentAt ?? a.startedAt)).slice(0, 10);
+  const uncertain = runs.filter(r => r.status === "uncertain").length;
   const legacySent = runs.some(r => r.status === "sent" && !r.note?.startsWith("Verified in selected group: message #"));
   return (
-    <Panel title="Posting activity" meta={<span data-testid="text-run-count">{ws.accountRuns.length} posts</span>}>
+    <Panel title="Posting activity" meta={<span data-testid="text-run-count">{runs.length} posts</span>}>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-xs text-muted-foreground">Latest 10 posts · logs kept for 5 days</span>
+        <Button size="sm" variant="outline" onClick={() => setFiltersOpen(v => !v)} aria-expanded={filtersOpen} data-testid="button-activity-filter">
+          <Filter className="mr-2 h-3.5 w-3.5" />{date ? `Date: ${date}` : "Filter by date"}
+        </Button>
+      </div>
+      {filtersOpen && <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border p-3">
+        <label htmlFor="activity-date" className="text-xs">Posting date</label>
+        <Input id="activity-date" type="date" value={date} onChange={e => setDate(e.target.value)} className="w-auto" data-testid="input-activity-date" />
+        {date && <Button variant="ghost" size="sm" onClick={() => setDate("")} data-testid="button-clear-activity-date">Clear</Button>}
+        <span className="text-xs text-muted-foreground">Your local time · last 5 days only</span>
+      </div>}
       {legacySent && <p className="mb-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">Older “sent” records were not checked by reading the message back from the group. They are not proof the message was visible.</p>}
       {uncertain > 0 && <p className="mb-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900" data-testid="banner-uncertain">{uncertain} uncertain {uncertain === 1 ? "result" : "results"}: Telegram may have posted. Those groups are stopped until you check them and start again. No automatic retry.</p>}
-      {runs.length === 0 ? <EmptyState icon={Activity} title="No posts yet" body="Each scheduled post appears here with its outcome." /> :
+      {range && filtered.isLoading ? <p className="py-6 text-sm text-muted-foreground">Loading posts…</p> :
+      range && filtered.isError ? <p className="py-6 text-sm text-destructive" role="alert">Could not load posts for this date. {errMsg(filtered.error)}</p> :
+      runs.length === 0 ? <EmptyState icon={Activity} title={date ? "No posts on this date" : "No posts yet"} body="Only posting logs from the last five days are available." /> :
         <ul className="divide-y rounded-lg border">{runs.map(r => (
           <li key={r.id} className="p-3" data-testid={`row-run-${r.id}`}>
             <div className="flex flex-wrap items-center gap-2"><Tag s={r.status === "sent" && !r.note?.startsWith("Verified in selected group: message #") ? "unverified" : r.status} testId={`status-run-${r.id}`} /><span className="min-w-0 flex-1 truncate font-mono text-xs">{r.target}</span><span className="text-[11px] text-muted-foreground">{dateTime(r.sentAt ?? r.startedAt)}</span></div>

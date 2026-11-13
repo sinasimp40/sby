@@ -9,6 +9,7 @@ import { assertTransferReviewed } from "./shop-transfer-safety";
 import { logger } from "./logger";
 import { processAccountRecovery, recoveryState } from "./advertising-account-recovery";
 import { validateForwardSnapshot } from "./advertising-saved-messages";
+import { maintainAdvertisingActivity } from "./advertising-activity";
 
 export async function startAccountSchedules(owner: string, input: AdvertisingAccountStartInput) {
   if (input.draft.forward) throw new AccountError("Use the Saved Messages forwarding confirmation instead.");
@@ -161,7 +162,13 @@ export async function processAccountSchedules(owner: string, factory: AccountFac
 }
 export async function runAccountAdvertisingWorker() {
   for (;;) {
-    try { const owner = configuredOwnerId(); if (owner) { await processAccountRecovery(owner); await processAccountSchedules(owner); } }
+    try {
+      const owner = configuredOwnerId();
+      if (owner) {
+        await maintainAdvertisingActivity(owner);
+        await processAccountRecovery(owner); await processAccountSchedules(owner);
+      }
+    }
     catch { logger.warn("Account advertising sender could not complete a queue check."); }
     await new Promise(resolve => setTimeout(resolve, 3000));
   }

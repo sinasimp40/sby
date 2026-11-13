@@ -4,8 +4,10 @@ import { pool } from "@workspace/db";
 import {
   ConnectAdvertisingBotBody, PreviewAdvertisingGroupsBody, AddAdvertisingGroupsBody,
   CheckAdvertisingGroupsBody, UpdateAdvertisingGroupBody, SaveAdvertisingDraftBody, StartAdvertisingCampaignBody,
+  GetAdvertisingActivityQueryParams,
 } from "@workspace/api-zod";
 import { getShopAuth } from "../lib/admin-auth";
+import { advertisingActivity, maintainAdvertisingActivity } from "../lib/advertising-activity";
 import { CommerceError } from "../lib/commerce-providers";
 import { advertisingWorkspace, advertisingBotForOwner, advertisingCampaigns, withAdvertisingLock, cancelAdvertisingCampaign } from "../lib/advertising-store";
 import { addAdvertisingTargets, checkAdvertisingTargets, connectAdvertising, discoverAdvertisingTargets, stopAdvertising } from "../lib/advertising-management";
@@ -31,6 +33,11 @@ const run = (fn: (req: Request, res: Response) => Promise<unknown>) => async (re
   }
 };
 router.get("/advertising", run(async req => advertisingWorkspace(owner(req))));
+router.get("/advertising/activity", run(async req => {
+  const query = GetAdvertisingActivityQueryParams.parse(req.query);
+  await maintainAdvertisingActivity(owner(req));
+  return advertisingActivity(owner(req), query.from, query.to);
+}));
 router.use(accountRouter);
 router.post("/advertising/connection", run(async req => {
   if (await accountMode(owner(req))) throw new CommerceError("Advertising now uses a personal Telegram account. Use QR or phone login instead of a bot token.", 410);

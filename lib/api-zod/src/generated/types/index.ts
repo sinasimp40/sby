@@ -69,6 +69,7 @@ export * from './depositStatus';
 export * from './emojiImportLink';
 export * from './emojiImportResult';
 export * from './emojiPackInput';
+export * from './getAdvertisingActivityParams';
 export * from './healthStatus';
 export * from './importResult';
 export * from './integrationInput';

@@ -8,6 +8,23 @@
 import * as zod from 'zod';
 
 
+export const GetAdvertisingActivityQueryParams = zod.object({
+  "from": zod.date().optional(),
+  "to": zod.date().optional()
+})
+
+export const GetAdvertisingActivityResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().uuid(),
+  "target": zod.string(),
+  "status": zod.enum(['sending', 'sent', 'failed', 'uncertain', 'cancelled', 'rate_limited']),
+  "note": zod.string(),
+  "startedAt": zod.coerce.date(),
+  "sentAt": zod.coerce.date().nullable()
+})
+export const GetAdvertisingActivityResponse = zod.array(GetAdvertisingActivityResponseItem)
+
+
 export const saveAdvertisingAppCredentialsBodyApiIdMax = 2147483647;
 
 export const saveAdvertisingAppCredentialsBodyApiHashMin = 32;

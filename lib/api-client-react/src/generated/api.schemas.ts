@@ -1212,3 +1212,8 @@ export type ShopSettings = SettingsInput & {
   paymentProvider: string;
 };
 
+export type GetAdvertisingActivityParams = {
+from?: string;
+to?: string;
+};
+
