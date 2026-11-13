@@ -134,3 +134,9 @@ Resume and Start new campaign are distinct actions: Resume retains the saved cyc
 **Why:** The user explicitly requested “Add safe campaign resume” because restarting after errors or sign-in returned their campaign to the beginning.
 
 **How to apply:** Require explicit same-account resume confirmation. Keep uncertain destinations excluded independently of short-lived posting history, with removal/leaving handled by the membership policy above; recheck posting rights before sending after sign-in, and never resume portable imports. Missing delivery evidence alone must not invalidate a healthy authorization; actual transport/security failures still use existing connection containment. Never fabricate a checkpoint for older stopped campaigns whose priorities were already erased.
+
+Pause campaign must stop new posts without resetting the saved campaign or silently resuming it.
+
+**Why:** After requesting safe Resume, the user explicitly asked to “add pause campaign.”
+
+**How to apply:** Keep Pause distinct from Start new; retain the same account/source, group position, partial batch and Telegram-required waits for explicit Resume. An in-flight Telegram operation may finish. UNCERTAIN destinations remain excluded. If older editor-based schedules also run, do not silently stop them through Pause; explain why explicit Stop all is required.

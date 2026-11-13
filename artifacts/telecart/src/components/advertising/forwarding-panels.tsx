@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useStartAdvertisingForwardLoop, useStopAllAdvertisingAccountSchedules, type AdvertisingWorkspace, type AdvertisingGroup, type AdvertisingSavedMessage } from "@workspace/api-client-react";
-import { Loader2, Play, OctagonX, Repeat, ArrowDown, AlertTriangle } from "lucide-react";
+import { Loader2, Play, Pause, OctagonX, Repeat, ArrowDown, AlertTriangle } from "lucide-react";
 import { Panel } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,14 +66,23 @@ export function ForwardingStatus({ ws }: { ws: AdvertisingWorkspace }) {
   const f = ws.forwarding;
   const legacy = legacyRunning(ws);
   const active = !!f?.running || legacy.length > 0;
+  const paused = !active && !!ws.resume?.planId && ws.resume.groupIds.length > 0;
   const waiting = !!f?.running && (!ws.account.connected || !!ws.account.login);
   const next = f?.nextGroupId ? ws.groups.find(g => g.id === f.nextGroupId) : null;
   const pos = f?.nextGroupId ? f.groupIds.indexOf(f.nextGroupId) + 1 : 0;
+  async function pauseCampaign() {
+    try {
+      sync(await stopAll.mutateAsync());
+      toast({ title: "Campaign paused", description: "Your queue position and remaining wait are saved. Use Resume campaign when ready." });
+    } catch (error) {
+      toast({ title: "Pause failed", description: errMsg(error), variant: "destructive" });
+    }
+  }
   return (
     <div className="mb-5 overflow-hidden rounded-xl border bg-card" data-testid="panel-forwarding-status">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3 p-4">
         <span className={cn("inline-flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-wider", f?.running ? "text-primary" : "text-muted-foreground")} data-testid="status-forwarding">
-          <span className={cn("h-2 w-2 rounded-full", f?.running ? "animate-pulse bg-primary" : "bg-muted-foreground/40")} />{waiting ? "Waiting for connection" : f?.running ? "Forwarding" : "Stopped"}
+          <span className={cn("h-2 w-2 rounded-full", f?.running ? "animate-pulse bg-primary" : "bg-muted-foreground/40")} />{waiting ? "Waiting for connection" : f?.running ? "Forwarding" : paused ? "Paused" : "Stopped"}
         </span>
         {f?.running && <>
           <span className="text-xs"><span className="text-muted-foreground">Next </span><b data-testid="text-forward-next-group">{next ? next.title || next.target : "-"}</b>{pos > 0 && <span className="font-mono text-muted-foreground"> ({pos}/{f.groupIds.length})</span>}</span>
@@ -81,10 +90,14 @@ export function ForwardingStatus({ ws }: { ws: AdvertisingWorkspace }) {
           <span className="text-xs"><span className="text-muted-foreground">delay </span><b className="font-mono">{fmtInterval(f.intervalSeconds)}</b></span>
           <span className="text-xs" data-testid="text-forward-batch"><b className="font-mono">{f.groupsPerInterval ?? 1}</b> groups/interval · {f.groupsSentInInterval ?? 0} reached in current batch</span>
         </>}
-        <Button variant="ghost" className="ml-auto text-destructive" disabled={!active || stopAll.isPending} onClick={() => setConfirm(true)} data-testid="button-stop-all">{stopAll.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <OctagonX className="mr-1.5 h-4 w-4" />}Stop all</Button>
+        <Button variant="outline" className="ml-auto" disabled={!f?.running || legacy.length > 0 || stopAll.isPending} onClick={() => void pauseCampaign()} data-testid="button-pause-campaign">
+          {stopAll.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Pause className="mr-1.5 h-4 w-4" />}Pause campaign
+        </Button>
+        <Button variant="ghost" className="text-destructive" disabled={!active || stopAll.isPending} onClick={() => setConfirm(true)} data-testid="button-stop-all">{stopAll.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <OctagonX className="mr-1.5 h-4 w-4" />}Stop all</Button>
       </div>
+      {paused && <p className="border-t bg-muted/30 px-4 py-2 text-xs text-muted-foreground" data-testid="text-campaign-paused">No more posts from this campaign will start until you Resume it. Your saved order, partial batch and Telegram-required waits remain in place. Start new campaign replaces this saved progress.</p>}
       {f?.running && f.source && <div className="border-t bg-muted/30 px-4 py-2 text-xs text-muted-foreground" data-testid="text-forward-source">Forwarding Saved Message #{f.source.id}{f.source.text ? `: ${f.source.text.slice(0, 80)}${f.source.text.length > 80 ? "..." : ""}` : ""}</div>}
-      {legacy.length > 0 && <p className="flex items-start gap-2 border-t border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-900" data-testid="banner-legacy-running"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{legacy.length} older editor-based {legacy.length === 1 ? "schedule is" : "schedules are"} still running from the previous workflow. Stop all halts them; starting a new forward replaces them. This page never starts them again.</p>}
+      {legacy.length > 0 && <p className="flex items-start gap-2 border-t border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-900" data-testid="banner-legacy-running"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{legacy.length} older editor-based {legacy.length === 1 ? "schedule is" : "schedules are"} still running from the previous workflow. Pause is unavailable until those schedules are stopped. Stop all halts them; starting a new forward replaces them. This page never starts them again.</p>}
       <AlertDialog open={confirm} onOpenChange={setConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader><AlertDialogTitle>Stop all advertising?</AlertDialogTitle><AlertDialogDescription>Stops the forwarding queue{legacy.length ? ` and ${legacy.length} older schedule${legacy.length === 1 ? "" : "s"}` : ""}. A forward already in flight may still arrive. Nothing resumes on its own; your account stays connected.</AlertDialogDescription></AlertDialogHeader>

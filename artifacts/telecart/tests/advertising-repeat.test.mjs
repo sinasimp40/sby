@@ -21,7 +21,7 @@ test("groups-per-interval controls render one-copy semantics and bounded group c
     server: { middlewareMode: true, hmr: false },
   });
   try {
-    const { GroupsPerIntervalPanel, groupsPerIntervalOk, queueGroups } = await vite.ssrLoadModule("/src/components/advertising/forwarding-panels.tsx");
+    const { GroupsPerIntervalPanel, ForwardingStatus, groupsPerIntervalOk, queueGroups } = await vite.ssrLoadModule("/src/components/advertising/forwarding-panels.tsx");
     const { alphabeticalGroups, retainedGroupSelection, ScrollableGroupList, groupListViewportHeight } = await vite.ssrLoadModule("/src/components/advertising/group-list.tsx");
     const { MembershipPanel } = await vite.ssrLoadModule("/src/components/advertising/membership-panel.tsx");
     const membershipHtml = renderToStaticMarkup(createElement(QueryClientProvider, { client: new QueryClient() },
@@ -41,6 +41,28 @@ test("groups-per-interval controls render one-copy semantics and bounded group c
       id: String(i), title, target: title || "Charlie", enabled: true, status: "ready", chatId: `-${i + 1}`,
     }));
     const original = groups.map(g => g.id);
+    const statusFixture = (running, resume) => ({
+      groups, account: { connected: true, accountId: "900000009", login: null },
+      forwarding: { running, source: null, groupIds: [groups[0].id], nextGroupId: groups[0].id, nextSendAt: null,
+        intervalSeconds: 60, groupsPerInterval: 3, groupsSentInInterval: 1 },
+      resume,
+    });
+    const renderStatus = ws => renderToStaticMarkup(createElement(QueryClientProvider, { client: new QueryClient() },
+      createElement(ForwardingStatus, { ws })));
+    const runningStatus = renderStatus(statusFixture(true, null));
+    const pauseButton = html => html.match(/<button[^>]*data-testid="button-pause-campaign"[^>]*>/)?.[0];
+    assert.ok(pauseButton(runningStatus));
+    assert.doesNotMatch(pauseButton(runningStatus), /\sdisabled(?:=""|(?=\s|>))/);
+    const mixedStatus = renderStatus({ ...statusFixture(true, null), groups: [groups[0], { ...groups[1], running: true }] });
+    assert.match(pauseButton(mixedStatus), /\sdisabled(?:=""|(?=\s|>))/);
+    assert.match(mixedStatus, /Pause is unavailable until those schedules are stopped/);
+    const saved = { planId: "TEST_ONLY_plan", groupIds: [groups[0].id], reason: "", available: true };
+    const pausedStatus = renderStatus(statusFixture(false, saved));
+    assert.match(pausedStatus, /data-testid="status-forwarding"[^>]*><span[^>]*><\/span>Paused<\/span>/);
+    assert.match(pausedStatus, /data-testid="text-campaign-paused"/);
+    assert.match(pauseButton(pausedStatus), /\sdisabled(?:=""|(?=\s|>))/);
+    const stoppedStatus = renderStatus(statusFixture(false, null));
+    assert.match(stoppedStatus, /data-testid="status-forwarding"[^>]*><span[^>]*><\/span>Stopped<\/span>/);
     assert.deepEqual(alphabeticalGroups(groups).map(g => g.title || g.target), ["Alpha", "beta 2", "beta 10", "Charlie", "Zulu"]);
     assert.deepEqual(groups.map(g => g.id), original, "sorting must not mutate the cached workspace");
     assert.deepEqual(queueGroups({ groups }, new Set(original)).map(g => g.id), alphabeticalGroups(groups).map(g => g.id));
