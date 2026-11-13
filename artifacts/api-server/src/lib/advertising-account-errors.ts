@@ -25,6 +25,7 @@ const codes = new Set([
   "INVITE_HASH_INVALID", "INVITE_HASH_EXPIRED", "INVITE_HASH_EMPTY", "CHANNELS_TOO_MUCH",
   "USERS_TOO_MUCH", "USER_CHANNELS_TOO_MUCH", "CHANNEL_INVALID", "CHAT_ID_INVALID",
   "USER_CREATOR", "INVITE_REQUEST_SENT",
+  "DESTINATION_UNRESOLVED", "GROUP_MEMBERSHIP_UNVERIFIED",
 ]);
 export function diagnosticCode(value: unknown): string {
   if (typeof value !== "string") return "UNKNOWN";

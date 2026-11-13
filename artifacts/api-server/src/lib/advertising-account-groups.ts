@@ -1,6 +1,6 @@
 import { pool } from "@workspace/db";
 import { withAdvertisingLock } from "./advertising-store";
-import { withAccountDriver } from "./advertising-account-auth";
+import { withAccountDriver, stopAccountSchedules } from "./advertising-account-auth";
 import { AccountError, createAccountDriver, safeAccountError, type AccountFactory } from "./advertising-account-driver";
 import { definiteDestinationFailure, queueGroupRemoval } from "./advertising-membership-store";
 
@@ -44,8 +44,11 @@ export async function checkAccountGroups(owner: string, ids: string[], factory: 
           [owner, group.id, checked.chatId, checked.title.slice(0, 200), account.generation]);
       } catch (error) {
         const safe = safeAccountError(error);
-        await client.query("UPDATE advertising_groups SET status='error',account_generation=NULL,note=$3,checked_at=now() WHERE owner_id=$1 AND id=$2", [owner, group.id, safe.message]);
-        if (["rate_limit", "auth", "restricted", "network"].includes(safe.kind)) throw safe;
+        const temporary = ["rate_limit", "auth", "restricted", "network"].includes(safe.kind);
+        await client.query("UPDATE advertising_groups SET enabled=false,status=$4,account_generation=NULL,note=$3,checked_at=now() WHERE owner_id=$1 AND id=$2",
+          [owner, group.id, safe.message, temporary ? "pending" : "error"]);
+        await stopAccountSchedules(owner, client, [group.id], "Posting stopped after a failed permission check.", true);
+        if (temporary) throw safe;
         if (definiteDestinationFailure(safe)) await queueGroupRemoval(owner, client, group, account, safe.message);
       }
     }

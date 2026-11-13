@@ -29,12 +29,15 @@ function SessionQueries({ children }: { children: ReactNode }) {
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
 function AuthScopedQueries({ children }: { children: ReactNode }) {
-  const { user, isLoaded, error } = useAdminAuth();
+  const { user, isLoaded, error, connectionWarning } = useAdminAuth();
   if (!isLoaded) return <div className="grid min-h-screen place-items-center text-sm">Loading your shop…</div>;
   if (error) return <div className="grid min-h-screen place-items-center p-6 text-sm" role="alert">{error}</div>;
   // Remount all queries and forms on login/logout so private data never survives
   // an identity transition in mounted observers.
-  return <SessionQueries key={user?.id ?? "public-preview"}>{children}</SessionQueries>;
+  return <SessionQueries key={user?.id ?? "public-preview"}>
+    {connectionWarning && <div role="status" className="border-b border-signal/30 bg-signal-soft px-4 py-2 text-xs text-signal" data-testid="banner-session-connection">{connectionWarning}</div>}
+    {children}
+  </SessionQueries>;
 }
 function SignInPage() {
   const { signIn, isSignedIn } = useAdminAuth();

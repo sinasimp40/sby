@@ -29,10 +29,25 @@ router.get("/advertising/events", async (req, res): Promise<void> => {
       // Changes in another shop must not leak even a notification.
       if (!closed && next !== fingerprint) {
         fingerprint = next;
-        if (!res.write(`event: workspace\ndata: ${JSON.stringify(workspace)}\n\n`)) res.end();
+        if (!res.write(`event: workspace\ndata: ${JSON.stringify(workspace)}\n\n`)) {
+          // A full send buffer is normal for hundreds of groups, not a failed
+          // stream. Wait for drain and coalesce further changes while waiting.
+          await new Promise<void>(resolve => {
+            const finish = () => {
+              clearTimeout(deadline);
+              res.off("drain", finish); res.off("close", finish);
+              resolve();
+            };
+            const deadline = setTimeout(() => { res.destroy(); finish(); }, 10000);
+            res.once("drain", finish); res.once("close", finish);
+            if (res.destroyed) finish();
+          });
+        }
       }
-    } catch {
+    } catch (error) {
       // Reconnect and rehydrate rather than serving a fabricated empty list.
+      req.log.warn({ errorType: error instanceof Error ? error.name : "Unknown" },
+        "Advertising live update failed; the client will reconnect. No workspace data was logged.");
       res.end();
     } finally {
       running = false;

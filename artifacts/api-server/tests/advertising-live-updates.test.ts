@@ -149,6 +149,57 @@ test("missing leave identities recover safely and pushed snapshots update only t
       await new Promise(resolve => setTimeout(resolve, 20));
       assert.equal(databaseChanges.listenerCount("advertising"), initialListeners);
     });
+    await t.test("a 211-group snapshot drains its send buffer without closing or reconnecting the live stream", async () => {
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN");
+        for (let i = 0; i < 211; i++) await client.query(`INSERT INTO advertising_groups(owner_id,target,kind,title,note,enabled)
+          VALUES($1,$2,'chat_id',$3,$4,false)`,
+        [owner, `-1009000${String(i).padStart(4, "0")}`, `TEST_ONLY large ${i} ${"x".repeat(180)}`, "TEST_ONLY ".repeat(80)]);
+        await client.query("COMMIT");
+      } catch (error) { await client.query("ROLLBACK"); throw error; }
+      finally { client.release(); }
+      const stop = new AbortController();
+      const token = await issueAdminSession();
+      let body: ReadableStreamDefaultReader<Uint8Array> | undefined;
+      try {
+        const response = await fetch(`${base}/api/shop/advertising/events`, {
+          headers: { Cookie: `${adminCookieName()}=${token}` }, signal: stop.signal,
+        });
+        body = response.body!.getReader();
+        const decoder = new TextDecoder();
+        let buffered = "";
+        const next = async () => {
+          const timeout = setTimeout(() => stop.abort(), 2500);
+          try {
+            for (;;) {
+              const end = buffered.indexOf("\n\n");
+              if (end >= 0) {
+                const event = buffered.slice(0, end); buffered = buffered.slice(end + 2);
+                if (event.startsWith("event: workspace\n")) return JSON.parse(event.split("\ndata: ")[1]);
+                continue;
+              }
+              const chunk = await body!.read();
+              if (chunk.done) return null;
+              buffered += decoder.decode(chunk.value, { stream: true });
+            }
+          } finally { clearTimeout(timeout); }
+        };
+        const initial = await next();
+        assert.equal(initial.groups.length, 211);
+        assert.ok(Buffer.byteLength(JSON.stringify(initial)) > 128 * 1024, "exercise real stream backpressure");
+        const firstId = initial.groups[0].id;
+        await pool.query("UPDATE advertising_groups SET title='TEST_ONLY pushed without reconnect' WHERE id=$1", [firstId]);
+        const updated = await next();
+        assert.ok(updated, "large initial snapshots must not terminate the connection");
+        assert.equal(updated.groups.find((group: { id: string }) => group.id === firstId).title, "TEST_ONLY pushed without reconnect");
+        await pool.query("UPDATE advertising_groups SET status='removed' WHERE id=$1", [firstId]);
+        assert.equal((await next()).groups.length, 210);
+      } finally {
+        stop.abort(); await body?.cancel().catch(() => {});
+        await revokeAdminSession(token);
+      }
+    });
     await t.test("public destinations are pinned before posting denial so their leave job has a safe identity", async () => {
       permissionDenied = true;
       const group = (await pool.query(`INSERT INTO advertising_groups(owner_id,target,kind,title,status,enabled)

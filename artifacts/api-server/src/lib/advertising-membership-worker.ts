@@ -1,4 +1,5 @@
 import { repairMissingLeaveIdentities, MISSING_LEAVE_IDENTITY } from "./advertising-leave-repair";
+import { disableFailedChecks, recoverUnresolvedChecks } from "./advertising-failed-checks";
 import { pool } from "@workspace/db";
 import { withAdvertisingLock, type AdvertisingClient } from "./advertising-store";
 import { withAccountDriver, stopAccountSchedules } from "./advertising-account-auth";
@@ -104,7 +105,9 @@ export async function processAccountMembership(owner: string, factory: AccountFa
     await client.query(`UPDATE advertising_membership_jobs SET status='uncertain',note='Interrupted membership action. Preview/check membership before any new action.',updated_at=now()
       WHERE owner_id=$1 AND status='working' AND updated_at<now()-interval '60 seconds'`, [owner]);
     const account = (await client.query("SELECT * FROM advertising_accounts WHERE owner_id=$1", [owner])).rows[0];
-    if (!account?.account_id) return;
+    if (!account) return;
+    await disableFailedChecks(owner, client);
+    if (!account.account_id) return;
     await repairMissingLeaveIdentities(owner, client, account);
     await recordedFailures(owner, client, account);
     await queueRecordedUncertain(owner, client, account);
@@ -120,6 +123,7 @@ export async function processAccountMembership(owner: string, factory: AccountFa
     await client.query(`UPDATE advertising_membership_jobs SET status='stopped',note='Account authorization changed. Review before creating new work.',updated_at=now()
       WHERE owner_id=$1 AND status IN ('pending','awaiting_approval') AND (account_id<>$2 OR generation<>$3)`, [owner, account.account_id, account.generation]);
     if (!account.session_encrypted || account.last_error || account.login_encrypted || new Date(account.telegram_wait_until).getTime() > Date.now()) return;
+    await recoverUnresolvedChecks(owner, client, factory);
     const job = (await client.query(`SELECT * FROM advertising_membership_jobs WHERE owner_id=$1
       AND account_id=$2 AND generation=$3 AND (status='pending' OR (status IN ('awaiting_approval','uncertain') AND updated_at<now()-interval '30 seconds'))
       ORDER BY CASE WHEN action='leave' THEN 0 ELSE 1 END,created_at,id LIMIT 1`, [owner, account.account_id, account.generation])).rows[0];

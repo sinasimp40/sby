@@ -5,6 +5,8 @@ export type MembershipProbe = { chatId: string | null; title: string; joined: bo
 type Group = Api.Chat | Api.Channel;
 const inviteHash = (target: string) => /^https:\/\/t\.me\/\+([A-Za-z0-9_-]+)$/.exec(target)?.[1];
 const groupOnly = (entity: unknown): Group => {
+  if (entity instanceof Api.ChatForbidden || entity instanceof Api.ChannelForbidden)
+    throw new AccountError("Telegram denies access to this saved group.", "permission", 0, "CHANNEL_PRIVATE", true);
   if (!(entity instanceof Api.Chat || entity instanceof Api.Channel)) throw new AccountError("This target is not a group or channel.");
   return entity;
 };
@@ -12,7 +14,7 @@ const description = (entity: Group, joined: boolean): MembershipProbe => ({
   chatId: utils.getPeerId(entity).toString(), title: entity.title, joined, approval: Boolean(entity instanceof Api.Channel && entity.joinRequest),
 });
 
-async function resolveGroup(client: TelegramClient, target: string): Promise<Group> {
+export async function resolveGroup(client: TelegramClient, target: string): Promise<Group> {
   try { return groupOnly(await client.getEntity(target)); }
   catch (error) {
     // Missing cached access hashes are not transport failures. Refresh only for
@@ -20,12 +22,13 @@ async function resolveGroup(client: TelegramClient, target: string): Promise<Gro
     const missing = error instanceof Error && /^(Could not find the input entity|Cannot find any entity corresponding|No user has)/.test(error.message);
     if (!missing) throw error;
     if (/^-\d+$/.test(target)) {
-      const dialogs = await client.getDialogs({ limit: 1000 });
+      const dialogs = await client.getDialogs({ limit: 1000, ignoreMigrated: false });
       const found = dialogs.find(dialog => (dialog.entity instanceof Api.Channel || dialog.entity instanceof Api.Chat) &&
         utils.getPeerId(dialog.entity).toString() === target);
       if (found?.entity) return groupOnly(found.entity);
     }
-    throw new AccountError("Cannot safely resolve this group. Discover joined groups or verify its invitation in Telegram.");
+    throw new AccountError("Cannot resolve this saved Telegram group. Removed from advertising; leaving requires its verified numeric identity.",
+      "destination", 0, "DESTINATION_UNRESOLVED", true);
   }
 }
 

@@ -67,7 +67,9 @@ test("public groups absent from dialogs are verified directly before checking or
   let mode = "member", checks = 0, sends = 0;
   TelegramClient.prototype.getDialogs = async () => [] as any;
   TelegramClient.prototype.getEntity = async target => {
-    assert.ok(target === "@TEST_ONLY_group" || target === channel, "cached destinations refresh current group permissions");
+    assert.ok(target === "@TEST_ONLY_group" || target === "-10012345" || target === channel, "numeric and public destinations resolve directly");
+    if (mode === "unresolved") throw new Error("Could not find the input entity for TEST_ONLY");
+    if (mode === "network") throw Object.assign(new Error("TEST_ONLY network"), { code: "ETIMEDOUT" });
     return channel;
   };
   TelegramClient.prototype.invoke = async request => {
@@ -96,6 +98,13 @@ test("public groups absent from dialogs are verified directly before checking or
     await driver.send(group.chatId, draft, "123");
     assert.equal(sends, 1);
     assert.equal(checks, 2, "membership is rechecked before posting");
+    assert.equal((await factory().inspect("-10012345")).chatId, "-10012345",
+      "numeric groups absent from the cached dialog list are resolved directly");
+    mode = "unresolved";
+    await assert.rejects(factory().inspect("-10012345"), (error: any) => error.kind === "destination" && error.telegramCode === "DESTINATION_UNRESOLVED");
+    mode = "network";
+    await assert.rejects(factory().inspect("-10012345"), (error: any) => error.kind === "network",
+      "network failures must not be reclassified as group failures");
     mode = "outsider";
     await assert.rejects(factory().inspect("@TEST_ONLY_group"), /same account you used to join/);
     await assert.rejects(driver.send(group.chatId, draft, "124"), /not a member/);

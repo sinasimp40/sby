@@ -349,7 +349,7 @@ export function GroupsPanel({ ws, selected: savedSelected, setSelected, sequenti
                   {g.scheduleNote && <div className={cn("mt-0.5 text-xs", g.lastStatus === "uncertain" ? "text-amber-800" : "text-muted-foreground")} data-testid={`text-schedule-note-${g.id}`}>{g.scheduleNote}</div>}
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
-                  <Switch checked={g.enabled} onCheckedChange={async v => { try { sync(await update.mutateAsync({ id: g.id, data: { enabled: v } })); } catch (x) { toast({ title: "Update failed", description: errMsg(x), variant: "destructive" }); } }} data-testid={`switch-group-${g.id}`} />
+                  <Switch checked={g.enabled} disabled={g.status === "error" && !g.enabled} title={g.status === "error" ? "Check this group successfully before enabling it again." : undefined} onCheckedChange={async v => { try { sync(await update.mutateAsync({ id: g.id, data: { enabled: v } })); } catch (x) { toast({ title: "Update failed", description: errMsg(x), variant: "destructive" }); } }} data-testid={`switch-group-${g.id}`} />
                   <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setEditing(g); setEditTarget(g.target); }} data-testid={`button-edit-group-${g.id}`}><Pencil className="h-3.5 w-3.5" /></Button>
                   <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => setDeleting(g)} data-testid={`button-delete-group-${g.id}`}><Trash2 className="h-3.5 w-3.5" /></Button>
                 </div>

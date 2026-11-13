@@ -12,6 +12,7 @@ import { connectedAccountSession, closeAccountSession, loginConnectionKey, accou
 import { isSessionStopped, isTransportFailure, sessionStopped, stoppedAccountError, reportAccountError, type AccountOperation } from "./advertising-account-errors";
 import { queueNetworkRecovery, recoveryState, recoverAccountConnection } from "./advertising-account-recovery";
 import { captureCheckpoint } from "./advertising-checkpoint-store";
+import { disableFailedChecks } from "./advertising-failed-checks";
 
 export type PendingAccountLogin = { id: string; method: "qr" | "phone"; step: "qr" | "code" | "password"; apiId: number; apiHash: string; session: string; phone?: string; hash?: string; qrUrl?: string; expires: number };
 const seal = (value: string, owner: string) => encryptProviderSecret(value, owner, "advertising-account");
@@ -26,7 +27,11 @@ export async function stopAccountSchedules(owner: string, client: AdvertisingCli
 export async function initializeAccountAdvertising(owner: string) {
   return withAdvertisingLock(owner, async client => {
     const exists = (await client.query("SELECT 1 FROM advertising_accounts WHERE owner_id=$1", [owner])).rowCount;
-    if (exists) return;
+    if (exists) {
+      // Local safety repair must not depend on Telegram recovery succeeding.
+      await disableFailedChecks(owner, client);
+      return;
+    }
     await stopAdvertising(owner, client);
     await client.query("UPDATE advertising_bots SET token_encrypted=NULL,bot_id=NULL,checked_at=NULL,last_error=NULL WHERE owner_id=$1", [owner]);
     await client.query("UPDATE advertising_groups SET status='pending',account_generation=NULL,checked_at=NULL,note='Connect your Telegram account and check membership/posting permission.' WHERE owner_id=$1 AND status<>'removed'", [owner]);

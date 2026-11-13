@@ -9,7 +9,7 @@ import { telegramAdEntities } from "./advertising-formatting";
 import { validateAdvertisingDraft } from "./advertising-telegram";
 import { AccountError, safeAccountError, reportAccountError, type AccountOperation } from "./advertising-account-errors";
 import { confirmAccountPost, type AccountPostReceipt } from "./advertising-account-receipt";
-import { inspectMembership, joinMembership, leaveMembership, type MembershipProbe } from "./advertising-membership-telegram";
+import { inspectMembership, joinMembership, leaveMembership, resolveGroup, type MembershipProbe } from "./advertising-membership-telegram";
 import { accountGroupUpdate, type AccountGroupUpdate } from "./advertising-group-updates";
 export { AccountError, safeAccountError } from "./advertising-account-errors";
 async function bounded<T>(fn: () => Promise<T>): Promise<T> {
@@ -183,17 +183,9 @@ export const createAccountDriver: AccountFactory = ({ apiId, apiHash, session = 
       if (!(refreshed instanceof Api.Chat || refreshed instanceof Api.Channel)) throw new AccountError("The saved destination is no longer a group or channel.");
       entity = refreshed;
     }
-    if (!entity && target.startsWith("@")) {
-      // Public username resolution plus GetParticipant is authoritative. The
-      // first 1,000 dialogs can omit an older joined group; absence isn't proof.
-      const candidate = await client.getEntity(target);
-      if (candidate instanceof Api.Chat || candidate instanceof Api.Channel) entity = candidate;
-    }
-    if (!entity && !target.startsWith("@")) {
-      const dialog = (await joined()).find(d => d.id?.toString() === target);
-      if (dialog?.entity instanceof Api.Chat || dialog?.entity instanceof Api.Channel) entity = dialog.entity;
-    }
-    if (!entity) throw new AccountError("Could not resolve this group for the connected Telegram account. Check the account shown in Advertising, or use the group's public @username.");
+    // Resolve the pinned ID directly, just like public usernames. The first
+    // 1,000 cached dialogs can omit a valid older group.
+    if (!entity) entity = await resolveGroup(client, target);
     if (entity.left || (entity instanceof Api.Chat && entity.deactivated)) throw new AccountError("This account is no longer a member of this group.", "permission", 0, "USER_NOT_PARTICIPANT");
     let admin = entity.creator || Boolean(entity.adminRights);
     let personalBan: Api.ChatBannedRights | undefined;
@@ -210,8 +202,10 @@ export const createAccountDriver: AccountFactory = ({ apiId, apiHash, session = 
       const me = await client.getMe();
       if (!(full.fullChat instanceof Api.ChatFull)) throw new AccountError("Could not verify group membership.");
       const participants = full.fullChat.participants;
-      if (!(participants instanceof Api.ChatParticipants) || !participants.participants.some(p => p.userId.equals(me.id)))
-        throw new AccountError("Could not verify that the connected Telegram account is a member of this group.");
+      if (!(participants instanceof Api.ChatParticipants))
+        throw new AccountError("Telegram did not allow verification of this group's membership.", "destination", 0, "GROUP_MEMBERSHIP_UNVERIFIED", true);
+      if (!participants.participants.some(p => p.userId.equals(me.id)))
+        throw new AccountError("The connected Telegram account is not a member of this group.", "permission", 0, "USER_NOT_PARTICIPANT", true);
     }
     const restrictions = [personalBan, ...(admin ? [] : [entity.defaultBannedRights])];
     const kind = draft?.forward?.source.mediaKind;

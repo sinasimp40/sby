@@ -23,6 +23,31 @@ test("groups-per-interval controls render one-copy semantics and bounded group c
   try {
     const { GroupsPerIntervalPanel, ForwardingStatus, groupsPerIntervalOk, queueGroups } = await vite.ssrLoadModule("/src/components/advertising/forwarding-panels.tsx");
     const { alphabeticalGroups, retainedGroupSelection, ScrollableGroupList, groupListViewportHeight } = await vite.ssrLoadModule("/src/components/advertising/group-list.tsx");
+    const { CampaignGroupCounts, campaignGroupCounts } = await vite.ssrLoadModule("/src/components/advertising/campaign-group-counts.tsx");
+    const countGroups = Array.from({ length: 211 }, (_, i) => ({
+      id: `count-${i}`, title: `Group ${i}`, target: `-${i + 1}`, chatId: i < 205 ? `-${i + 1}` : null,
+      status: i >= 175 && i < 205 ? "pending" : "ready", enabled: !(i >= 165 && i < 175), running: i < 165,
+    }));
+    const countWs = { groups: countGroups, forwarding: { running: true, groupIds: countGroups.slice(0, 165).map(group => group.id) } };
+    const countSelection = new Set([...countGroups.map(group => group.id), "removed-group"]);
+    assert.deepEqual(campaignGroupCounts(countWs, countSelection), {
+      selected: 211, eligible: 165, active: 165, disabled: 10, needsPermission: 30, missingIdentity: 6,
+      eligibleOutsideCampaign: 0, activeOutsideSelection: 0, legacyActive: 0,
+    });
+    const countHtml = renderToStaticMarkup(createElement(CampaignGroupCounts, { ws: countWs, selected: countSelection }));
+    assert.match(countHtml, /Selected for a new campaign/);
+    assert.match(countHtml, /Eligible for a new campaign/);
+    assert.match(countHtml, /In the running campaign/);
+    assert.match(countHtml, /46 selected groups are not eligible/);
+    assert.match(countHtml, /10 disabled; 30 need a successful permission check; 6 missing a verified Telegram group ID/);
+    assert.match(countHtml, /Checkbox changes do not change the running campaign/);
+    const eligibleAllWs = { ...countWs, groups: countGroups.map(group => ({ ...group, enabled: true, status: "ready", chatId: group.target })) };
+    assert.equal(campaignGroupCounts(eligibleAllWs, countSelection).eligibleOutsideCampaign, 46);
+    const deselected = new Set(countGroups.slice(1).map(group => group.id));
+    assert.equal(campaignGroupCounts(eligibleAllWs, deselected).activeOutsideSelection, 1);
+    const stoppedCounts = campaignGroupCounts({ ...countWs, forwarding: { running: false, groupIds: countWs.forwarding.groupIds } }, countSelection);
+    assert.equal(stoppedCounts.active, 0, "a saved/stopped plan is not an active campaign");
+    assert.equal(stoppedCounts.legacyActive, 165, "older running schedules must still be disclosed separately");
     const { MembershipPanel } = await vite.ssrLoadModule("/src/components/advertising/membership-panel.tsx");
     const membershipHtml = renderToStaticMarkup(createElement(QueryClientProvider, { client: new QueryClient() },
       createElement(MembershipPanel, { ws: { account: { connected: false, accountId: null, login: null }, membershipJobs: [] } })));

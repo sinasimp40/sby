@@ -85,6 +85,7 @@ export function ForwardingStatus({ ws }: { ws: AdvertisingWorkspace }) {
           <span className={cn("h-2 w-2 rounded-full", f?.running ? "animate-pulse bg-primary" : "bg-muted-foreground/40")} />{waiting ? "Waiting for connection" : f?.running ? "Forwarding" : paused ? "Paused" : "Stopped"}
         </span>
         {f?.running && <>
+          <span className="text-xs" data-testid="text-running-campaign-size"><b className="font-mono">{f.groupIds.length}</b> in the running campaign</span>
           <span className="text-xs"><span className="text-muted-foreground">Next </span><b data-testid="text-forward-next-group">{next ? next.title || next.target : "-"}</b>{pos > 0 && <span className="font-mono text-muted-foreground"> ({pos}/{f.groupIds.length})</span>}</span>
           <span className="text-xs"><span className="text-muted-foreground">at </span><b className="font-mono" data-testid="text-forward-next-at">{f.nextSendAt ? dateTime(f.nextSendAt) : "now"}</b></span>
           <span className="text-xs"><span className="text-muted-foreground">delay </span><b className="font-mono">{fmtInterval(f.intervalSeconds)}</b></span>

@@ -99,6 +99,8 @@ router.patch("/advertising/groups/:id", run(async req => {
     const group = (await client.query("SELECT * FROM advertising_groups WHERE owner_id=$1 AND id=$2", [owner(req), groupId])).rows[0];
     if (!group) throw new CommerceError("Group not found.", 404);
     if (group.status === "removed") throw new CommerceError("This destination was removed. Use the reviewed membership import to restore it.", 409);
+    if (input.enabled === true && group.status === "error" && !parsed)
+      throw new CommerceError("Check this group successfully before enabling it again.", 409);
     if (parsed) {
       const exists = await client.query("SELECT 1 FROM advertising_groups WHERE owner_id=$1 AND target=$2 AND id<>$3", [owner(req), parsed.target, groupId]);
       if (exists.rowCount) throw new CommerceError("That target is already saved.", 409);

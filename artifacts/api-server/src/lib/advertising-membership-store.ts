@@ -11,6 +11,7 @@ const sourceProblems = new Set(["SAVED_MESSAGE_MISSING", "SAVED_MESSAGE_CHANGED"
   "MESSAGE_ID_INVALID", "PREMIUM_ACCOUNT_REQUIRED", "CUSTOM_EMOJI_INVALID", "STICKERSET_INVALID"]);
 export const definiteDestinationFailure = (error: AccountError) =>
   !sourceProblems.has(error.telegramCode) && (error.kind === "permission" ||
+    (error.kind === "destination" && ["DESTINATION_UNRESOLVED", "GROUP_MEMBERSHIP_UNVERIFIED"].includes(error.telegramCode)) ||
     (error.kind === "validation" && error.definite && ["CHANNEL_INVALID", "CHAT_ID_INVALID"].includes(error.telegramCode)));
 
 export async function queueGroupRemoval(owner: string, client: AdvertisingClient, group: Record<string, any>, account: Record<string, any>, reason: string,
