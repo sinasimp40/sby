@@ -44,9 +44,20 @@ test("groups-per-interval controls render one-copy semantics and bounded group c
     assert.deepEqual(alphabeticalGroups(groups).map(g => g.title || g.target), ["Alpha", "beta 2", "beta 10", "Charlie", "Zulu"]);
     assert.deepEqual(groups.map(g => g.id), original, "sorting must not mutate the cached workspace");
     assert.deepEqual(queueGroups({ groups }, new Set(original)).map(g => g.id), alphabeticalGroups(groups).map(g => g.id));
-    const rows = Array.from({ length: 12 }, (_, i) => ({ getBoundingClientRect: () => ({ bottom: 110 + (i + 1) * 81 }) }));
-    assert.equal(groupListViewportHeight({ children: rows, getBoundingClientRect: () => ({ top: 110 }) }), 811);
-    assert.equal(groupListViewportHeight({ children: rows.slice(0, 10), getBoundingClientRect: () => ({ top: 110 }) }), undefined);
+    let scrollTop = 0;
+    let rowHeight = 81;
+    const rows = Array.from({ length: 12 }, (_, i) => ({ getBoundingClientRect: () => ({
+      top: 110 + i * rowHeight - scrollTop, bottom: 110 + (i + 1) * rowHeight - scrollTop,
+    }) }));
+    const viewport = { children: rows, getBoundingClientRect: () => ({ top: 110 }) };
+    for (const position of [0, 100, 400, 811, 1200]) {
+      scrollTop = position;
+      assert.equal(groupListViewportHeight(viewport), 812, "scrolling must not shrink the ten-row window");
+    }
+    rowHeight = 132;
+    assert.equal(groupListViewportHeight(viewport), 1322, "wrapped mobile rows must still fit ten rows");
+    for (const count of [0, 1, 10])
+      assert.equal(groupListViewportHeight({ ...viewport, children: rows.slice(0, count) }), undefined);
     const listHtml = renderToStaticMarkup(createElement(ScrollableGroupList, { count: 12 },
       Array.from({ length: 12 }, (_, i) => createElement("li", { key: i }, `Group ${i + 1}`))));
     assert.equal((listHtml.match(/<li>/g) ?? []).length, 12, "all rows remain reachable without pagination");

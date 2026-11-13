@@ -9,9 +9,13 @@ export function alphabeticalGroups(groups: AdvertisingGroup[]) {
 }
 
 export function groupListViewportHeight(list: HTMLUListElement) {
+  const first = list.children[0];
   const tenth = list.children[9];
-  return list.children.length > 10 && tenth
-    ? Math.ceil(tenth.getBoundingClientRect().bottom - list.getBoundingClientRect().top) + 1
+  // Both rows move together when scrolled. Measuring against the container
+  // instead subtracts scrollTop and feeds a shrinking height back into the
+  // ResizeObserver. Include the list's two 1px borders.
+  return list.children.length > 10 && first && tenth
+    ? Math.ceil(tenth.getBoundingClientRect().bottom - first.getBoundingClientRect().top) + 2
     : undefined;
 }
 
@@ -31,6 +35,6 @@ export function ScrollableGroupList({ children, count }: { children: ReactNode; 
     Array.from(list.children).slice(0, 10).forEach(row => observer.observe(row));
     return () => observer.disconnect();
   }, [children, count]);
-  return <ul ref={ref} className="divide-y overflow-y-auto rounded-lg border" style={{ maxHeight: count > 10 ? height : undefined }}
+  return <ul ref={ref} className="shrink-0 divide-y overflow-y-auto rounded-lg border [scrollbar-gutter:stable]" style={{ height: count > 10 ? height : undefined }}
     tabIndex={0} aria-label="Groups in alphabetical order" data-testid="list-advertising-groups">{children}</ul>;
 }

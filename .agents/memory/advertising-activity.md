@@ -9,8 +9,8 @@ Show approximately ten posting records in a scrollable window, allow access to a
 
 **How to apply:** Keep server requests paginated and bounded without making ten a total-history cap. Filter by the same local date shown for the post, including successful sends crossing midnight. Prune expired completed posting history automatically, not shop orders, payments, or start-command deduplication records. Never delete in-flight or current-occurrence evidence before reconciliation: losing it after an outage could cause an already-posted message to be sent again.
 
-Discovered advertising groups must be alphabetical, with ten visible rows and the remaining groups reachable by scrolling.
+Discovered advertising groups must be alphabetical, with ten visible rows and the remaining groups reachable by scrolling. The ten-row window must not collapse while scrolling.
 
-**Why:** The user explicitly requested this order and scroll behavior for group discovery.
+**Why:** The user explicitly requested this order and scroll behavior for group discovery, and repeated “like 10 show its collapsing” when the list shrank.
 
 **How to apply:** Keep search, selection, and new queue previews consistent with the alphabetical display. Do not reorder already-confirmed running campaigns.
