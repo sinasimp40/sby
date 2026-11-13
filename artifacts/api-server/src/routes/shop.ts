@@ -103,7 +103,7 @@ router.put("/settings", async (req, res): Promise<void> => {
   const coinButtonIcons = body.data.coinButtonIcons ?? previous.coinButtonIcons ?? {};
   const preferences = { ...body.data, welcomeImageUrl, coinButtonIcons, shopName: body.data.shopName.trim() };
   await db.transaction(async tx => {
-    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${ownerId}, 71))`);
+    // SQLite BEGIN IMMEDIATE serializes owner updates.
     await validateCoinButtonIcons(ownerId, coinButtonIcons, tx);
     await tx.insert(shopSettings).values({ ownerId, preferences }).onConflictDoUpdate({
       target: shopSettings.ownerId, set: { preferences, updatedAt: new Date() },

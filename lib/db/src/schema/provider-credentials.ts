@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp } from "./columns";
 import { createInsertSchema } from "drizzle-zod";
 
 export const providerCredentials = pgTable("provider_credentials", {

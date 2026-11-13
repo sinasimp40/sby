@@ -47,7 +47,9 @@ export const portableReadme = `TELECART PORTABLE SQLITE SHOP DATA — FORMAT 2
 
 shop.db is a SQLite database with separate tables for the shop's business data.
 No JSON files, installation secret or transfer password are needed to import it.
-PostgreSQL remains the live application database.
+SQLite is also the live application database. This portable shop.db uses a
+separate transfer schema: import its ZIP through the dashboard; do not use the
+exported shop.db as your live database file.
 
 WARNING: Possession of this ZIP grants access to its contents, including stock
 credentials, saved bot/payment keys, customer information and financial history.

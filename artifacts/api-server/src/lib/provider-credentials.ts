@@ -58,7 +58,7 @@ export async function readProviderCredentials(ownerId = configuredOwnerId()): Pr
 
 export async function saveTelegramCredential(ownerId: string, token: string, username: string) {
   await db.transaction(async tx => {
-  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`telegram-bot:${token.split(":")[0]}`},74))`);
+  // SQLite BEGIN IMMEDIATE serializes bot identity binding.
   const [advertising] = await tx.select({ id: advertisingBots.botId }).from(advertisingBots).where(eq(advertisingBots.botId, token.split(":")[0]!));
   if (advertising) throw new CommerceError("This bot is assigned to advertising. Use a different bot for the shop.");
   const [existing] = await tx.select().from(providerCredentials).where(eq(providerCredentials.ownerId, ownerId));

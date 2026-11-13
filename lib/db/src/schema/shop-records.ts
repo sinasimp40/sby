@@ -1,4 +1,4 @@
-import { pgTable, serial, text, jsonb, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, jsonb, timestamp, index } from "./columns";
 import { createInsertSchema } from "drizzle-zod";
 
 // Provider-created business records; no administrator endpoint can fabricate payment confirmations.

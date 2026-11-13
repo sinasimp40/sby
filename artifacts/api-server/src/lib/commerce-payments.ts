@@ -121,7 +121,7 @@ export async function createCheckout(input: CheckoutInput) {
   } catch (error) {
     if (error instanceof ProviderRejectedError) {
       await db.transaction(async tx => {
-        const [p] = await tx.select().from(shopPayments).where(eq(shopPayments.id, result.payment.id)).for("update");
+        const [p] = await tx.select().from(shopPayments).where(eq(shopPayments.id, result.payment.id));
         if (!p || p.providerPaymentId) return;
         if (p.inventoryId) await tx.update(shopInventory).set({ status: "available" }).where(and(eq(shopInventory.id, p.inventoryId), eq(shopInventory.status, "reserved")));
         await tx.update(shopPayments).set({ status: "rejected", fulfillment: "rejected", inventoryId: null, updatedAt: new Date() }).where(eq(shopPayments.id, p.id));
@@ -176,7 +176,7 @@ export async function checkPayment(id: string) {
 // Only called with an authenticated provider response, never a client/IPN status alone.
 export async function applyVerifiedPayment(id: string, provider: ProviderPayment) {
   await db.transaction(async tx => {
-    const [p] = await tx.select().from(shopPayments).where(eq(shopPayments.id, id)).for("update");
+    const [p] = await tx.select().from(shopPayments).where(eq(shopPayments.id, id));
     if (!p || !matchesInvoice(p, provider)) throw new CommerceError("Payment mismatch.", 409);
     if (["allocated", "delivered", "credited"].includes(p.fulfillment)) return;
     if (!decimalAtLeast(provider.actually_paid ?? "0", "0")) throw new CommerceError("Provider returned an invalid received amount.", 502);
@@ -193,13 +193,13 @@ export async function applyVerifiedPayment(id: string, provider: ProviderPayment
         return;
       }
       if (p.kind === "deposit") {
-        const [customer] = await tx.select().from(botCustomers).where(eq(botCustomers.id, p.customerId)).for("update");
+        const [customer] = await tx.select().from(botCustomers).where(eq(botCustomers.id, p.customerId));
         if (!customer || customer.balanceCents + p.amountCents > 2000000000) throw new CommerceError("Wallet requires manual review.", 409);
         await tx.insert(walletEntries).values({ id: randomUUID(), customerId: p.customerId, paymentId: p.id, amountCents: p.amountCents });
         await tx.update(botCustomers).set({ balanceCents: sql`${botCustomers.balanceCents} + ${p.amountCents}` }).where(eq(botCustomers.id, p.customerId));
         await tx.update(shopPayments).set({ status: "finished", fulfillment: "credited", updatedAt: new Date() }).where(eq(shopPayments.id, p.id));
       } else {
-        const [stock] = p.inventoryId ? await tx.select().from(shopInventory).where(eq(shopInventory.id, p.inventoryId)).for("update") : [];
+        const [stock] = p.inventoryId ? await tx.select().from(shopInventory).where(eq(shopInventory.id, p.inventoryId)) : [];
         if (!stock || stock.status !== "reserved" || stock.ownerId !== p.ownerId || stock.productId !== p.productId) {
           await tx.update(shopPayments).set({ status: "finished", fulfillment: "review", updatedAt: new Date() }).where(eq(shopPayments.id, p.id));
           return;

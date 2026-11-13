@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { getTableColumns } from "drizzle-orm";
-import { getTableConfig, type PgTable } from "drizzle-orm/pg-core";
+import { getTableConfig, type SQLiteTable } from "drizzle-orm/sqlite-core";
 import { createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import {
@@ -29,7 +29,7 @@ export const MAX_ZIP_BYTES = 20 * 1024 * 1024;
 export const MAX_TRANSFER_ROWS = 50000;
 export const quote = (identifier: string) => `"${identifier.replace(/"/g, '""')}"`;
 export function tableInfo(key: TransferTable) {
-  const table: PgTable = transferTables[key];
+  const table: SQLiteTable = transferTables[key];
   return { name: getTableConfig(table).name, columns: Object.entries(getTableColumns(table)) };
 }
 function schemaHash() { return createHash("sha256").update(JSON.stringify(tableKeys.map(key => ({
@@ -38,7 +38,8 @@ function schemaHash() { return createHash("sha256").update(JSON.stringify(tableK
     name, sqlName: column.name, type: column.getSQLType(), nullable: !column.notNull,
   })),
 })))).digest("hex"); }
-export const transferSchemaHash = schemaHash();
+// Portable format is independent of the live SQL engine; keep existing ZIPs readable.
+export const transferSchemaHash = "373cdd8d92c967430cc73ced542c259dbff5f0027004a99d9cf6b323d811c9e7";
 export const preAdvertisingTransferSchemaHash = "3713eeb9bf5cd5165800e1c7bd281f307d9e62213111a1d198ce415eb46a3468";
 export const preAccountTransferSchemaHash = "fba412306e31c36efd6e43be3bb65411095ff38c71de7f2069b03b61abee6249";
 export const advertisingTransferKeys = ["advertisingBots", "advertisingGroups", "advertisingCampaigns", "advertisingDeliveries"] as const;
@@ -65,7 +66,7 @@ const schemas = Object.fromEntries(tableKeys.map(key => {
       overrides[name] = column.notNull ? json : json.nullable();
     }
   }
-  return [key, createSelectSchema(transferTables[key] as PgTable, overrides).strict()];
+  return [key, createSelectSchema(transferTables[key] as SQLiteTable, overrides).strict()];
 })) as unknown as Record<TransferTable, z.ZodType<TransferRow>>;
 
 export function parseTransferData(value: unknown): TransferData {

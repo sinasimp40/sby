@@ -25,4 +25,16 @@ The user requires that new transfers work with the ZIP alone, without a matching
 
 **Why:** The user lost access to the source key and explicitly requested ZIP-only imports and SQLite files because large JSON logs are difficult to open.
 
-**How to apply:** Keep the live PostgreSQL database and its encryption; use SQLite only for portable transfer files. Do not export the installation secret. Warn clearly that possession of a portable ZIP exposes its stock and saved provider credentials. Preserve legacy authenticated imports without claiming old encrypted values can be recovered without their original key.
+**How to apply:** Do not export the installation secret. Warn clearly that possession of a portable ZIP exposes its stock and saved provider credentials. Preserve legacy authenticated imports without claiming old encrypted values can be recovered without their original key.
+
+The user explicitly changed the storage requirement: "instead using postgre using sqlite" for live data as well as export/import, and asked to fix start-local.bat without requiring PostgreSQL.
+
+**Why:** The user requested SQLite for their local-computer installation.
+
+**How to apply:** Keep live storage SQLite-based; do not silently restore a PostgreSQL requirement. Preserve existing data and encrypted values when changing storage. Replit's published filesystem is not durable across redeployments, so explain that limitation instead of presenting local SQLite as safe published storage.
+
+Preserve uniform six-digit UTC timestamp precision across SQLite defaults, bound parameters and portable exports.
+
+**Why:** PostgreSQL-era archives and history cursors preserve microseconds. Mixing millisecond and microsecond ISO strings changes lexical ordering even for the same instant, which can skip or repeat history records.
+
+**How to apply:** Do not normalize portable date strings through JavaScript Date alone, or change just one side of a stored-date comparison when evolving the database.

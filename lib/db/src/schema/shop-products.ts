@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, uniqueIndex, index, foreignKey } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, uniqueIndex, index, foreignKey } from "./columns";
 import { createInsertSchema } from "drizzle-zod";
 import { shopCustomEmojis } from "./custom-emojis";
 

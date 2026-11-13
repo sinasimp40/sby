@@ -66,10 +66,10 @@ export async function saveEmojiStickers(owner: string, stickers: EmojiSticker[],
       const [active] = await tx.select().from(emojiImportSessions).where(and(
         eq(emojiImportSessions.ownerId, owner), eq(emojiImportSessions.tokenHash, session.tokenHash),
         eq(emojiImportSessions.chatId, session.chatId), gt(emojiImportSessions.expiresAt, new Date()),
-      )).for("update");
+      ));
       if (!active) throw new CommerceError("This import session expired or was stopped. Start a new session from the dashboard.", 403);
     }
-    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${owner}, 71))`);
+    // SQLite transaction owns the exclusive writer lock.
     const previous = await tx.select({ id: shopCustomEmojis.customEmojiId }).from(shopCustomEmojis).where(eq(shopCustomEmojis.ownerId, owner));
     const existing = new Set(previous.map(row => row.id));
     const imported = unique.filter(sticker => !existing.has(sticker.custom_emoji_id!)).length;
@@ -118,10 +118,10 @@ export async function assertOwnedCustomEmoji(owner: string, id: string | null | 
 export async function removeCustomEmoji(owner: string | null, id: string) {
   if (!owner) throw new CommerceError("Sign in first.", 401);
   return db.transaction(async tx => {
-    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${owner}, 71))`);
+    // SQLite transaction owns the exclusive writer lock.
     await tx.update(shopProducts).set({ buttonCustomEmojiId: null }).where(and(
       eq(shopProducts.ownerId, owner), eq(shopProducts.buttonCustomEmojiId, id)));
-    const [settings] = await tx.select().from(shopSettings).where(eq(shopSettings.ownerId, owner)).for("update");
+    const [settings] = await tx.select().from(shopSettings).where(eq(shopSettings.ownerId, owner));
     const icons = settings?.preferences.coinButtonIcons as Record<string, CoinButtonIcon> | undefined;
     if (settings && icons && Object.values(icons).some(icon => icon.customEmojiId === id)) {
       const coinButtonIcons = Object.fromEntries(Object.entries(icons).map(([coin, icon]) =>

@@ -9,7 +9,7 @@ export async function cancelAdminDeposit(ownerId: string | null, id: string) {
   const payment = await db.transaction(async tx => {
     const [p] = await tx.select().from(shopPayments).where(and(
       eq(shopPayments.id, id), eq(shopPayments.ownerId, ownerId), eq(shopPayments.kind, "deposit"),
-    )).for("update");
+    ));
     if (!p) throw new CommerceError("Deposit not found.", 404);
     if (p.cancelledAt) return p;
     if (!canCancelDeposit(p)) {

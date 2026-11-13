@@ -6,7 +6,6 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   assertPortAvailable,
   hasCompleteSchema,
-  isLoopbackDatabase,
   LOCAL_API_PORT,
   LOCAL_WEB_PORT,
   makeChildEnvironment,
@@ -48,12 +47,15 @@ function loadConfig() {
     throw new Error(`${error.message} Fix the private .env.local file; it was not changed.`);
   }
   const config = Object.fromEntries([
-    "DATABASE_URL",
+    "TELECART_SQLITE_PATH",
     "SESSION_SECRET",
     "TELECART_OWNER_ID",
     "TELECART_ADMIN_EMAIL",
     "TELECART_ADMIN_INITIAL_PASSWORD",
   ].map(key => [key, values[key] ?? ""]));
+  if (!config.TELECART_SQLITE_PATH && values.DATABASE_URL) {
+    throw new Error("This .env.local belongs to the old PostgreSQL installation. It was left unchanged. Preserve its SESSION_SECRET and owner ID, migrate the old shop with the migration instructions, then set TELECART_SQLITE_PATH=data/telecart.db and remove DATABASE_URL.");
+  }
   const error = validateLocalConfig(config);
   if (error) throw new Error(`${error} The launcher did not change .env.local.`);
   return config;
@@ -95,7 +97,7 @@ function checkPrerequisites(env) {
 function requiredDependenciesAvailable() {
   return [
     "node_modules/.pnpm/lock.yaml",
-    "artifacts/api-server/node_modules/pg",
+    "lib/db/node_modules/drizzle-orm",
     "artifacts/api-server/node_modules/esbuild",
     "artifacts/telecart/node_modules/vite",
     "lib/db/node_modules/drizzle-kit",
@@ -152,7 +154,7 @@ function makeDatabaseEnvironment(config) {
   return {
     ...makeSystemEnvironment(process.env),
     NODE_ENV: "development",
-    DATABASE_URL: config.DATABASE_URL,
+    TELECART_SQLITE_PATH: config.TELECART_SQLITE_PATH,
     TELECART_OWNER_ID: config.TELECART_OWNER_ID,
   };
 }
@@ -179,25 +181,16 @@ function checkDatabase(config, env) {
   try {
     status = JSON.parse(result.stdout.trim());
   } catch {
-    const message = result.stderr?.includes("DATABASE_URL is missing.")
-      ? "DATABASE_URL is missing from .env.local."
-      : "Could not connect to PostgreSQL. Start PostgreSQL and check the connection settings in .env.local. The URL was not displayed.";
+    const message = "Could not open the SQLite database. Check TELECART_SQLITE_PATH, folder permissions, and whether another Telecart process is using the file.";
     throw new Error(message);
   }
   if (result.status !== 0 || !status || !Array.isArray(status.missingTables)) {
-    throw new Error("Could not connect to PostgreSQL. Start PostgreSQL and check the connection settings in .env.local. The URL was not displayed.");
+    throw new Error("Could not inspect the SQLite database. Check the file path and permissions; no servers were started.");
   }
-  if (config.DATABASE_URL !== env.DATABASE_URL) {
+  if (config.TELECART_SQLITE_PATH !== env.TELECART_SQLITE_PATH) {
     throw new Error("The local database configuration was not passed safely to the checker.");
   }
   return status;
-}
-
-async function requireRemoteDatabaseApproval() {
-  const answer = await askLine(
-    "This PostgreSQL server is outside this computer. Type USE REMOTE DATABASE to continue, or press Enter to stop: ",
-  );
-  if (answer !== "USE REMOTE DATABASE") throw new Error("Remote database use was cancelled. No database changes were made.");
 }
 
 async function prepareSchema(status, config, explicitSetup) {
@@ -217,14 +210,14 @@ async function prepareSchema(status, config, explicitSetup) {
   } else {
     console.warn("This database already contains the Telecart tables. Schema setup may change its structure.");
     if (!hasCompleteSchema(status)) console.warn("Some required Telecart tables are missing.");
-    console.warn("Schema setup can change existing tables. Back up valuable data and review every change Drizzle displays.");
+    console.warn("Existing SQLite data is preserved. Unknown or incomplete live schemas are refused, not silently rewritten.");
     const answer = await askLine("Type APPLY SCHEMA CHANGES to continue, or press Enter to cancel: ");
     if (answer !== "APPLY SCHEMA CHANGES") throw new Error("Database schema setup cancelled. The application schema was not changed.");
   }
 
   const result = runPnpm(["--filter", "@workspace/db", "run", "push"], databaseEnv);
   if (result.error || result.status !== 0) {
-    throw new Error("Database setup did not finish. The app was not started. Review Drizzle's output and check the database before retrying.");
+    throw new Error("SQLite initialization did not finish. The app was not started. Review the output and check the file before retrying.");
   }
   const verified = checkDatabase(config, databaseEnv);
   if (!hasCompleteSchema(verified)) {
@@ -343,11 +336,6 @@ export async function runLocalLauncher(argv = process.argv.slice(2)) {
   prepareDependencies();
   const setupOnly = argv.includes("--setup");
   if (!setupOnly) await checkPorts();
-
-  if (!isLoopbackDatabase(config.DATABASE_URL)) {
-    console.warn("The configured database is outside this computer. The launcher will not run schema changes silently.");
-    await requireRemoteDatabaseApproval();
-  }
 
   let status = checkDatabase(config, databaseEnv);
   await prepareSchema(status, config, setupOnly);

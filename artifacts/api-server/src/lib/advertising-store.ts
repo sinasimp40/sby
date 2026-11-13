@@ -1,6 +1,6 @@
 import { pool } from "@workspace/db";
 import type { AdvertisingWorkspace, AdvertisingCampaign } from "@workspace/api-zod";
-import type { PoolClient } from "pg";
+import type { PoolClient } from "@workspace/db";
 import { CommerceError } from "./commerce-providers";
 import { decryptProviderSecret } from "./provider-credentials";
 import { accountStatus } from "./advertising-account-auth";

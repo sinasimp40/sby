@@ -49,7 +49,7 @@ export async function saveProductGroup(ownerId: string, input: ProductGroupInput
   const activated = await db.transaction(async tx => {
     const members = existingGroupId
       ? await tx.select().from(shopProducts).where(and(eq(shopProducts.ownerId, ownerId), eq(shopProducts.groupId, groupId)))
-        .orderBy(asc(shopProducts.id)).for("update")
+        .orderBy(asc(shopProducts.id))
       : [];
     if (existingGroupId && !members.length) throw new CommerceError("Product group not found.", 404);
     if (members.some(member => !ids.includes(member.id))) {
@@ -57,7 +57,7 @@ export async function saveProductGroup(ownerId: string, input: ProductGroupInput
     }
     const owned = ids.length ? await tx.select().from(shopProducts)
       .where(and(eq(shopProducts.ownerId, ownerId), inArray(shopProducts.id, ids)))
-      .orderBy(asc(shopProducts.id)).for("update") : [];
+      .orderBy(asc(shopProducts.id)) : [];
     if (owned.length !== ids.length) throw new CommerceError("An option was not found in your shop.", 404);
     if (owned.some(option => option.groupId && option.groupId !== groupId)) {
       throw new CommerceError("An option already belongs to another product. Edit that product instead.", 409);
@@ -95,7 +95,7 @@ export async function deleteProductGroup(ownerId: string, groupId: string) {
   const count = await db.transaction(async tx => {
     const members = await tx.select({ id: shopProducts.id }).from(shopProducts)
       .where(and(eq(shopProducts.ownerId, ownerId), eq(shopProducts.groupId, groupId)))
-      .orderBy(asc(shopProducts.id)).for("update");
+      .orderBy(asc(shopProducts.id));
     if (!members.length) throw new CommerceError("Product group not found.", 404);
     const ids = members.map(member => member.id);
     const [order] = await tx.select({ id: shopPayments.id }).from(shopPayments)

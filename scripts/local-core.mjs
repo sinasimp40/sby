@@ -26,7 +26,7 @@ export function processCommand(executable, args, platform = process.platform) {
 }
 
 const LOCAL_ENV_KEYS = [
-  "DATABASE_URL",
+  "TELECART_SQLITE_PATH",
   "SESSION_SECRET",
   "TELECART_OWNER_ID",
   "TELECART_ADMIN_EMAIL",
@@ -94,14 +94,8 @@ export function validateLocalConfig(values) {
       return `${key} contains an unsupported control character. Edit .env.local and try again.`;
     }
   }
-  let url;
-  try {
-    url = new URL(values.DATABASE_URL);
-  } catch {
-    return "DATABASE_URL must be a PostgreSQL URL in .env.local. The URL was not displayed.";
-  }
-  if (!["postgres:", "postgresql:"].includes(url.protocol)) {
-    return "DATABASE_URL must use the PostgreSQL protocol. The URL was not displayed.";
+  if (/^[a-z]+:\/\//i.test(values.TELECART_SQLITE_PATH) || values.TELECART_SQLITE_PATH === ":memory:") {
+    return "TELECART_SQLITE_PATH must name a persistent local SQLite file, not a server URL or in-memory database.";
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.TELECART_ADMIN_EMAIL.trim())) {
     return "TELECART_ADMIN_EMAIL must be a valid email address.";
@@ -118,6 +112,7 @@ export function supportedNodeVersion(version) {
 }
 
 export function isLoopbackDatabase(databaseUrl) {
+  if (!/^[a-z]+:\/\//i.test(databaseUrl)) return true;
   const hostname = new URL(databaseUrl).hostname.toLowerCase();
   return !hostname || hostname === "localhost" || hostname === "::1" || hostname === "[::1]" ||
     /^127(?:\.\d{1,3}){3}$/.test(hostname);

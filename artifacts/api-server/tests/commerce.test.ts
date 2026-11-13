@@ -80,9 +80,30 @@ test("finished-only checkout, stock allocation, wallet ledger and Telegram deliv
     const customer = await makeCustomer();
     const { product, stocks } = await makeProduct(stockCount);
     const input = { ownerId: owner, customerId: customer.id, token: randomUUID(), coin: "ltc", productId: product.id, expectedAmountCents: 1000 };
-    return { customer, product, stocks, input, payment: await createCheckout(input) };
+    // Historical direct-crypto invoices still reconcile after wallet-only
+    // purchasing was introduced. Seed that legacy state; do not reopen the
+    // intentionally disabled public direct-purchase route to satisfy a test.
+    const [legacy] = await db.insert(shopPayments).values({
+      id: randomUUID(), requestKey: `${owner}:legacy:${input.token}`, ownerId: owner,
+      customerId: customer.id, kind: "purchase", productId: product.id, inventoryId: stocks[0]!.id,
+      inventoryIds: [stocks[0]!.id], quantity: 1, productName: product.name, amountCents: 1000,
+      coin: "ltc", rateMode: "fixed", status: "waiting", fulfillment: "pending",
+    }).returning();
+    await db.update(shopInventory).set({ status: "reserved" }).where(eq(shopInventory.id, stocks[0]!.id));
+    const paymentId = String(900000 + ++apiCreates);
+    const p: ProviderPayment = {
+      payment_id: paymentId, payment_status: "waiting", order_id: legacy!.id,
+      price_amount: 10, price_currency: "usd", pay_currency: "ltc",
+      pay_amount: "1.25", actually_paid: "0", pay_address: `TEST_ONLY_ADDRESS_${apiCreates}`,
+      network: "LTC", expiration_estimate_date: new Date(Date.now() + 20 * 60000).toISOString(),
+    };
+    provider.set(paymentId, p);
+    await db.update(shopPayments).set({ providerPaymentId: paymentId, status: "waiting",
+      address: p.pay_address!, payAmount: "1.25", network: "LTC", expiresAt: new Date(p.expiration_estimate_date!) })
+      .where(eq(shopPayments.id, legacy!.id));
+    return { customer, product, stocks, input, payment: (await getPayment(legacy!.id))! };
   };
-  const ledgerCount = async (paymentId: string) => (await db.select({ n: sql<number>`count(*)::integer` }).from(walletEntries).where(eq(walletEntries.paymentId, paymentId)))[0]!.n;
+  const ledgerCount = async (paymentId: string) => (await db.select({ n: sql<number>`count(*)` }).from(walletEntries).where(eq(walletEntries.paymentId, paymentId)))[0]!.n;
   try {
     await db.insert(botConnections).values({ id: "primary", ownerId: owner, botId, botUsername: "TEST_ONLY_BOT", publicUrl: "https://test-only.invalid" });
     await t.test("IPN signature rejects invalid/tampered bodies; decimal and USD parsing are exact", async () => {
@@ -111,7 +132,7 @@ test("finished-only checkout, stock allocation, wallet ledger and Telegram deliv
       assert.match(keyboard[0][0].text, /Products/);
       assert.match(keyboard[1][1].text, /Order History/);
     });
-    await t.test("real checkout response becomes a PNG QR with amount/network/expiry and buyer check button", async () => {
+    await t.test("legacy invoice remains a PNG QR with amount, network and expiry", async () => {
       const { payment } = await makePurchase();
       const stock = (await db.select().from(shopInventory).where(eq(shopInventory.id, payment.inventoryId!)))[0]!;
       assert.equal(stock.status, "reserved");
@@ -124,8 +145,10 @@ test("finished-only checkout, stock allocation, wallet ledger and Telegram deliv
       assert.match(String(form.get("caption")), /1.25 LTC/);
       assert.match(String(form.get("caption")), /Litecoin/);
       assert.match(String(form.get("caption")), /TEST_ONLY_ADDRESS_/);
-      assert.match(String(form.get("caption")), /Quote expires:/);
-      assert.equal(form.get("reply_markup"), null);
+      assert.match(String(form.get("caption")), /Pay before:/);
+      assert.deepEqual(JSON.parse(String(form.get("reply_markup"))), {
+        inline_keyboard: [[{ text: "✖️ Cancel", callback_data: "cancel_home" }]],
+      });
     });
     await t.test("all pre-finished statuses withhold credentials; finished consumes only its reserved line once", async () => {
       const { payment, product } = await makePurchase();
@@ -183,7 +206,8 @@ test("finished-only checkout, stock allocation, wallet ledger and Telegram deliv
     await t.test("simultaneous buyers cannot buy the same last line", async () => {
       const { product } = await makeProduct(1);
       const a = await makeCustomer(); const b = await makeCustomer();
-       const results = await Promise.allSettled([a, b].map(c => createCheckout({ ownerId: owner, customerId: c.id, token: randomUUID(), coin: "ltc", productId: product.id, expectedAmountCents: 1000 })));
+      await db.update(botCustomers).set({ balanceCents: 1000 }).where(eq(botCustomers.ownerId, owner));
+      const results = await Promise.allSettled([a, b].map(c => createCheckout({ ownerId: owner, customerId: c.id, token: randomUUID(), coin: "usd", wallet: true, productId: product.id, expectedAmountCents: 1000 })));
       assert.equal(results.filter(r => r.status === "fulfilled").length, 1);
       assert.equal(results.filter(r => r.status === "rejected").length, 1);
     });
@@ -197,16 +221,23 @@ test("finished-only checkout, stock allocation, wallet ledger and Telegram deliv
       await checkPayment(payment.id);
       assert.equal((await getPayment(payment.id))!.fulfillment, "review");
     });
-    await t.test("ambiguous provider timeout holds stock and never recreates the same invoice", async () => {
-      const customer = await makeCustomer(); const { product } = await makeProduct(1);
-      const input = { ownerId: owner, customerId: customer.id, token: randomUUID(), coin: "ltc", productId: product.id, expectedAmountCents: 1000 };
+    await t.test("ambiguous deposit timeout never recreates the same invoice", async () => {
+      const customer = await makeCustomer();
+      const input = { ownerId: owner, customerId: customer.id, token: randomUUID(), coin: "ltc", depositCents: 1000 };
       failNextCreate = true;
       const before = apiCreates;
       await assert.rejects(() => createCheckout(input));
       const payment = await createCheckout(input);
       assert.equal(apiCreates, before + 1);
       assert.equal(payment.fulfillment, "review");
-      assert.equal((await db.select().from(shopInventory).where(eq(shopInventory.id, payment.inventoryId!)))[0]!.status, "reserved");
+      assert.equal(payment.inventoryId, null);
+    });
+    await t.test("stale direct-purchase callbacks remain rejected without creating invoices", async () => {
+      const customer = await makeCustomer(); const { product } = await makeProduct(1);
+      const before = apiCreates;
+      await assert.rejects(createCheckout({ ownerId: owner, customerId: customer.id, token: randomUUID(),
+        coin: "ltc", productId: product.id, expectedAmountCents: 1000 }), /only be purchased with wallet/);
+      assert.equal(apiCreates, before);
     });
     await t.test("failed Telegram delivery retries the assigned credential without allocating again", async () => {
       const { payment } = await makePurchase(1);

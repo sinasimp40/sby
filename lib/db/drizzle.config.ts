@@ -1,14 +1,11 @@
 import { defineConfig } from "drizzle-kit";
 import path from "path";
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL, ensure the database is provisioned");
-}
-
 export default defineConfig({
   schema: path.join(__dirname, "./src/schema/index.ts"),
-  dialect: "postgresql",
+  dialect: "sqlite",
+  out: path.join(__dirname, "./migrations"),
   dbCredentials: {
-    url: process.env.DATABASE_URL,
+    url: process.env.TELECART_SQLITE_PATH || path.resolve(__dirname, "../../data/telecart.db"),
   },
 });

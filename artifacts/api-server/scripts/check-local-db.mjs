@@ -1,12 +1,13 @@
-import pg from "pg";
+import { DatabaseSync } from "node:sqlite";
+import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { DATABASE_TABLES } from "../../../scripts/local-core.mjs";
 
 export async function inspectLocalDatabase(query, ownerId) {
   const tables = await query(`
-    SELECT table_name FROM information_schema.tables
-    WHERE table_schema = current_schema() AND table_type = 'BASE TABLE'
+    SELECT name AS table_name FROM sqlite_master
+    WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
   `);
   const actualTables = new Set(tables.rows.map(row => row.table_name));
   const status = {
@@ -42,22 +43,31 @@ export async function inspectLocalDatabase(query, ownerId) {
 }
 
 async function main() {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    console.error("DATABASE_URL is missing.");
+  const path = process.env.TELECART_SQLITE_PATH;
+  if (!path) {
+    console.error("TELECART_SQLITE_PATH is missing.");
     process.exitCode = 1;
     return;
   }
-  const { Pool } = pg;
-  const pool = new Pool({ connectionString, connectionTimeoutMillis: 5000, max: 1 });
+  if (!existsSync(path)) {
+    console.log(JSON.stringify({ tableCount: 0, missingTables: DATABASE_TABLES,
+      telegramEnabled: false, shopBotConnected: false, advertisingScheduled: false, pendingPayments: false }));
+    return;
+  }
+  const database = new DatabaseSync(path, { readOnly: true });
   try {
-    const status = await inspectLocalDatabase(pool.query.bind(pool), process.env.TELECART_OWNER_ID);
+    const query = async (source, values = []) => {
+      const params = [];
+      const sql = source.replace(/\$(\d+)/g, (_, n) => { params.push(values[Number(n) - 1]); return "?"; });
+      return { rows: database.prepare(sql).all(...params) };
+    };
+    const status = await inspectLocalDatabase(query, process.env.TELECART_OWNER_ID);
     console.log(JSON.stringify(status));
   } catch {
-    console.error("Could not connect to the configured PostgreSQL database. Check that PostgreSQL is running and its local connection details are correct. The connection URL was not displayed.");
+    console.error("Could not read the configured SQLite file. Check the path and permissions.");
     process.exitCode = 1;
   } finally {
-    await pool.end();
+    database.close();
   }
 }
 

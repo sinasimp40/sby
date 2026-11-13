@@ -5,7 +5,7 @@ import { unzipSync, zipSync, strFromU8, strToU8 } from "fflate";
 import { pool } from "@workspace/db";
 import * as database from "@workspace/db";
 import { is } from "drizzle-orm";
-import { PgTable, getTableConfig } from "drizzle-orm/pg-core";
+import { SQLiteTable as PgTable, getTableConfig } from "drizzle-orm/sqlite-core";
 import { exportShopTransfer, importShopTransfer, previewShopTransfer, shopTransferStatus, reviewShopTransfer } from "../src/lib/shop-transfer";
 import { decodeShopArchive, encodeShopArchive, previewToken, verifyPreviewToken } from "../src/lib/shop-transfer-archive";
 import { tableKeys, transferTables, singleItemTransferSchemaHash, quantityTransferSchemaHash, productEmojiTransferSchemaHash, customEmojiTransferSchemaHash, stockAnnouncementTransferSchemaHash, productImageTransferSchemaHash, preAdvertisingTransferSchemaHash } from "../src/lib/shop-transfer-tables";
@@ -104,9 +104,9 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
       assert.ok(tableKeys.every(key => other.data[key].length === 0));
     });
     await t.test("coin icons retain library references and lossless settings in portable ZIPs", async () => {
-      await pool.query(`UPDATE shop_settings SET preferences=jsonb_set(preferences,'{coinButtonIcons}',
-        '{"BTC":{"emoji":"💎","customEmojiId":"900000000000000001"},"ETH":{"emoji":""}}'::jsonb)
-        || '{"welcomeImageUrl":"https://cdn.example.com/welcome.gif","welcomeMessage":"TEST_ONLY Welcome"}'::jsonb WHERE owner_id=$1`, [source]);
+      await pool.query(`UPDATE shop_settings SET preferences=json_set(preferences,'$.coinButtonIcons',
+        json('{"BTC":{"emoji":"💎","customEmojiId":"900000000000000001"},"ETH":{"emoji":""}}'),
+        '$.welcomeImageUrl','https://cdn.example.com/welcome.gif','$.welcomeMessage','TEST_ONLY Welcome') WHERE owner_id=$1`, [source]);
       try {
         const archive = decodeShopArchive((await exportShopTransfer(source)).zip);
         const raw = archive.data.settings[0]!.preferences as string;

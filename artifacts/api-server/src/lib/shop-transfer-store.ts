@@ -1,4 +1,4 @@
-import type { PoolClient } from "pg";
+import type { PoolClient } from "@workspace/db";
 import {
   tableKeys, tableInfo, quote, MAX_TRANSFER_ROWS, type TransferTable, type TransferRow, type TransferData,
 } from "./shop-transfer-tables";
@@ -11,9 +11,7 @@ export async function readShopTransferData(client: PoolClient, ownerId: string):
     const info = tableInfo(key);
     const columns = info.columns.map(([name, column]) => {
       const field = `t.${quote(column.name)}`;
-      const value = column.dataType === "date"
-        ? `to_char(${field} AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`
-        : column.dataType === "json" ? `${field}::text` : field;
+      const value = column.dataType === "date" ? `iso_time(${field})` : field;
       return `${value} AS ${quote(name)}`;
     }).join(", ");
     let where = 't."owner_id" = $1';
@@ -25,10 +23,12 @@ export async function readShopTransferData(client: PoolClient, ownerId: string):
       where = `split_part(t."id", ':', 1) = $1`;
       value = String(connection.botId);
     }
-    const result = await client.query(`SELECT ${columns} FROM ${quote(info.name)} t WHERE ${where} LIMIT ${MAX_TRANSFER_ROWS + 1}`, [value]);
+    const result = await client.query(`SELECT /*portable*/ ${columns} FROM ${quote(info.name)} t WHERE ${where} LIMIT ${MAX_TRANSFER_ROWS + 1}`, [value]);
     total += result.rowCount ?? 0;
     if (total > MAX_TRANSFER_ROWS) throw new CommerceError("Shop exceeds the 50,000-row portable transfer limit. No partial export was created.", 413);
-    data[key] = result.rows;
+    data[key] = result.rows.map(row => Object.fromEntries(info.columns.map(([name, column]) => [
+      name, column.dataType === "boolean" && row[name] !== null ? Boolean(row[name]) : row[name],
+    ])));
   }
   return data;
 }

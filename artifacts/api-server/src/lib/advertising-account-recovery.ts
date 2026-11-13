@@ -78,8 +78,8 @@ export async function recoverAccountConnection(owner: string, client: Advertisin
       WHERE owner_id=$1 AND running=true AND next_send_at<=now() AND NOT (COALESCE(draft,'{}'::jsonb) ? 'forward')`, [owner]);
     // Forward-loop row times are queue priorities. Preserve their order and
     // postpone the single account gate instead of turning them into group timers.
-    await client.query(`UPDATE advertising_accounts SET next_send_at=GREATEST(next_send_at,now()+
-      COALESCE((SELECT max(interval_seconds) FROM advertising_schedules WHERE owner_id=$1 AND running=true AND draft ? 'forward'),0)*interval '1 second')
+    await client.query(`UPDATE advertising_accounts SET next_send_at=GREATEST(next_send_at,date_add(now(),
+      COALESCE((SELECT max(interval_seconds) FROM advertising_schedules WHERE owner_id=$1 AND running=true AND draft ? 'forward'),0),'second'))
       WHERE owner_id=$1`, [owner]);
   } catch (error) {
     const safe = reportAccountError("recover_connection", error);

@@ -55,9 +55,9 @@ export async function claimProductAnnouncement(ownerId: string, productId: numbe
   return db.transaction(async tx => {
     // Serialize the first announcement, including concurrent stock imports.
     const [product] = await tx.select().from(shopProducts)
-      .where(and(eq(shopProducts.id, productId), eq(shopProducts.ownerId, ownerId))).for("update");
+      .where(and(eq(shopProducts.id, productId), eq(shopProducts.ownerId, ownerId)));
     if (!product || product.status !== "active") return null;
-    const [inventory] = await tx.select({ stock: sql<number>`count(*)::integer` }).from(shopInventory)
+    const [inventory] = await tx.select({ stock: sql<number>`count(*)` }).from(shopInventory)
       .where(and(eq(shopInventory.productId, productId), eq(shopInventory.ownerId, ownerId), eq(shopInventory.status, "available")));
     const stock = inventory?.stock ?? 0;
     if (stock < 1) return null;

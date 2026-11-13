@@ -9,7 +9,9 @@
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
-    "test:local": "node --test scripts/tests/dev-local.test.mjs"
+    "test:local": "node --test scripts/tests/dev-local.test.mjs scripts/tests/sqlite-local.test.mjs",
+    "test:launcher": "node scripts/tests/launcher-smoke.mjs",
+    "test:sqlite": "node scripts/test-sqlite.mjs"
   },
   "private": true,
   "dependencies": {

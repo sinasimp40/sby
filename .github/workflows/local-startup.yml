@@ -1,0 +1,25 @@
+name: Local SQLite startup
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+jobs:
+  startup:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:local
+      - run: pnpm run typecheck
+      - run: pnpm test:launcher

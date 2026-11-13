@@ -1,6 +1,6 @@
 import { pool } from "@workspace/db";
 import { randomUUID } from "node:crypto";
-import type { PoolClient } from "pg";
+import type { PoolClient } from "@workspace/db";
 import { CommerceError } from "./commerce-providers";
 import { decryptCredential, encryptCredential, credentialFingerprint } from "./inventory-encryption";
 import { decryptProviderSecret, encryptProviderSecret } from "./provider-credentials";
@@ -84,9 +84,11 @@ async function importRows(client: PoolClient, data: TransferData, source: string
   const write = (key: TransferTable, rows: TransferRow[], omitId = false) => insertTransferRows(client, key, rows, omitId, deadline);
   const allocate = async (table: "shop_products" | "shop_inventory", count: number): Promise<number[]> => {
     if (!count) return [];
-    const result = await client.query(`SELECT n, nextval(pg_get_serial_sequence($1,'id'))::integer AS id
-      FROM generate_series(1,$2::integer) AS n ORDER BY n`, [table, count]);
-    return result.rows.map(row => row.id);
+    // Import already owns BEGIN IMMEDIATE. Reserve IDs above both live rows and
+    // SQLite's high-water mark, including IDs belonging to other owners.
+    const result = await client.query(`SELECT max(COALESCE((SELECT max(id) FROM "${table}"),0),
+      COALESCE((SELECT seq FROM sqlite_sequence WHERE name=$1),0)) AS id`, [table]);
+    return Array.from({ length: count }, (_, index) => Number(result.rows[0].id) + index + 1);
   };
   const products = new Map<number, number>();
   const inventory = new Map<number, number>();
@@ -193,11 +195,7 @@ export async function importShopTransfer(ownerId: string | null, zip: Buffer, to
     if (advertisingId) await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,74))", [`telegram-bot:${advertisingId}`]);
     // Serialize concurrent import/setup/checkout writes for the empty destination.
     // Normal SELECT readers continue; writers wait briefly or this transaction fails.
-    await client.query(`LOCK TABLE shop_products, shop_inventory, bot_customers, shop_payments,
-      wallet_entries, shop_records, shop_settings, shop_activity, provider_credentials,
-      bot_runtime_settings, bot_connections, bot_updates, shop_custom_emojis, emoji_import_sessions,
-      advertising_bots, advertising_groups, advertising_campaigns, advertising_deliveries,
-      advertising_accounts, advertising_schedules, advertising_account_runs, advertising_account_commands IN SHARE ROW EXCLUSIVE MODE`);
+    // BEGIN IMMEDIATE serializes all writes for the entire SQLite import.
     const state = await destinationTransferState(client, ownerId);
     if (state.blockers.length) throw new CommerceError(state.blockers.join(" "), 409);
     if (archive.data.connection.length && state.connectionOwner && state.connectionOwner !== ownerId) throw new CommerceError("The bot is bound to another shop. Nothing was imported.", 409);

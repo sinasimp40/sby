@@ -15,7 +15,7 @@ const categorySql = (now: Date) => sql<string>`case
 export async function customerHistorySummary(ownerId: string, customerId: string, now = new Date()) {
   const category = categorySql(now);
   const rows = await db.select({
-    kind: shopPayments.kind, category, count: sql<number>`count(*)::integer`,
+    kind: shopPayments.kind, category, count: sql<number>`count(*)`,
   }).from(shopPayments).where(and(
     eq(shopPayments.ownerId, ownerId), eq(shopPayments.customerId, customerId),
   // Group by the selected CASE column, avoiding a second time parameter in

@@ -24,8 +24,8 @@ export async function productsForOwner(ownerId: string | null) {
     buttonEmoji: shopProducts.buttonEmoji,
     buttonCustomEmojiId: shopProducts.buttonCustomEmojiId,
     createdAt: shopProducts.createdAt,
-    stock: sql<number>`count(${shopInventory.id}) filter (where ${shopInventory.status} = 'available')::integer`,
-    sold: sql<number>`count(${shopInventory.id}) filter (where ${shopInventory.status} = 'delivered')::integer`,
+    stock: sql<number>`count(${shopInventory.id}) filter (where ${shopInventory.status} = 'available')`,
+    sold: sql<number>`count(${shopInventory.id}) filter (where ${shopInventory.status} = 'delivered')`,
   }).from(shopProducts)
     .leftJoin(shopInventory, eq(shopInventory.productId, shopProducts.id))
     .where(eq(shopProducts.ownerId, ownerId))

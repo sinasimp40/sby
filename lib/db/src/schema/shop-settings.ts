@@ -1,4 +1,4 @@
-import { pgTable, text, jsonb, timestamp, serial, index } from "drizzle-orm/pg-core";
+import { pgTable, text, jsonb, timestamp, serial, index } from "./columns";
 import { createInsertSchema } from "drizzle-zod";
 
 export const shopSettings = pgTable("shop_settings", {

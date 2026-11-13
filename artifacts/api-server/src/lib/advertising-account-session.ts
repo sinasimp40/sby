@@ -1,5 +1,5 @@
 import { pool } from "@workspace/db";
-import type { PoolClient } from "pg";
+import type { PoolClient } from "@workspace/db";
 import type { AccountDriver, AccountFactory } from "./advertising-account-driver";
 import { AccountError, isTransportFailure, reportAccountError } from "./advertising-account-errors";
 

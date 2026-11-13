@@ -1,4 +1,4 @@
-import { pgTable, text, integer, timestamp, jsonb, boolean, uniqueIndex, index, check } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, timestamp, jsonb, boolean, uniqueIndex, index, check } from "./columns";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { shopProducts, shopInventory } from "./shop-products";

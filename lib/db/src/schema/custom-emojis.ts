@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, primaryKey } from "./columns";
 import { createInsertSchema } from "drizzle-zod";
 
 export const shopCustomEmojis = pgTable("shop_custom_emojis", {

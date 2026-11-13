@@ -2,6 +2,20 @@
 
 A web administration workspace for a Telegram digital-product shop.
 
+## SQLite storage — current source of truth
+
+The user explicitly switched live storage from PostgreSQL to SQLite. Historical PostgreSQL-specific notes below describe the previous engine, not the current runtime. `TELECART_SQLITE_PATH` selects the file (default `data/telecart.db`, relative to the project root). All 24 tables now use SQLite builders and a native `node:sqlite` engine through Drizzle's async SQLite driver; no PostgreSQL server is used by the application. `pg` is retained only for the explicit read-only migration tool.
+
+Write transactions hold a process-wide async mutex for their full lifetime and use `BEGIN IMMEDIATE`. An exclusive per-file process lock prevents two Telecart servers using the same shop; established session-level business locks remain held across network operations. Do not replace these with per-statement locks or no-op session locks. SQLite files and journals are excluded from Git and publish artifacts. Keep SESSION_SECRET and owner binding for existing encrypted data.
+
+`scripts/migrate-postgres-to-sqlite.mjs --confirm-read-only-migration` copies an explicitly selected PostgreSQL source into an empty SQLite destination, validates counts/relationships/integrity, and pauses external processing. It never changes the source or runs during startup. Workspace data was converted with this tool.
+
+Local setup now needs only Node 22.16+/24+ and pnpm. Use `start-local.bat` / `start-local.sh`, `pnpm test:local`, and `pnpm test:sqlite` (isolated synthetic SQLite fixtures). `pnpm --filter @workspace/db run push` initializes/checks the supported SQLite schema without destructive rewrites. See LOCAL_SETUP.md for existing-config conversion and portable ZIP instructions.
+
+Portable ZIP format 2 remains compatible: `shop.db` plus README, plaintext portable stock/provider credentials after acknowledgement, destination re-encryption, empty-shop protection and processing holds. The portable schema fingerprint is intentionally engine-independent. Preserve ISO timestamp microseconds and JSON text rather than rounding large JSON numbers.
+
+**Deployment limitation:** Replit's published-app filesystem is not durable across publishes/redeployments. This SQLite setup is intended for localhost/persistent-disk hosting and workspace preview, not live sales on a published Replit filesystem.
+
 ## Current scope
 
 - Product creation, editing and deletion, encrypted credential inventory, nonsecret shop/bot/payment preferences and private owner workspaces.

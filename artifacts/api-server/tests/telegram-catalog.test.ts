@@ -19,7 +19,8 @@ test("all 30 products are reachable across three ten-item pages", () => {
     assert.ok(page.reply_markup.inline_keyboard.filter(row =>
       row.some(button => button.callback_data.startsWith("buy:"))).every(row => row.length === 2));
     assert.match(page.text, new RegExp(`Page <b>${index + 1} of 3`));
-    assert.ok(purchases(page).every(button => button.text.includes("$2.50") && button.text.includes("📦 5")));
+    assert.ok(purchases(page).every(button => button.text.includes("$2.50")));
+    assert.ok(purchases(page).every(button => !button.text.includes("📦")), "catalog stock is shown when opening a product, not on its button");
     assert.ok(buttons(page).every(button => Buffer.byteLength(button.callback_data) <= 64));
   }
   assert.deepEqual(pages.flatMap(page => purchases(page).map(button => button.callback_data)),

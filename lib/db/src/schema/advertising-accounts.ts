@@ -1,4 +1,4 @@
-import { boolean, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "./columns";
 import { createInsertSchema } from "drizzle-zod";
 
 export const advertisingAccounts = pgTable("advertising_accounts", {

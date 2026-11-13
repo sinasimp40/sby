@@ -25,7 +25,7 @@ import { inspectLocalDatabase } from "../../artifacts/api-server/scripts/check-l
 import { makeFirstRunConfig, saveFirstRunConfig } from "../local-setup.mjs";
 
 const config = {
-  DATABASE_URL: "postgresql://shop:password@localhost:5432/telecart",
+  TELECART_SQLITE_PATH: "data/telecart.db",
   SESSION_SECRET: "s".repeat(64),
   TELECART_OWNER_ID: "local-owner",
   TELECART_ADMIN_EMAIL: "owner@example.com",
@@ -56,7 +56,7 @@ test("Windows package commands use cmd.exe without shell argument forwarding", (
 test("private environment serialization round-trips quotes, slashes and spaces", () => {
   const original = {
     ...config,
-    DATABASE_URL: "postgresql://user:p%40ss%23@127.0.0.1:5432/shop?sslmode=require",
+    TELECART_SQLITE_PATH: "C:\\My Shop\\data\\telecart.db",
     TELECART_ADMIN_INITIAL_PASSWORD: `space pass with "quotes", a slash \\\\ and $ symbol`,
   };
   const serialized = serializeLocalEnv(original);
@@ -71,9 +71,9 @@ test("private environment serialization round-trips quotes, slashes and spaces",
 });
 
 test("invalid and incomplete settings stop without printing any credential", () => {
-  const invalid = { ...config, DATABASE_URL: "not-a-url" };
+  const invalid = { ...config, TELECART_SQLITE_PATH: "postgresql://not-a-sqlite-file" };
   const message = validateLocalConfig(invalid);
-  assert.match(message, /PostgreSQL URL/);
+  assert.match(message, /SQLite file/);
   assert.doesNotMatch(message, /password/);
   assert.equal(validateLocalConfig({
     ...config, SESSION_SECRET: "legacy-secret", TELECART_ADMIN_INITIAL_PASSWORD: "legacy",
@@ -94,7 +94,8 @@ test("child processes receive only local installation settings, not Replit crede
   assert.equal(env.PATH, "/safe/path");
   assert.equal(env.HOME, "/home/user");
   assert.equal(env.SESSION_SECRET, config.SESSION_SECRET);
-  assert.equal(env.DATABASE_URL, config.DATABASE_URL);
+  assert.equal(env.TELECART_SQLITE_PATH, config.TELECART_SQLITE_PATH);
+  assert.equal(env.DATABASE_URL, undefined);
   assert.equal(env.TELECART_LOCAL_ONLY, "true");
   assert.equal(env.TELECART_TELEGRAM_DISABLED, "true");
   for (const key of ["CLERK_SECRET_KEY", "OPENAI_API_KEY", "TELEGRAM_API_HASH", "REPLIT_DB_URL"]) {
@@ -103,7 +104,7 @@ test("child processes receive only local installation settings, not Replit crede
 });
 
 test("database safety checks distinguish local hosts, complete schema and resumable work", () => {
-  assert.equal(isLoopbackDatabase(config.DATABASE_URL), true);
+  assert.equal(isLoopbackDatabase(config.TELECART_SQLITE_PATH), true);
   assert.equal(isLoopbackDatabase("postgresql://db.example.net/shop"), false);
   assert.equal(isLoopbackDatabase("postgresql:///telecart"), true);
   assert.equal(hasCompleteSchema({ missingTables: [] }), true);
@@ -125,7 +126,7 @@ test("database readiness inspection uses only synthetic tables and owner-scoped 
   const calls = [];
   const query = async (sql, params) => {
     calls.push({ sql, params });
-    if (sql.includes("information_schema.tables")) {
+    if (sql.includes("sqlite_master")) {
       return { rows: DATABASE_TABLES.map(table_name => ({ table_name })) };
     }
     return { rows: [{
@@ -153,8 +154,8 @@ test("database readiness inspection uses only synthetic tables and owner-scoped 
 });
 
 test("first-run configuration generates a fresh secret without reading Replit environment", async () => {
-  const visible = ["1", "admin@example.com"];
-  const hidden = [config.DATABASE_URL, config.TELECART_ADMIN_INITIAL_PASSWORD, config.TELECART_ADMIN_INITIAL_PASSWORD];
+  const visible = ["1", "", "admin@example.com"];
+  const hidden = [config.TELECART_ADMIN_INITIAL_PASSWORD, config.TELECART_ADMIN_INITIAL_PASSWORD];
   const result = await makeFirstRunConfig({
     ask: async () => visible.shift(),
     askSecret: async () => hidden.shift(),
@@ -167,9 +168,8 @@ test("first-run configuration generates a fresh secret without reading Replit en
 });
 
 test("attaching an existing database preserves its original secret and owner", async () => {
-  const visible = ["2", "existing-shop-owner", "admin@example.com"];
+  const visible = ["2", "data/existing.db", "existing-shop-owner", "admin@example.com"];
   const hidden = [
-    config.DATABASE_URL,
     "the-original-session-secret-for-this-shop-123456",
     config.TELECART_ADMIN_INITIAL_PASSWORD,
     config.TELECART_ADMIN_INITIAL_PASSWORD,
@@ -183,8 +183,8 @@ test("attaching an existing database preserves its original secret and owner", a
 });
 
 test("new installations reject a short password without saving configuration", async () => {
-  const visible = ["1", "admin@example.com"];
-  const hidden = [config.DATABASE_URL, "short", "short"];
+  const visible = ["1", "", "admin@example.com"];
+  const hidden = ["short", "short"];
   await assert.rejects(makeFirstRunConfig({
     ask: async () => visible.shift(),
     askSecret: async () => hidden.shift(),

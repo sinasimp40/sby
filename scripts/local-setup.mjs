@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { closeSync, openSync, writeFileSync } from "node:fs";
 import { createInterface } from "node:readline";
 import { StringDecoder } from "node:string_decoder";
-import { isLoopbackDatabase, serializeLocalEnv, validateLocalConfig } from "./local-core.mjs";
+import { serializeLocalEnv, validateLocalConfig } from "./local-core.mjs";
 
 function askLine(question) {
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
@@ -69,21 +69,13 @@ function askHidden(question) {
 
 export async function makeFirstRunConfig({ ask = askLine, askSecret = askHidden } = {}) {
   console.log("First-run setup saves a private .env.local file on this computer.");
-  console.log("It never reads Replit secrets or changes your PostgreSQL data.");
+  console.log("SQLite stores all shop data in a local file. PostgreSQL is not required.");
   console.log("For a new empty shop or a new destination for a portable SQLite ZIP, choose 1.");
-  console.log("For an existing PostgreSQL database or a legacy JSON export, choose 2 and use its original SESSION_SECRET and owner ID.");
+  console.log("For an existing live SQLite database, choose 2 and use its original SESSION_SECRET and owner ID.");
   const installation = await ask("1) New local installation   2) Attach an existing installation [1/2]: ");
   if (!["1", "2"].includes(installation)) throw new Error("Choose 1 or 2. No configuration was saved.");
 
-  console.log("Database URL format: postgresql://USERNAME:PASSWORD@localhost:5432/telecart");
-  console.log("URL-encode special characters in the PostgreSQL username or password.");
-  const databaseUrl = await askSecret("PostgreSQL DATABASE_URL (input hidden): ");
-  const remote = databaseUrlIsRemote(databaseUrl);
-  if (remote) {
-    console.warn("This URL appears to point outside this computer. Do not use a production shop database unless that is intentional.");
-    const confirmation = await ask("Type USE REMOTE DATABASE to confirm, or anything else to cancel: ");
-    if (confirmation !== "USE REMOTE DATABASE") throw new Error("Remote database setup cancelled. No configuration was saved.");
-  }
+  const databasePath = await ask("SQLite file path [data/telecart.db]: ") || "data/telecart.db";
   const sessionSecret = installation === "1"
     ? randomBytes(48).toString("hex")
     : await askSecret("Original SESSION_SECRET for this existing installation (input hidden): ");
@@ -97,7 +89,7 @@ export async function makeFirstRunConfig({ ask = askLine, askSecret = askHidden 
   if (password.length < 12) throw new Error("The new admin password must contain at least 12 characters. No configuration was saved.");
 
   const config = {
-    DATABASE_URL: databaseUrl,
+    TELECART_SQLITE_PATH: databasePath,
     SESSION_SECRET: sessionSecret,
     TELECART_OWNER_ID: ownerId,
     TELECART_ADMIN_EMAIL: email,
@@ -106,11 +98,6 @@ export async function makeFirstRunConfig({ ask = askLine, askSecret = askHidden 
   const error = validateLocalConfig(config);
   if (error) throw new Error(`${error} No configuration was saved.`);
   return config;
-}
-
-function databaseUrlIsRemote(value) {
-  try { return !isLoopbackDatabase(value); }
-  catch { return true; }
 }
 
 export async function saveFirstRunConfig(envPath, config) {

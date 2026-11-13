@@ -1,6 +1,6 @@
 import { pool } from "@workspace/db";
 import { CommerceError } from "./commerce-providers";
-import { encryptProviderSecret, readProviderCredentials } from "./provider-credentials";
+import { encryptProviderSecret, decryptProviderSecret } from "./provider-credentials";
 import { advertisingBotForOwner, withAdvertisingLock, type AdvertisingClient } from "./advertising-store";
 import { advertisingTelegram, AdvertisingTelegramError, inspectAdvertisingGroup, type AdvertisingCaller } from "./advertising-telegram";
 import { parseAdvertisingTarget } from "./advertising-targets";
@@ -17,7 +17,12 @@ export async function connectAdvertising(owner: string, token: string, call: Adv
       await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,74))", [`telegram-bot:${me.id}`]);
       const shop = await client.query(`SELECT 1 FROM bot_connections WHERE bot_id=$1
         UNION ALL SELECT 1 FROM provider_credentials WHERE lower(telegram_bot_username)=lower($2)`, [String(me.id), me.username]);
-      const shopToken = (await readProviderCredentials(owner)).telegramToken;
+      // Stay on this write transaction's connection. An unrelated ORM read
+      // would wait for the SQLite writer mutex that this transaction owns.
+      const saved = (await client.query("SELECT telegram_token_encrypted FROM provider_credentials WHERE owner_id=$1", [owner])).rows[0];
+      const shopToken = saved?.telegram_token_encrypted
+        ? decryptProviderSecret(saved.telegram_token_encrypted, owner, "telegram")
+        : process.env.TELEGRAM_BOT_TOKEN;
       if (shop.rowCount || shopToken?.split(":")[0] === String(me.id))
         throw new CommerceError("This is a shop bot. Connect a different bot for advertising.");
       const existing = (await client.query("SELECT bot_id FROM advertising_bots WHERE owner_id=$1", [owner])).rows[0];

@@ -55,7 +55,7 @@ test("provider checks return safe errors without echoing submitted credentials",
 });
 
 test("admin can verify and save provider credentials without returning their values", async t => {
-  const envKeys = ["TELECART_ADMIN_EMAIL", "TELECART_ADMIN_INITIAL_PASSWORD", "TELECART_OWNER_ID", "TELECART_PUBLIC_URL", "TELECART_TELEGRAM_DISABLED"];
+  const envKeys = ["TELECART_ADMIN_EMAIL", "TELECART_ADMIN_INITIAL_PASSWORD", "TELECART_OWNER_ID", "TELECART_PUBLIC_URL", "TELECART_ADMIN_ORIGIN", "TELECART_TELEGRAM_DISABLED"];
   const savedEnv = Object.fromEntries(envKeys.map(key => [key, process.env[key]]));
   const owner = `credential-test-${randomUUID()}`;
   const email = "credential-test@example.invalid";
@@ -69,6 +69,7 @@ test("admin can verify and save provider credentials without returning their val
   process.env.TELECART_ADMIN_INITIAL_PASSWORD = password;
   process.env.TELECART_OWNER_ID = owner;
   process.env.TELECART_PUBLIC_URL = "https://credential-test.invalid";
+  process.env.TELECART_ADMIN_ORIGIN = "https://credential-test.invalid";
   process.env.TELECART_TELEGRAM_DISABLED = "true";
   globalThis.fetch = async (input, init) => {
     const url = String(input);

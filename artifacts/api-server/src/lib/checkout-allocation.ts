@@ -29,7 +29,7 @@ export async function allocateCheckout(input: CheckoutInput, settings: Pick<Awai
   return db.transaction(async tx => {
     const [customer] = await tx.select().from(botCustomers).where(and(
       eq(botCustomers.id, input.customerId), eq(botCustomers.ownerId, input.ownerId),
-    )).for("update");
+    ));
     if (!customer) throw new CommerceError("Customer not found.");
     const [existing] = await tx.select().from(shopPayments).where(eq(shopPayments.requestKey, requestKey));
     if (existing) {
@@ -48,12 +48,12 @@ export async function allocateCheckout(input: CheckoutInput, settings: Pick<Awai
     if (input.productId) {
       [product] = await tx.select().from(shopProducts).where(and(
         eq(shopProducts.id, input.productId), eq(shopProducts.ownerId, input.ownerId), eq(shopProducts.status, "active"),
-      )).for("update");
+      ));
       if (!product) throw new CommerceError("This product is no longer available.");
       if (input.expectedAmountCents !== undefined && product.priceCents !== input.expectedAmountCents) throw new CommerceError("The price changed. Select this product again.");
       stocks = await tx.select().from(shopInventory).where(and(
         eq(shopInventory.productId, product.id), eq(shopInventory.ownerId, input.ownerId), eq(shopInventory.status, "available"),
-      )).orderBy(shopInventory.id).limit(quantity).for("update", { skipLocked: true });
+      )).orderBy(shopInventory.id).limit(quantity);
       if (stocks.length < quantity) throw new CommerceError(`📦 Only ${stocks.length} account${stocks.length === 1 ? " is" : "s are"} available right now. Choose a lower quantity or refresh the product.`);
     }
     const cents = product ? product.priceCents * quantity : input.depositCents ?? 0;

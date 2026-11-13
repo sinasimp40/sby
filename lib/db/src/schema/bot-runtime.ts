@@ -1,4 +1,4 @@
-import { boolean, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, pgTable, text, timestamp } from "./columns";
 
 export const botRuntimeSettings = pgTable("bot_runtime_settings", {
   ownerId: text("owner_id").primaryKey(),

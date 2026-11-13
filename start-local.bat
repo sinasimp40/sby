@@ -1,5 +1,5 @@
 @echo off
-setlocal
+setlocal DisableDelayedExpansion
 
 pushd "%~dp0" >nul 2>&1
 if errorlevel 1 (
@@ -10,7 +10,7 @@ if errorlevel 1 (
 
 where node.exe >nul 2>&1
 if errorlevel 1 (
-  echo Node.js 22.16 or newer, or Node.js 24 or newer, is required.
+  echo Node.js 22.16+ or 24+ is required. PostgreSQL is not needed.
   echo Install Node.js and pnpm, then double-click this file again.
   popd
   pause
