@@ -9,4 +9,4 @@
 - [Product alerts](product-alerts.md) — Wait for stock; label the first announcement “New product” and subsequent restocks “Added stock.”
 - [Welcome message media](welcome-media.md) — The user requires an image link above welcome text, delivered with its menu in exactly one Telegram message.
 - [Separate advertising account](advertising-bot.md) — Forward one Saved Message through selected groups with one shared interval; personal-account ads stay separate from the shop bot.
-- [Advertising history limits](advertising-activity.md) — Show ten posting records with a local-date filter and five-day retention; preserve duplicate-send safeguards.
+- [Advertising history limits](advertising-activity.md) — Show ten rows in a scrollable daily history with five-day retention; preserve duplicate-send safeguards.
