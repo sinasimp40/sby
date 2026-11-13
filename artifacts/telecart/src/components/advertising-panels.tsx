@@ -10,8 +10,8 @@ import {
 import { Loader2, FileUp, Search, Trash2, Pencil, ShieldCheck, Send, Ban, Megaphone, Radar, X, Timer, Link2, Bold, Italic, Unlink, Sparkles, RefreshCw } from "lucide-react";
 import { adjustForEdit, covered, entitiesProblem, insertEmoji, linkAt, normalize, safeHttps, segments, setLink, snapSelection, toggleStyle, type Entity } from "@/lib/ad-entities";
 import { EmojiSetPicker } from "@/components/advertising/emoji-set-picker";
-import { alphabeticalGroups, retainedGroupSelection, filteredGroups, selectedGroupIdsInView, selectGroupsInView, snapshotGroupRemoval, ScrollableGroupList } from "@/components/advertising/group-list";
-import { GroupRemovalDialog } from "@/components/advertising/group-removal-dialog";
+import { alphabeticalGroups, retainedGroupSelection, filteredGroups, selectedGroupIdsInView, selectGroupsInView, snapshotGroupRemoval, snapshotEnabledGroups, ScrollableGroupList } from "@/components/advertising/group-list";
+import { GroupBulkActionDialog } from "@/components/advertising/group-bulk-action-dialog";
 import { Panel, EmptyState, ErrorState, RowsSkeleton } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -293,6 +293,7 @@ export function GroupsPanel({ ws, selected: savedSelected, setSelected, sequenti
   const [editTarget, setEditTarget] = useState("");
   const [deleting, setDeleting] = useState<AdvertisingGroup | null>(null);
   const [bulkRemoving, setBulkRemoving] = useState<Pick<AdvertisingGroup, "id" | "title" | "target">[] | null>(null);
+  const [bulkDisabling, setBulkDisabling] = useState<Pick<AdvertisingGroup, "id" | "title" | "target">[] | null>(null);
   const [progress, setProgress] = useState("");
   const [intervalFor, setIntervalFor] = useState<AdvertisingGroup | null>(null);
   const [ivValue, setIvValue] = useState("");
@@ -301,6 +302,7 @@ export function GroupsPanel({ ws, selected: savedSelected, setSelected, sequenti
   const ivBad = !Number.isFinite(ivSec) || ivSec < 60 || ivSec > 2592000;
   const list = useMemo(() => filteredGroups(orderedGroups, status, q), [orderedGroups, q, status]);
   const visibleSelected = useMemo(() => selectedGroupIdsInView(list, selected), [list, selected]);
+  const disableTargets = useMemo(() => snapshotEnabledGroups(list), [list]);
   const toggle = (id: string) => { const n = new Set(selected); if (n.has(id)) n.delete(id); else n.add(id); setSelected(n); };
   async function checkPerms() {
     const ids = [...visibleSelected];
@@ -329,6 +331,12 @@ export function GroupsPanel({ ws, selected: savedSelected, setSelected, sequenti
           <label htmlFor="select-all-advertising-groups" className="cursor-pointer">Select all {list.length} shown</label>
           <span data-testid="text-visible-selected-count">{visibleSelected.length} selected here</span>
           <span className="text-muted-foreground" data-testid="text-selected-count">{selected.size} selected total</span>
+          <Button size="sm" variant="outline" disabled={!disableTargets.length}
+            title="Turn off all enabled groups matching this filter and search, including unchecked groups."
+            data-testid="button-disable-all-groups" onClick={() => {
+              if (disableTargets.length > 1000) { toast({ title: "Narrow the filter to 1,000 enabled groups or fewer", variant: "destructive" }); return; }
+              setBulkDisabling(disableTargets);
+            }}><Ban className="mr-1 h-3.5 w-3.5" />Disable all shown ({disableTargets.length})</Button>
           <Button size="sm" variant="outline" className="text-destructive" disabled={!visibleSelected.length}
             data-testid="button-remove-selected-groups" onClick={() => {
               if (visibleSelected.length > 1000) { toast({ title: "Choose up to 1,000 groups at a time", variant: "destructive" }); return; }
@@ -394,7 +402,8 @@ export function GroupsPanel({ ws, selected: savedSelected, setSelected, sequenti
           <AlertDialogFooter><AlertDialogCancel>Keep</AlertDialogCancel><AlertDialogAction data-testid="button-confirm-delete-group" onClick={async () => { if (!deleting) return; try { sync(await del.mutateAsync({ id: deleting.id })); const n = new Set(selected); n.delete(deleting.id); setSelected(n); } catch (x) { toast({ title: "Delete failed", description: errMsg(x), variant: "destructive" }); } }}>Remove</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <GroupRemovalDialog groups={bulkRemoving} onClose={() => setBulkRemoving(null)} onRemoved={workspace => { sync(workspace); toast({ title: "Selected groups removed from advertising" }); }} />
+      <GroupBulkActionDialog groups={bulkRemoving} onClose={() => setBulkRemoving(null)} onComplete={workspace => { sync(workspace); toast({ title: "Selected groups removed from advertising" }); }} />
+      <GroupBulkActionDialog action="disable" groups={bulkDisabling} onClose={() => setBulkDisabling(null)} onComplete={workspace => { sync(workspace); toast({ title: "Shown groups disabled", description: "Their posting schedules were stopped. Other groups were not changed." }); }} />
     </Panel>
   );
 }

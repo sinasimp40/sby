@@ -42,6 +42,7 @@ import type {
   AdvertisingEmojiSet,
   AdvertisingEmojiSetInput,
   AdvertisingForwardStartInput,
+  AdvertisingGroupDisableInput,
   AdvertisingGroupRemoval,
   AdvertisingGroupSelection,
   AdvertisingGroupUpdate,
@@ -2571,6 +2572,88 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getRemoveAdvertisingGroupsMutationOptions(options), queryClient);
+    }
+
+export const getDisableAdvertisingGroupsUrl = () => {
+
+
+
+
+  return `/api/shop/advertising/groups/disable`
+}
+
+export const disableAdvertisingGroups = async (advertisingGroupDisableInput: AdvertisingGroupDisableInput, options?: Parameters<typeof customFetch>[1]): Promise<AdvertisingWorkspace> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdvertisingWorkspace>(getDisableAdvertisingGroupsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(advertisingGroupDisableInput)
+  }
+);}
+
+
+
+
+
+export const getDisableAdvertisingGroupsMutationKey = () => ['disableAdvertisingGroups'] as const;
+
+export const getDisableAdvertisingGroupsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disableAdvertisingGroups>>, TError,DisableAdvertisingGroupsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof disableAdvertisingGroups>>, TError,DisableAdvertisingGroupsMutationVariables, TContext> => {
+
+const mutationKey = getDisableAdvertisingGroupsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof disableAdvertisingGroups>>, DisableAdvertisingGroupsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  disableAdvertisingGroups(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DisableAdvertisingGroupsMutationResult = NonNullable<Awaited<ReturnType<typeof disableAdvertisingGroups>>>
+    export type DisableAdvertisingGroupsMutationBody = BodyType<AdvertisingGroupDisableInput>
+    export type DisableAdvertisingGroupsMutationError = ErrorType<void>
+    export type DisableAdvertisingGroupsMutationVariables = {data: BodyType<AdvertisingGroupDisableInput>}
+
+    export const useDisableAdvertisingGroups = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disableAdvertisingGroups>>, TError,DisableAdvertisingGroupsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof disableAdvertisingGroups>>,
+        TError,
+        DisableAdvertisingGroupsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDisableAdvertisingGroupsMutationOptions(options), queryClient);
     }
 
 export const getSaveAdvertisingDraftUrl = () => {

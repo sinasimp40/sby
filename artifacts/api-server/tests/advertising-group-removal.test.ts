@@ -6,7 +6,7 @@ import { pool } from "@workspace/db";
 import app from "../src/app";
 import { issueAdminSession, adminCookieName } from "../src/lib/admin-auth";
 
-test("bulk removal is authenticated, owner-scoped, atomic, history-preserving and never leaves Telegram", async t => {
+test("bulk group actions are authenticated, owner-scoped, atomic, history-preserving and never leave Telegram", async t => {
   process.env.TELECART_ADMIN_EMAIL = "test-only@example.invalid";
   process.env.TELECART_ADMIN_INITIAL_PASSWORD = "TEST_ONLY_PASSWORD";
   const owner = process.env.TELECART_OWNER_ID!;
@@ -14,7 +14,7 @@ test("bulk removal is authenticated, owner-scoped, atomic, history-preserving an
   const server = app.listen(0, "127.0.0.1"); await once(server, "listening");
   const address = server.address(); assert.ok(address && typeof address !== "string");
   const url = `http://127.0.0.1:${address.port}/api/shop/advertising/groups/remove`;
-  const request = (groupIds: string[], authenticated = true) => fetch(url, {
+  const request = (groupIds: string[], authenticated = true, path = url) => fetch(path, {
     method: "POST",
     headers: { "Content-Type": "application/json", Origin: "https://test-only.invalid", ...(authenticated ? { Cookie: `${adminCookieName()}=${token}` } : {}) },
     body: JSON.stringify({ groupIds }),
@@ -27,6 +27,37 @@ test("bulk removal is authenticated, owner-scoped, atomic, history-preserving an
     const error1 = await save("-10011111", "error"), error2 = await save("-10022222", "error");
     const hiddenReady = await save("-10033333", "ready");
     const otherOwner = await save("-10044444", "error", "TEST_ONLY_OTHER_OWNER");
+    await t.test("bulk disable only turns off confirmed IDs, stops their schedules and preserves groups and history", async () => {
+      const disable = (ids: string[], authenticated = true) => request(ids, authenticated, `${url.slice(0, -"remove".length)}disable`);
+      const first = await save("-10055555", "ready"), second = await save("-10066666", "pending");
+      const hidden = await save("-10077777", "ready");
+      for (const group of [first, second, hidden]) await pool.query(
+        `INSERT INTO advertising_schedules(owner_id,group_id,running,account_generation,interval_seconds,draft)
+          VALUES($1,$2,true,1,60,'{}')`, [owner, group.id]);
+      assert.equal((await disable([first.id], false)).status, 401);
+      assert.equal((await disable([])).status, 400);
+      assert.equal((await disable(["invalid"])).status, 400);
+      assert.equal((await disable([first.id, first.id])).status, 400);
+      assert.equal((await disable(Array.from({ length: 1001 }, () => randomUUID()))).status, 400);
+      assert.equal((await disable([first.id, otherOwner.id])).status, 404);
+      assert.equal((await disable([first.id, randomUUID()])).status, 404);
+      assert.equal((await read(first.id)).enabled, true, "invalid batches cannot partially disable groups");
+      const response = await disable([first.id, second.id]);
+      assert.equal(response.status, 200);
+      const workspace = await response.json();
+      for (const group of [first, second]) {
+        assert.equal(workspace.groups.find((entry: any) => entry.id === group.id).enabled, false);
+        const saved = await read(group.id);
+        assert.equal(saved.status, group.status, "permission status cannot change when disabling");
+        assert.equal(saved.chat_id, group.chat_id);
+        assert.equal((await pool.query("SELECT running FROM advertising_schedules WHERE group_id=$1", [group.id])).rows[0].running, false);
+      }
+      assert.equal((await read(hidden.id)).enabled, true);
+      assert.equal((await pool.query("SELECT running FROM advertising_schedules WHERE group_id=$1", [hidden.id])).rows[0].running, true);
+      assert.equal((await read(otherOwner.id)).enabled, true);
+      assert.equal((await pool.query("SELECT 1 FROM advertising_membership_jobs")).rowCount, 0, "disabling must not queue Telegram membership actions");
+      assert.equal((await disable([first.id, second.id])).status, 200, "retries are safe");
+    });
     await t.test("sign-in and valid nonempty selection are required", async () => {
       assert.equal((await request([error1.id], false)).status, 401);
       assert.equal((await request([])).status, 400);

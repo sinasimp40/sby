@@ -40,6 +40,7 @@ export * from './advertisingForwardSnapshot';
 export * from './advertisingForwardStartInput';
 export * from './advertisingForwardStartInputExpectedGroupsItem';
 export * from './advertisingGroup';
+export * from './advertisingGroupDisableInput';
 export * from './advertisingGroupKind';
 export * from './advertisingGroupRemoval';
 export * from './advertisingGroupSelection';

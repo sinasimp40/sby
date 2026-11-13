@@ -410,6 +410,14 @@ export interface AdvertisingGroupRemoval {
   groupIds: string[];
 }
 
+export interface AdvertisingGroupDisableInput {
+  /**
+     * @minItems 1
+     * @maxItems 1000
+     */
+  groupIds: string[];
+}
+
 export interface AdvertisingGroupUpdate {
   /**
      * @minimum 60

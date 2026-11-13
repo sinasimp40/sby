@@ -30,6 +30,11 @@ export function snapshotGroupRemoval(groups: AdvertisingGroup[], selected: Set<s
   return groups.filter(group => selected.has(group.id)).map(({ id, title, target }) => ({ id, title, target }));
 }
 
+/** Disable all enabled matches, regardless of the campaign checkbox selection. */
+export function snapshotEnabledGroups(groups: AdvertisingGroup[]) {
+  return groups.filter(group => group.enabled).map(({ id, title, target }) => ({ id, title, target }));
+}
+
 export function alphabeticalGroups(groups: AdvertisingGroup[]) {
   return [...groups].sort((a, b) =>
     names.compare((a.title || a.target).trim(), (b.title || b.target).trim()) ||

@@ -22,7 +22,7 @@ test("groups-per-interval controls render one-copy semantics and bounded group c
   });
   try {
     const { GroupsPerIntervalPanel, ForwardingStatus, groupsPerIntervalOk, queueGroups } = await vite.ssrLoadModule("/src/components/advertising/forwarding-panels.tsx");
-    const { alphabeticalGroups, retainedGroupSelection, filteredGroups, selectedGroupIdsInView, selectGroupsInView, snapshotGroupRemoval, ScrollableGroupList, groupListViewportHeight } = await vite.ssrLoadModule("/src/components/advertising/group-list.tsx");
+    const { alphabeticalGroups, retainedGroupSelection, filteredGroups, selectedGroupIdsInView, selectGroupsInView, snapshotGroupRemoval, snapshotEnabledGroups, ScrollableGroupList, groupListViewportHeight } = await vite.ssrLoadModule("/src/components/advertising/group-list.tsx");
     const { CampaignGroupCounts, campaignGroupCounts } = await vite.ssrLoadModule("/src/components/advertising/campaign-group-counts.tsx");
     const countGroups = Array.from({ length: 211 }, (_, i) => ({
       id: `count-${i}`, title: `Group ${i}`, target: `-${i + 1}`, chatId: i < 205 ? `-${i + 1}` : null,
@@ -127,6 +127,19 @@ test("groups-per-interval controls render one-copy semantics and bounded group c
     assert.deepEqual(snapshotGroupRemoval(disabled, allSelected).map(group => group.id), ["bad-1", "good"]);
     assert.deepEqual([...selectGroupsInView(disabled, new Set(), true)], ["bad-1", "good"]);
     assert.deepEqual(filteredGroups(enabledFixture.map(group => ({ ...group, enabled: true })), "disabled", ""), []);
+    const disableErrors = snapshotEnabledGroups(filteredGroups(enabledFixture, "error", ""));
+    assert.deepEqual(disableErrors.map(group => group.id), ["bad-2"],
+      "Disable all shown ignores hidden categories and groups already off");
+    assert.deepEqual(snapshotEnabledGroups(filteredGroups(enabledFixture, "all", "beta")).map(group => group.id), ["bad-2"],
+      "Disable all shown also respects search");
+    assert.deepEqual(snapshotEnabledGroups(disabled), [], "Disabled filter has nothing left to turn off");
+    assert.deepEqual(snapshotEnabledGroups([]), []);
+    const disableAll = snapshotEnabledGroups(enabledFixture);
+    assert.equal(disableAll.length, enabledFixture.filter(group => group.enabled).length);
+    enabledFixture[1].title = "Later live update";
+    enabledFixture.push({ ...enabledFixture[1], id: "later-enabled-group" });
+    assert.equal(disableErrors[0].title, "Beta error", "confirmation is a frozen list, not expanded by live updates");
+    assert.equal(disableAll.some(group => group.id === "later-enabled-group"), false);
     const withoutErrors = selectGroupsInView(errors, allSelected, false);
     assert.ok(withoutErrors.has("good"));
     assert.ok(!withoutErrors.has("bad-1"));
@@ -148,9 +161,15 @@ test("groups-per-interval controls render one-copy semantics and bounded group c
     assert.match(groupHtml, /Select all 5 shown/);
     assert.match(groupHtml, /data-testid="text-visible-selected-count">5 selected here/);
     assert.match(groupHtml, /data-testid="button-remove-selected-groups"/);
+    assert.match(groupHtml, /data-testid="button-disable-all-groups"/);
     assert.match(renderGroups(groups, false, new Set([groups[0].id])), /aria-checked="mixed"/);
     const noSelection = renderGroups(groups, false, new Set());
     assert.match(noSelection, /<button[^>]*disabled=""[^>]*data-testid="button-remove-selected-groups"/);
+    const disableButton = noSelection.match(/<button[^>]*data-testid="button-disable-all-groups"[^>]*>/)?.[0];
+    assert.ok(disableButton);
+    assert.doesNotMatch(disableButton, /\sdisabled(?:=""|(?=\s|>))/,
+      "Disable all shown must work even when no campaign checkboxes are selected");
+    assert.match(renderGroups(groups.map(group => ({ ...group, enabled: false }))), /<button[^>]*disabled=""[^>]*data-testid="button-disable-all-groups"/);
     assert.match(groupHtml, new RegExp(`data-testid="row-group-${groups[0].id}"`));
     const refreshedHtml = renderGroups(afterLeave, true);
     assert.match(refreshedHtml, /data-testid="text-selected-count">4 selected/);
