@@ -31,6 +31,14 @@ If SQLite cannot open, check `TELECART_SQLITE_PATH` in `.env.local`, available d
 - **Replit Preview is suitable for trying this setup. Replit's published-app filesystem is not permanent storage across publishes/redeployments. Do not run live sales on a published Replit copy using this local SQLite file.** Use your computer or a host with a persistent disk.
 - Validation: `pnpm test:local`, `pnpm test:sqlite`, and `pnpm run typecheck`. With ports 8080 and 5173 free, `pnpm test:launcher` starts and stops the real local services against a temporary SQLite file. A GitHub Actions workflow is included for Ubuntu and Windows; it still needs to run on GitHub. Linux checks cannot certify Windows.
 
+## Recovering from a failed Windows startup
+
+- Update the project code, including **both `pnpm-workspace.yaml` and `pnpm-lock.yaml`**, plus the `scripts` folder. Keep your existing `.env.local` and database files. Older workspace settings removed Windows native packages; reinstalling with those old settings cannot fix Rollup.
+- The launcher now verifies Rollup, esbuild, Tailwind Oxide and Lightning CSS before starting either server. It installs the locked dependencies and, if necessary, attempts one forced dependency repair. This does not delete configuration or shop data. To reinstall manually, run `pnpm install --frozen-lockfile --force` after updating both dependency files.
+- If a local Telecart process already owns the database, close that Telecart window first. The launcher does not bypass a live process's lock.
+- If a private database copy has a lock from a **different computer**, the launcher offers `USE THIS LOCAL COPY`. Confirm only after stopping the original shop and ensuring the file is on a private local disk, not shared storage. The old lock is retained under a reviewed name; database records are not erased. The separate confirmation for saved processing still applies.
+- Never delete `.env.local`, reset `SESSION_SECRET`, or delete `telecart.db` to resolve a missing native package or lock error. For moving shops between installations, prefer the dashboard's portable ZIP export/import.
+
 ## Daily controls — all in the dashboard
 
 Under **Bot messages → Provider connections** (also available under **NOWPayments**):

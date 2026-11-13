@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, existsSync, writeFileSync, readFileSync } from "node:fs";
+import { mkdtempSync, rmSync, existsSync, writeFileSync, readFileSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, win32 } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -11,6 +11,69 @@ import { DATABASE_TABLES, makeSystemEnvironment } from "../local-core.mjs";
 import { normalizeSqlitePath } from "../sqlite-path.mjs";
 import { loadConfig } from "../dev-local.mjs";
 import { makeFirstRunConfig, saveFirstRunConfig } from "../local-setup.mjs";
+import { reviewLocalDatabaseLock } from "../local-db-lock.mjs";
+import { checkNativePackages } from "../check-local-native.mjs";
+
+test("portable dependency manifests retain all Windows native build bindings", () => {
+  const workspace = readFileSync(new URL("../../pnpm-workspace.yaml", import.meta.url), "utf8");
+  const lock = readFileSync(new URL("../../pnpm-lock.yaml", import.meta.url), "utf8");
+  assert.doesNotMatch(workspace, /(?:rollup>|esbuild>|oxide>|lightningcss>).*['"]-['"]/);
+  for (const name of [
+    "@rollup/rollup-win32-x64-msvc", "@rollup/rollup-win32-arm64-msvc",
+    "@esbuild/win32-x64", "@esbuild/win32-arm64",
+    "@tailwindcss/oxide-win32-x64-msvc", "@tailwindcss/oxide-win32-arm64-msvc",
+    "lightningcss-win32-x64-msvc", "lightningcss-win32-arm64-msvc",
+  ]) assert.ok(lock.includes(name), `${name} must be retained in the portable lockfile`);
+  checkNativePackages();
+});
+
+function lockFixture(t, host = "TEST_ONLY_FOREIGN_HOST") {
+  const directory = mkdtempSync(join(tmpdir(), "telecart lock review "));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const file = join(directory, "shop.db");
+  const lockPath = `${file}.lock`;
+  const original = JSON.stringify({ host, pid: 12345, token: "TEST_ONLY_TOKEN" });
+  writeFileSync(file, "TEST_ONLY_DATA_MUST_NOT_CHANGE");
+  writeFileSync(lockPath, original);
+  return { directory, file, lockPath, original };
+}
+test("an active or uncheckable local process can never be taken over", async t => {
+  const fixture = lockFixture(t, "TEST_ONLY_LOCAL");
+  for (const probe of [() => {}, () => { throw Object.assign(new Error(), { code: "EPERM" }); }]) {
+    await assert.rejects(reviewLocalDatabaseLock(fixture.file, {
+      host: "TEST_ONLY_LOCAL", probe, ask: async () => { assert.fail("active local lock must never prompt for takeover"); },
+    }), /already open/);
+    assert.equal(readFileSync(fixture.lockPath, "utf8"), fixture.original);
+  }
+  await reviewLocalDatabaseLock(fixture.file, { host: "TEST_ONLY_LOCAL",
+    probe: () => { throw Object.assign(new Error(), { code: "ESRCH" }); } });
+  assert.equal(readFileSync(fixture.lockPath, "utf8"), fixture.original, "dead locks are left for atomic engine recovery");
+});
+test("copied lock requires explicit confirmation and preserves the database", async t => {
+  const fixture = lockFixture(t);
+  await assert.rejects(reviewLocalDatabaseLock(fixture.file, { host: "TEST_ONLY_LOCAL", ask: async () => "" }), /cancelled/);
+  assert.equal(readFileSync(fixture.lockPath, "utf8"), fixture.original);
+  await reviewLocalDatabaseLock(fixture.file, { host: "TEST_ONLY_LOCAL", ask: async () => "USE THIS LOCAL COPY" });
+  assert.equal(existsSync(fixture.lockPath), false);
+  const backups = readdirSync(fixture.directory).filter(name => name.includes(".reviewed-"));
+  assert.equal(backups.length, 1);
+  assert.equal(readFileSync(join(fixture.directory, backups[0]), "utf8"), fixture.original);
+  assert.equal(readFileSync(fixture.file, "utf8"), "TEST_ONLY_DATA_MUST_NOT_CHANGE");
+});
+test("takeover refuses a lock that changed during confirmation", async t => {
+  const fixture = lockFixture(t);
+  const replacement = JSON.stringify({ host: "TEST_ONLY_LOCAL", pid: process.pid, token: "TEST_ONLY_NEW" });
+  await assert.rejects(reviewLocalDatabaseLock(fixture.file, {
+    host: "TEST_ONLY_LOCAL", ask: async () => { writeFileSync(fixture.lockPath, replacement); return "USE THIS LOCAL COPY"; },
+  }), /lock changed/);
+  assert.equal(readFileSync(fixture.lockPath, "utf8"), replacement);
+});
+test("incomplete lock files are never removed automatically", async t => {
+  const fixture = lockFixture(t);
+  writeFileSync(fixture.lockPath, "");
+  await assert.rejects(reviewLocalDatabaseLock(fixture.file, { host: "TEST_ONLY_LOCAL", ask: async () => "USE THIS LOCAL COPY" }), /incomplete or unknown/);
+  assert.equal(readFileSync(fixture.lockPath, "utf8"), "");
+});
 
 const checker = fileURLToPath(new URL("../../artifacts/api-server/scripts/check-local-db.mjs", import.meta.url));
 const inspectFile = file => spawnSync(process.execPath, [checker], {

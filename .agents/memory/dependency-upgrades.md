@@ -13,4 +13,10 @@ Code-generation dependencies can require newer JavaScript runtime features even 
 
 **Why:** Orval's Zod generator started relying on a collection API unavailable in this project's Node 20 runtime. Generation failed after cleaning the previous output, making otherwise valid server imports temporarily disappear.
 
-**How to apply:** Diagnose the generator's runtime separately from application dependencies and schema validity. Preserve Node 20 compatibility unless a runtime upgrade is explicitly in scope; regenerate both client and validation outputs after a failed generation.
+**How to apply:** Diagnose the generator's runtime separately from application dependencies and schema validity; passing app type checks do not validate the generator runtime. Regenerate both client and validation outputs after a failed generation.
+
+Do not prune other operating systems' optional native dependencies to optimize Replit-only installs.
+
+**Why:** Linux checks passed while the inherited workspace overrides explicitly removed Windows Rollup, esbuild, Tailwind Oxide and Lightning CSS bindings. Fixing only the first missing module would leave the next Windows failure in place.
+
+**How to apply:** Keep the dependency graph portable for the user's localhost installation. Test native package loading and actual client/CSS transforms, not just package-directory presence or an HTTP response serving index.html. Distinguish Linux results from execution on a real Windows runner.

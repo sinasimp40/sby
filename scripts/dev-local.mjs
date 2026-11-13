@@ -21,6 +21,7 @@ import {
 } from "./local-core.mjs";
 import { makeFirstRunConfig, saveFirstRunConfig } from "./local-setup.mjs";
 import { normalizeSqlitePath } from "./sqlite-path.mjs";
+import { reviewLocalDatabaseLock } from "./local-db-lock.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 export const projectRoot = resolve(scriptDir, "..");
@@ -139,8 +140,14 @@ function dependencyFingerprint() {
   return hash.digest("hex");
 }
 
+function nativeDependenciesAvailable() {
+  return spawnSync(process.execPath, [join(projectRoot, "scripts/check-local-native.mjs")], {
+    cwd: projectRoot, env: makeSystemEnvironment(process.env), stdio: "ignore", windowsHide: true,
+  }).status === 0;
+}
+
 function prepareDependencies() {
-  if (dependenciesInstalled()) return;
+  if (dependenciesInstalled() && nativeDependenciesAvailable()) return;
   console.log("Installing this project's locked dependencies with pnpm. No system software will be installed.");
   const result = runPnpm(["install", "--frozen-lockfile"], makeSystemEnvironment(process.env));
   if (result.error || result.status !== 0) {
@@ -148,6 +155,13 @@ function prepareDependencies() {
   }
   if (!requiredDependenciesAvailable()) {
     throw new Error("pnpm finished, but required workspace packages are still missing. Review the dependency output.");
+  }
+  if (!nativeDependenciesAvailable()) {
+    console.log("Repairing project dependencies for this operating system. SQLite data and .env.local are not changed.");
+    const repair = runPnpm(["install", "--frozen-lockfile", "--force"], makeSystemEnvironment(process.env));
+    if (repair.error || repair.status !== 0 || !nativeDependenciesAvailable()) {
+      throw new Error("Native Windows/macOS/Linux dependencies are still unavailable. Update BOTH pnpm-workspace.yaml and pnpm-lock.yaml from the fixed project, then retry. No servers were started; do not delete your database or .env.local.");
+    }
   }
   writeFileSync(join(projectRoot, "node_modules", ".telecart-local-install"), `${dependencyFingerprint()}\n`, { mode: 0o600 });
 }
@@ -345,6 +359,7 @@ export async function runLocalLauncher(argv = process.argv.slice(2)) {
   prepareDependencies();
   const setupOnly = argv.includes("--setup");
   if (!setupOnly) await checkPorts();
+  await reviewLocalDatabaseLock(config.TELECART_SQLITE_PATH, { ask: askLine });
 
   let status = checkDatabase(config, databaseEnv);
   await prepareSchema(status, config, setupOnly);
