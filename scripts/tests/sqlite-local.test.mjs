@@ -132,6 +132,37 @@ test("upgrading the separate-clock schema adds batch progress without resetting 
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
+test("replacing repeated copies stops obsolete multi-copy jobs and preserves data and single-message jobs", () => {
+  const directory = mkdtempSync(join(tmpdir(), "telecart corrected groups upgrade "));
+  const file = join(directory, "shop.db");
+  try {
+    const old = new DatabaseSync(file);
+    const migrations = readdirSync(join(root, "lib/db/migrations")).filter(name => name.endsWith(".sql")).sort();
+    for (const migration of migrations.slice(0, 3)) old.exec(readFileSync(join(root, "lib/db/migrations", migration), "utf8"));
+    const wait = new Date(Date.now() + 120000).toISOString().replace("Z", "000Z");
+    old.prepare("INSERT INTO advertising_accounts(owner_id,next_send_at,telegram_wait_until) VALUES(?,?,?)").run("TEST_ONLY", wait, wait);
+    for (const count of [1, 2]) old.prepare(`INSERT INTO advertising_schedules(group_id,owner_id,running,draft,next_send_at,batch_sent_count)
+      VALUES(?,?,1,?,?,?)`).run(`TEST_ONLY_${count}`, "TEST_ONLY", JSON.stringify({ forward: { messagesPerGroup: count } }), wait, count - 1);
+    old.prepare(`INSERT INTO advertising_account_runs(id,owner_id,group_id,target,chat_id,account_generation,revision,scheduled_for,draft,random_id)
+      VALUES('TEST_ONLY_RUN','TEST_ONLY','TEST_ONLY_2','TEST_ONLY','-1001234567890',0,0,?,'{}','1')`).run(wait);
+    old.exec("PRAGMA user_version=3"); old.close();
+    initializeSqlite(file);
+    const upgraded = new DatabaseSync(file, { readOnly: true });
+    const account = upgraded.prepare("SELECT * FROM advertising_accounts").get();
+    assert.equal(account.telegram_wait_until, wait);
+    assert.equal(account.groups_sent_in_interval, 0);
+    assert.equal(account.last_forward_order, -1);
+    const repeated = upgraded.prepare("SELECT * FROM advertising_schedules WHERE group_id='TEST_ONLY_2'").get();
+    assert.equal(repeated.running, 0);
+    assert.equal(repeated.next_send_at, null);
+    assert.match(repeated.note, /Groups per interval/);
+    assert.equal(upgraded.prepare("SELECT status FROM advertising_account_runs").get().status, "uncertain");
+    assert.equal(upgraded.prepare("SELECT running FROM advertising_schedules WHERE group_id='TEST_ONLY_1'").get().running, 1);
+    assert.equal(upgraded.prepare("PRAGMA integrity_check").get().integrity_check, "ok");
+    upgraded.close();
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
 test("folder entered at setup is saved as a database file before credentials are requested", async () => {
   const directory = mkdtempSync(join(tmpdir(), "telecart setup directory "));
   try {

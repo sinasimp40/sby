@@ -70,9 +70,9 @@ export interface AdvertisingForwardSnapshot {
   intervalSeconds: number;
   /**
      * @minimum 1
-     * @maximum 10
+     * @maximum 500
      */
-  messagesPerGroup?: number;
+  groupsPerInterval?: number;
   planId: string;
   /**
      * @minimum 0
@@ -125,14 +125,14 @@ export interface AdvertisingForwardLoop {
   intervalSeconds: number;
   /**
      * @minimum 1
-     * @maximum 10
+     * @maximum 500
      */
-  messagesPerGroup?: number;
+  groupsPerInterval?: number;
   /**
      * @minimum 0
-     * @maximum 9
+     * @maximum 499
      */
-  sentInCurrentGroup?: number;
+  groupsSentInInterval?: number;
   running: boolean;
   groupIds: string[];
   /** @nullable */
@@ -159,9 +159,9 @@ export interface AdvertisingForwardStartInput {
   sourceFingerprint: string;
   /**
      * @minimum 1
-     * @maximum 10
+     * @maximum 500
      */
-  messagesPerGroup?: number;
+  groupsPerInterval: number;
   /**
      * @minItems 1
      * @maxItems 500

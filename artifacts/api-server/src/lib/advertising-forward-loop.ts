@@ -19,7 +19,7 @@ export async function startForwardLoop(owner: string, input: AdvertisingForwardS
   input = StartAdvertisingForwardLoopBody.parse(input);
   if (!input.permissionConfirmed) throw new AccountError("Confirm you have permission to advertise in every selected group.");
   const payloadHash = createHash("sha256").update(JSON.stringify({ accountId: input.accountId, messageId: input.messageId,
-    fingerprint: input.sourceFingerprint, groupIds: input.groupIds, intervalSeconds: input.intervalSeconds, messagesPerGroup: input.messagesPerGroup ?? 1,
+    fingerprint: input.sourceFingerprint, groupIds: input.groupIds, intervalSeconds: input.intervalSeconds, groupsPerInterval: input.groupsPerInterval,
     expected: [...input.expectedGroups].sort((a, b) => a.id.localeCompare(b.id)) })).digest("hex");
   await assertTransferReviewed(owner);
   return withAdvertisingLock(owner, async client => {
@@ -46,7 +46,7 @@ export async function startForwardLoop(owner: string, input: AdvertisingForwardS
     if (source.id !== input.messageId || source.accountId !== input.accountId || source.fingerprint !== input.sourceFingerprint || !source.canForward)
       throw new AccountError("The saved message changed after you selected it. Refresh Saved Messages and confirm it again.", "validation", 0, "SAVED_MESSAGE_CHANGED");
     const snapshot: AdvertisingDraft = { text: source.text.trim() ? source.text : `Saved message #${source.id}`, imageUrl: null, buttonText: "", buttonUrl: null,
-      forward: { source, intervalSeconds: input.intervalSeconds, messagesPerGroup: input.messagesPerGroup ?? 1, planId: input.idempotencyKey, order: 0 } };
+      forward: { source, intervalSeconds: input.intervalSeconds, groupsPerInterval: input.groupsPerInterval, planId: input.idempotencyKey, order: 0 } };
     validateForwardSnapshot(snapshot.forward);
     await client.query("BEGIN");
     try {
@@ -64,6 +64,7 @@ export async function startForwardLoop(owner: string, input: AdvertisingForwardS
           interval_seconds=EXCLUDED.interval_seconds,next_send_at=EXCLUDED.next_send_at,revision=advertising_schedules.revision+1,
           batch_sent_count=0,last_status='queued',note=EXCLUDED.note`, [groupId, owner, account.generation, JSON.stringify(draft), input.intervalSeconds, order]);
       }
+      await client.query("UPDATE advertising_accounts SET groups_sent_in_interval=0,last_forward_order=-1 WHERE owner_id=$1", [owner]);
       await resetCampaignInterval(owner, client);
       await client.query("INSERT INTO advertising_account_commands(owner_id,request_key,payload_hash) VALUES($1,$2,$3)", [owner, input.idempotencyKey, payloadHash]);
       await client.query("COMMIT");
@@ -71,16 +72,16 @@ export async function startForwardLoop(owner: string, input: AdvertisingForwardS
   });
 }
 export async function ownerForwardLoop(owner: string, draft: AdvertisingDraft): Promise<AdvertisingForwardLoop> {
-  const empty: AdvertisingForwardLoop = { source: null, intervalSeconds: 1800, messagesPerGroup: 1, sentInCurrentGroup: 0, running: false, groupIds: [], nextGroupId: null, nextSendAt: null };
+  const empty: AdvertisingForwardLoop = { source: null, intervalSeconds: 1800, groupsPerInterval: 1, groupsSentInInterval: 0, running: false, groupIds: [], nextGroupId: null, nextSendAt: null };
   if (!draft.forward) return empty;
   const snapshot = validateForwardSnapshot(draft.forward);
-  const rows = (await pool.query(`SELECT s.group_id,s.running,s.next_send_at,s.draft,s.batch_sent_count
+  const rows = (await pool.query(`SELECT s.group_id,s.running,s.next_send_at,s.draft
     FROM advertising_schedules s JOIN advertising_groups g ON g.id=s.group_id AND g.owner_id=s.owner_id
     WHERE s.owner_id=$1 AND s.draft->'forward'->>'planId'=$2 ORDER BY s.next_send_at NULLS LAST,s.group_id`, [owner, snapshot.planId])).rows;
   const active = rows.filter(r => r.running);
-  const account = (await pool.query("SELECT next_send_at FROM advertising_accounts WHERE owner_id=$1", [owner])).rows[0];
-  return { source: snapshot.source, intervalSeconds: snapshot.intervalSeconds, messagesPerGroup: snapshot.messagesPerGroup ?? 1,
-    sentInCurrentGroup: active[0]?.batch_sent_count ?? 0, running: active.length > 0,
+  const account = (await pool.query("SELECT next_send_at,groups_sent_in_interval FROM advertising_accounts WHERE owner_id=$1", [owner])).rows[0];
+  return { source: snapshot.source, intervalSeconds: snapshot.intervalSeconds, groupsPerInterval: snapshot.groupsPerInterval ?? 1,
+    groupsSentInInterval: active.length ? account?.groups_sent_in_interval ?? 0 : 0, running: active.length > 0,
     groupIds: [...(active.length ? active : rows)].sort((a, b) => a.draft.forward.order - b.draft.forward.order).map(r => r.group_id),
     nextGroupId: active[0]?.group_id ?? null, nextSendAt: active.length ? account?.next_send_at ?? null : null };
 }

@@ -17,7 +17,7 @@ export type IntervalUnit = "m" | "h";
 export const unitSec = (u: IntervalUnit) => (u === "m" ? 60 : 3600);
 export const toSeconds = (v: string, u: IntervalUnit) => Math.round(Number(v) * unitSec(u));
 export const intervalOk = (s: number) => Number.isInteger(s) && s >= 60 && s <= 2592000;
-export const copiesOk = (n: number) => Number.isInteger(n) && n >= 1 && n <= 10;
+export const groupsPerIntervalOk = (n: number) => Number.isInteger(n) && n >= 1 && n <= 500;
 export const splitInterval = (s: number): [string, IntervalUnit] => (s % 3600 === 0 ? [String(s / 3600), "h"] : [String(Math.max(1, Math.round(s / 60))), "m"]);
 
 /** Groups eligible for the queue, in displayed (workspace) order. */
@@ -31,26 +31,26 @@ export function IntervalPanel({ value, unit, onChange }: { value: string; unit: 
     <Panel title="Shared delay" meta="one timer for the whole queue">
       <div className="space-y-2">
         <div className="flex gap-2">
-          <Input type="number" min={1} step={1} value={value} onChange={e => onChange(e.target.value, unit)} className="max-w-[140px] font-mono" aria-label="Delay between groups" data-testid="input-shared-interval" />
+          <Input type="number" min={1} step={1} value={value} onChange={e => onChange(e.target.value, unit)} className="max-w-[140px] font-mono" aria-label="Delay between batches" data-testid="input-shared-interval" />
           <div className="flex gap-1 rounded-md bg-muted p-1">{(["m", "h"] as const).map(u => <button key={u} type="button" onClick={() => onChange(value, u)} className={cn("rounded px-3 font-mono text-xs", unit === u ? "bg-ink text-white" : "text-muted-foreground hover:text-foreground")} data-testid={`button-shared-unit-${u}`}>{u === "m" ? "minutes" : "hours"}</button>)}</div>
         </div>
         {bad ? <p className="text-sm text-destructive" data-testid="error-shared-interval">Choose between 1 minute and 720 hours (30 days), in whole seconds.</p>
-          : <p className="text-xs text-muted-foreground">Group 1, wait {value && intervalOk(sec) ? fmtInterval(sec) : "..."}, group 2, wait, and so on. After the last group the queue starts again from the top. A confirmed restart resets this interval, but Telegram-required waits still apply. Groups that lose membership or posting permission are automatically disabled.</p>}
+          : <p className="text-xs text-muted-foreground">Send once to each group in a batch, wait {value && intervalOk(sec) ? fmtInterval(sec) : "..."}, then send to the next batch. After the final batch, wait before starting the next cycle. A confirmed restart resets this interval; Telegram-required waits still apply.</p>}
       </div>
     </Panel>
   );
 }
 
-export function MessagesPerGroupPanel({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+export function GroupsPerIntervalPanel({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   const count = Number(value);
   return (
-    <Panel title="Messages per group" meta="repeat the selected message">
+    <Panel title="Groups per interval" meta="one message per group">
       <div className="space-y-2">
-        <label htmlFor="messages-per-group" className="block text-xs text-muted-foreground">Copies of the selected Saved Message per group visit</label>
-        <Input id="messages-per-group" type="number" min={1} max={10} step={1} value={value}
-          onChange={e => onChange(e.target.value)} className="max-w-[140px] font-mono" data-testid="input-messages-per-group" />
-        {!copiesOk(count) ? <p className="text-sm text-destructive" data-testid="error-messages-per-group">Choose a whole number from 1 to 10.</p>
-          : <p className="text-xs text-muted-foreground">Send {count} {count === 1 ? "copy" : "copies"} to each group, then wait the shared delay before the next group. Copies are sent one at a time with at least 3 seconds between them. Telegram-required waits can make this longer.</p>}
+        <label htmlFor="groups-per-interval" className="block text-xs text-muted-foreground">How many different groups receive the message before waiting</label>
+        <Input id="groups-per-interval" type="number" min={1} max={500} step={1} value={value}
+          onChange={e => onChange(e.target.value)} className="max-w-[140px] font-mono" data-testid="input-groups-per-interval" />
+        {!groupsPerIntervalOk(count) ? <p className="text-sm text-destructive" data-testid="error-groups-per-interval">Choose a whole number from 1 to 500.</p>
+          : <p className="text-xs text-muted-foreground">Send the selected message once to each of up to {count} different groups, then wait the shared interval. The final batch can have fewer groups. Groups are contacted one at a time with a short pause; Telegram-required waits still apply.</p>}
         <p className="text-xs text-muted-foreground">Changes take effect only after you review and start a new queue.</p>
       </div>
     </Panel>
@@ -78,7 +78,7 @@ export function ForwardingStatus({ ws }: { ws: AdvertisingWorkspace }) {
           <span className="text-xs"><span className="text-muted-foreground">Next </span><b data-testid="text-forward-next-group">{next ? next.title || next.target : "-"}</b>{pos > 0 && <span className="font-mono text-muted-foreground"> ({pos}/{f.groupIds.length})</span>}</span>
           <span className="text-xs"><span className="text-muted-foreground">at </span><b className="font-mono" data-testid="text-forward-next-at">{f.nextSendAt ? dateTime(f.nextSendAt) : "now"}</b></span>
           <span className="text-xs"><span className="text-muted-foreground">delay </span><b className="font-mono">{fmtInterval(f.intervalSeconds)}</b></span>
-          <span className="text-xs" data-testid="text-forward-copies"><b className="font-mono">{f.messagesPerGroup ?? 1}</b> copies/group · {f.sentInCurrentGroup ?? 0} completed in next group</span>
+          <span className="text-xs" data-testid="text-forward-batch"><b className="font-mono">{f.groupsPerInterval ?? 1}</b> groups/interval · {f.groupsSentInInterval ?? 0} reached in current batch</span>
         </>}
         <Button variant="ghost" className="ml-auto text-destructive" disabled={!active || stopAll.isPending} onClick={() => setConfirm(true)} data-testid="button-stop-all">{stopAll.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <OctagonX className="mr-1.5 h-4 w-4" />}Stop all</Button>
       </div>
@@ -94,9 +94,9 @@ export function ForwardingStatus({ ws }: { ws: AdvertisingWorkspace }) {
   );
 }
 
-type Frozen = { accountId: string; accountName: string; source: AdvertisingSavedMessage; groups: AdvertisingGroup[]; intervalSeconds: number; messagesPerGroup: number };
+type Frozen = { accountId: string; accountName: string; source: AdvertisingSavedMessage; groups: AdvertisingGroup[]; intervalSeconds: number; groupsPerInterval: number };
 
-export function ForwardStartDialog({ open, onOpenChange, ws, source, selected, intervalSeconds, messagesPerGroup }: { open: boolean; onOpenChange: (o: boolean) => void; ws: AdvertisingWorkspace; source: AdvertisingSavedMessage | null; selected: Set<string>; intervalSeconds: number; messagesPerGroup: number }) {
+export function ForwardStartDialog({ open, onOpenChange, ws, source, selected, intervalSeconds, groupsPerInterval }: { open: boolean; onOpenChange: (o: boolean) => void; ws: AdvertisingWorkspace; source: AdvertisingSavedMessage | null; selected: Set<string>; intervalSeconds: number; groupsPerInterval: number }) {
   const sync = useWorkspaceSync();
   const { toast } = useToast();
   const start = useStartAdvertisingForwardLoop({ mutation: { gcTime: 0 } });
@@ -105,25 +105,25 @@ export function ForwardStartDialog({ open, onOpenChange, ws, source, selected, i
   const [err, setErr] = useState("");
   const keyRef = useRef<{ sig: string; key: string } | null>(null);
   const busyRef = useRef(false);
-  const live = useRef({ ws, source, selected, intervalSeconds, messagesPerGroup }); live.current = { ws, source, selected, intervalSeconds, messagesPerGroup };
+  const live = useRef({ ws, source, selected, intervalSeconds, groupsPerInterval }); live.current = { ws, source, selected, intervalSeconds, groupsPerInterval };
   useEffect(() => {
     if (!open) return;
-    const { ws: w, source: s, selected: sel, intervalSeconds: iv, messagesPerGroup: copies } = live.current;
-    setSnap(s && w.account.accountId ? { accountId: w.account.accountId, accountName: w.account.username ? `@${w.account.username}` : w.account.displayName, source: s, groups: queueGroups(w, sel), intervalSeconds: iv, messagesPerGroup: copies } : null);
+    const { ws: w, source: s, selected: sel, intervalSeconds: iv, groupsPerInterval: batchSize } = live.current;
+    setSnap(s && w.account.accountId ? { accountId: w.account.accountId, accountName: w.account.username ? `@${w.account.username}` : w.account.displayName, source: s, groups: queueGroups(w, sel), intervalSeconds: iv, groupsPerInterval: batchSize } : null);
     setOk(false); setErr("");
   }, [open]);
-  const sig = useMemo(() => snap ? JSON.stringify([snap.accountId, snap.source.id, snap.source.fingerprint, snap.groups.map(g => [g.id, g.chatId]), snap.intervalSeconds, snap.messagesPerGroup]) : "", [snap]);
+  const sig = useMemo(() => snap ? JSON.stringify([snap.accountId, snap.source.id, snap.source.fingerprint, snap.groups.map(g => [g.id, g.chatId]), snap.intervalSeconds, snap.groupsPerInterval]) : "", [snap]);
   const legacy = legacyRunning(ws).length;
   const sourceOk = !!snap && snap.source.accountId === snap.accountId && snap.source.canForward && ws.account.accountId === snap.accountId;
   async function go() {
-    if (!snap || busyRef.current || !sourceOk || !copiesOk(snap.messagesPerGroup)) return;
+    if (!snap || busyRef.current || !sourceOk || !groupsPerIntervalOk(snap.groupsPerInterval)) return;
     busyRef.current = true; setErr("");
     try {
       if (!keyRef.current || keyRef.current.sig !== sig) keyRef.current = { sig, key: crypto.randomUUID() };
       sync(await start.mutateAsync({ data: { accountId: snap.accountId, messageId: snap.source.id, sourceFingerprint: snap.source.fingerprint, groupIds: snap.groups.map(g => g.id),
-        expectedGroups: snap.groups.map(g => ({ id: g.id, chatId: g.chatId! })), intervalSeconds: snap.intervalSeconds, messagesPerGroup: snap.messagesPerGroup, permissionConfirmed: true, idempotencyKey: keyRef.current.key } }));
+        expectedGroups: snap.groups.map(g => ({ id: g.id, chatId: g.chatId! })), intervalSeconds: snap.intervalSeconds, groupsPerInterval: snap.groupsPerInterval, permissionConfirmed: true, idempotencyKey: keyRef.current.key } }));
       keyRef.current = null;
-      toast({ title: "Forwarding started", description: `${snap.messagesPerGroup} copies per group, ${snap.groups.length} groups, ${fmtInterval(snap.intervalSeconds)} apart.` });
+      toast({ title: "Forwarding started", description: `One message per group. Up to ${snap.groupsPerInterval} groups every ${fmtInterval(snap.intervalSeconds)}.` });
       onOpenChange(false);
     } catch (x) { setErr(errMsg(x)); }
     finally { start.reset(); busyRef.current = false; }
@@ -132,31 +132,31 @@ export function ForwardStartDialog({ open, onOpenChange, ws, source, selected, i
   return (
     <Dialog open={open} onOpenChange={o => !busy && onOpenChange(o)}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader><DialogTitle>Start forwarding queue</DialogTitle><DialogDescription>This exact Saved Message, copies per group, group order and delay are frozen now. Edits on the page after this point do not change this request.</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>Start forwarding queue</DialogTitle><DialogDescription>This exact Saved Message, groups per interval, group order and delay are frozen now. Each group receives one message per cycle.</DialogDescription></DialogHeader>
         {snap && <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <div className="rounded-lg border bg-muted/30 p-3"><div className="mb-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Original message, forwarded as is</div><SavedMessageCard m={snap.source} /></div>
             <p className="text-xs text-muted-foreground">Forwarded as {snap.accountName}. Media, formatting and custom emoji come from the original in Telegram.</p>
           </div>
           <div className="min-w-0">
-            <div className="mb-1 flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-muted-foreground" data-testid="text-start-count"><Repeat className="h-3 w-3" />{snap.groups.length} groups · {snap.messagesPerGroup} copies each · {fmtInterval(snap.intervalSeconds)} apart</div>
+            <div className="mb-1 flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-muted-foreground" data-testid="text-start-count"><Repeat className="h-3 w-3" />{snap.groups.length} groups · up to {snap.groupsPerInterval} per interval · {fmtInterval(snap.intervalSeconds)}</div>
             <ol className="max-h-72 overflow-y-auto rounded-md border p-2 text-xs">{snap.groups.map((g, i) => <li key={g.id} data-testid={`row-start-group-${g.id}`}>
-              <div className="flex items-center gap-2 py-1"><span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-ink font-mono text-[10px] text-white">{i + 1}</span><span className="min-w-0 flex-1 truncate font-mono">{g.title || g.target}</span><span>{snap.messagesPerGroup} copies</span></div>
-              {i < snap.groups.length - 1 && <div className="flex items-center gap-1 pl-1.5 text-[10px] text-muted-foreground"><ArrowDown className="h-3 w-3" />wait {fmtInterval(snap.intervalSeconds)}</div>}
+              <div className="flex items-center gap-2 py-1"><span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-ink font-mono text-[10px] text-white">{i + 1}</span><span className="min-w-0 flex-1 truncate font-mono">{g.title || g.target}</span><span>1 message</span></div>
+              {i < snap.groups.length - 1 && <div className="flex items-center gap-1 pl-1.5 text-[10px] text-muted-foreground"><ArrowDown className="h-3 w-3" />{(i + 1) % snap.groupsPerInterval === 0 ? `wait ${fmtInterval(snap.intervalSeconds)}` : "next group after a short pause"}</div>}
             </li>)}
               <li className="mt-1 flex items-center gap-1 border-t pt-1 text-[10px] text-muted-foreground"><Repeat className="h-3 w-3" />wait {fmtInterval(snap.intervalSeconds)}, then back to 1</li></ol>
           </div>
         </div>}
         {!snap && <p className="text-sm text-destructive">Select a source message and connect the account first.</p>}
         <ul className="list-disc space-y-1 pl-4 text-xs text-muted-foreground">
-          <li>The first forward may happen immediately. Each group receives {snap?.messagesPerGroup ?? 1} copies before the shared delay; copies have a short pause between them.</li>
+          <li>The first forward may happen immediately. Send once to each of up to {snap?.groupsPerInterval ?? 1} groups, then wait the shared interval. Also wait after the final partial batch before repeating the cycle.</li>
           <li>The queue repeats until you press Stop all. Stopped or imported queues never restart automatically.</li>
           <li>Starting replaces any existing schedules on this account{legacy > 0 ? `, including ${legacy} older editor-based schedule${legacy === 1 ? "" : "s"}` : ""}.</li>
           <li>Telegram forwarding restrictions still apply. Groups that block forwards or links may reject it.</li>
         </ul>
         <label className="flex items-start gap-2 text-sm"><Checkbox checked={ok} onCheckedChange={v => setOk(v === true)} data-testid="checkbox-start-permission" /><span>I have permission to repeatedly forward this message in every group listed.</span></label>
         {err && <p role="alert" className="text-sm text-destructive" data-testid="error-start">{err} Retrying reuses the same request, so nothing starts twice.</p>}
-        <DialogFooter><Button disabled={!ok || busy || !snap?.groups.length || !sourceOk || !ws.account.connected || !!ws.account.login || !intervalOk(snap?.intervalSeconds ?? 0) || !copiesOk(snap?.messagesPerGroup ?? 0)} onClick={go} data-testid="button-confirm-start">{busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Play className="mr-1.5 h-4 w-4" />}{err ? "Retry start" : `Start queue of ${snap?.groups.length ?? 0}`}</Button></DialogFooter>
+        <DialogFooter><Button disabled={!ok || busy || !snap?.groups.length || !sourceOk || !ws.account.connected || !!ws.account.login || !intervalOk(snap?.intervalSeconds ?? 0) || !groupsPerIntervalOk(snap?.groupsPerInterval ?? 0)} onClick={go} data-testid="button-confirm-start">{busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Play className="mr-1.5 h-4 w-4" />}{err ? "Retry start" : `Start queue of ${snap?.groups.length ?? 0}`}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );

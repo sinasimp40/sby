@@ -16,9 +16,9 @@ export interface AdvertisingForwardSnapshot {
   intervalSeconds: number;
   /**
      * @minimum 1
-     * @maximum 10
+     * @maximum 500
      */
-  messagesPerGroup?: number;
+  groupsPerInterval?: number;
   planId: string;
   /**
      * @minimum 0

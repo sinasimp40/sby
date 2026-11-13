@@ -15,6 +15,8 @@ export const advertisingAccounts = pgTable("advertising_accounts", {
   lastError: text("last_error"),
   nextSendAt: timestamp("next_send_at", { withTimezone: true }).notNull().defaultNow(),
   telegramWaitUntil: timestamp("telegram_wait_until", { withTimezone: true }).notNull().default(sql`'1970-01-01T00:00:00.000000Z'`),
+  groupsSentInInterval: integer("groups_sent_in_interval").notNull().default(0),
+  lastForwardOrder: integer("last_forward_order").notNull().default(-1),
   loginId: uuid("login_id"),
   loginEncrypted: text("login_encrypted"),
   loginExpiresAt: timestamp("login_expires_at", { withTimezone: true }),

@@ -19,9 +19,9 @@ export interface AdvertisingForwardStartInput {
   sourceFingerprint: string;
   /**
      * @minimum 1
-     * @maximum 10
+     * @maximum 500
      */
-  messagesPerGroup?: number;
+  groupsPerInterval: number;
   /**
      * @minItems 1
      * @maxItems 500

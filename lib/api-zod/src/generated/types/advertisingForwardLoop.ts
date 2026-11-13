@@ -12,14 +12,14 @@ export interface AdvertisingForwardLoop {
   intervalSeconds: number;
   /**
      * @minimum 1
-     * @maximum 10
+     * @maximum 500
      */
-  messagesPerGroup?: number;
+  groupsPerInterval?: number;
   /**
      * @minimum 0
-     * @maximum 9
+     * @maximum 499
      */
-  sentInCurrentGroup?: number;
+  groupsSentInInterval?: number;
   running: boolean;
   groupIds: string[];
   /** @nullable */

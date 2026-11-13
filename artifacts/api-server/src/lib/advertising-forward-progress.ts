@@ -1,31 +1,33 @@
 import type { AdvertisingForwardSnapshot } from "@workspace/api-zod";
 import type { AdvertisingClient } from "./advertising-store";
 
-export const COPY_PAUSE_SECONDS = 3;
+export const INTER_GROUP_PAUSE_SECONDS = 3;
 
-// Each copy is a separate durable occurrence with its own Telegram random ID.
-// Persist its receipt and batch progress together. A crash before commit leaves
-// a "sending" record to stop/review, never an automatic replay.
-export async function completeForwardCopy(
+// One send per group visit. Receipt, queue advancement and account-wide batch
+// progress commit together. An interrupted send is reviewed, never replayed.
+export async function completeForwardGroup(
   owner: string, client: AdvertisingClient, groupId: string,
   forward: AdvertisingForwardSnapshot, sentCount: number,
   receipt?: { runId: string; messageId: number },
 ) {
-  const count = forward.messagesPerGroup ?? 1;
+  const count = forward.groupsPerInterval ?? 1;
   const completed = sentCount + 1;
-  const finished = completed >= count;
-  const gap = finished ? forward.intervalSeconds : COPY_PAUSE_SECONDS;
   await client.query("BEGIN");
   try {
+    const active = (await client.query(`SELECT draft FROM advertising_schedules WHERE owner_id=$1 AND running=true
+      AND draft->'forward'->>'planId'=$2`, [owner, forward.planId])).rows;
+    const finalOrder = Math.max(forward.order, ...active.map(row => Number(row.draft.forward.order)));
+    const finished = completed >= count || forward.order >= finalOrder;
+    const gap = finished ? forward.intervalSeconds : INTER_GROUP_PAUSE_SECONDS;
     if (receipt) await client.query("UPDATE advertising_account_runs SET status='sent',sent_at=now(),note=$2 WHERE id=$1",
-      [receipt.runId, `Verified in selected group: message #${receipt.messageId}. Copy ${completed}/${count}. It was readable at send time; later removal is possible.`]);
-    await client.query(`UPDATE advertising_schedules SET batch_sent_count=$3,revision=revision+1,
-      next_send_at=CASE WHEN $4 THEN now() ELSE next_send_at END,last_status='sent',note=$5
-      WHERE owner_id=$1 AND group_id=$2`, [owner, groupId, finished ? 0 : completed, finished,
-      finished ? `Forwarded ${count}/${count} copies. This group returns after the others in the shared queue.`
-        : `Forwarded ${completed}/${count} copies. Next copy follows a short pause; Telegram waits still apply.`]);
-    await client.query(`UPDATE advertising_accounts SET next_send_at=GREATEST(telegram_wait_until,now()+$2*interval '1 second')
-      WHERE owner_id=$1`, [owner, gap]);
+      [receipt.runId, `Verified in selected group: message #${receipt.messageId}. One message to this group. It was readable at send time; later removal is possible.`]);
+    await client.query(`UPDATE advertising_schedules SET batch_sent_count=0,revision=revision+1,
+      next_send_at=now(),last_status='sent',note=$3 WHERE owner_id=$1 AND group_id=$2`, [owner, groupId,
+      finished ? "Forwarded once. The shared interval applies before the next batch."
+        : `Forwarded once. ${completed}/${count} groups reached in this interval.`]);
+    await client.query(`UPDATE advertising_accounts SET groups_sent_in_interval=$3,last_forward_order=$4,
+      next_send_at=GREATEST(telegram_wait_until,now()+$2*interval '1 second')
+      WHERE owner_id=$1`, [owner, gap, finished ? 0 : completed, forward.order]);
     await client.query("UPDATE advertising_groups SET last_sent_at=now() WHERE owner_id=$1 AND id=$2", [owner, groupId]);
     await client.query("COMMIT");
   } catch (error) { await client.query("ROLLBACK"); throw error; }

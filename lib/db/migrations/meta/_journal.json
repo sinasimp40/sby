@@ -22,6 +22,13 @@
       "when": 1794555391721,
       "tag": "0002_mushy_synch",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1794556655006,
+      "tag": "0003_flimsy_lizard",
+      "breakpoints": true
     }
   ]
 }
