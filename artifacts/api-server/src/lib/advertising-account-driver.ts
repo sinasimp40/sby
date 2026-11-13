@@ -10,6 +10,7 @@ import { validateAdvertisingDraft } from "./advertising-telegram";
 import { AccountError, safeAccountError, reportAccountError, type AccountOperation } from "./advertising-account-errors";
 import { confirmAccountPost, type AccountPostReceipt } from "./advertising-account-receipt";
 import { inspectMembership, joinMembership, leaveMembership, type MembershipProbe } from "./advertising-membership-telegram";
+import { accountGroupUpdate, type AccountGroupUpdate } from "./advertising-group-updates";
 export { AccountError, safeAccountError } from "./advertising-account-errors";
 async function bounded<T>(fn: () => Promise<T>): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -32,6 +33,7 @@ export interface AccountDriver {
   session(): string;
   me(allowPending?: boolean): Promise<AccountIdentity | null>;
   onFailure?(handler: (error: AccountError) => void): void;
+  onGroupUpdate?(handler: (change: AccountGroupUpdate) => void): void;
   sendCode(phone: string): Promise<string>;
   code(phone: string, hash: string, code: string): Promise<void>;
   password(password: string): Promise<void>;
@@ -149,9 +151,18 @@ export const createAccountDriver: AccountFactory = ({ apiId, apiHash, session = 
     if (["auth", "restricted", "network"].includes(safe.kind)) { fatal = safe; onFailure?.(safe); }
   };
   let qrAccepted = false;
+  let selfId = "";
+  let onGroupUpdate: ((change: AccountGroupUpdate) => void) | undefined;
   let cachedQr: { authorized: false; url: string; expires: number } | undefined;
   client.addEventHandler(update => {
     if (update instanceof Api.UpdateLoginToken) qrAccepted = true;
+    if (closed || fatal || !selfId) return;
+    const change = accountGroupUpdate(update, selfId);
+    if (change) {
+      dialogs = null;
+      resolvedGroups.delete(change.chatId);
+      onGroupUpdate?.(change);
+    }
   });
   const resolvedGroups = new Map<string, Api.Chat | Api.Channel>();
   const joined = async () => {
@@ -223,6 +234,7 @@ export const createAccountDriver: AccountFactory = ({ apiId, apiHash, session = 
     }),
     disconnect: async () => { closed = true; await client.destroy(); },
     onFailure: handler => { onFailure = handler; },
+    onGroupUpdate: handler => { onGroupUpdate = handler; },
     session: () => store.save(),
     me: (allowPending = false) => run("identity", async () => {
       // Only explicitly pending login keys may mean "not signed in".
@@ -235,6 +247,7 @@ export const createAccountDriver: AccountFactory = ({ apiId, apiHash, session = 
       }
       if (!(user instanceof Api.User) || user.bot) throw new AccountError("Sign in with a personal Telegram account, not a bot.");
       authorized = true;
+      selfId = user.id.toString();
       return { id: user.id.toString(), username: user.username ?? "", displayName: [user.firstName, user.lastName].filter(Boolean).join(" ").slice(0, 200) };
     }),
     sendCode: phone => run("send_code", async () => {

@@ -1,3 +1,4 @@
+import { repairMissingLeaveIdentities, MISSING_LEAVE_IDENTITY } from "./advertising-leave-repair";
 import { pool } from "@workspace/db";
 import { withAdvertisingLock, type AdvertisingClient } from "./advertising-store";
 import { withAccountDriver, stopAccountSchedules } from "./advertising-account-auth";
@@ -104,6 +105,7 @@ export async function processAccountMembership(owner: string, factory: AccountFa
       WHERE owner_id=$1 AND status='working' AND updated_at<now()-interval '60 seconds'`, [owner]);
     const account = (await client.query("SELECT * FROM advertising_accounts WHERE owner_id=$1", [owner])).rows[0];
     if (!account?.account_id) return;
+    await repairMissingLeaveIdentities(owner, client, account);
     await recordedFailures(owner, client, account);
     await queueRecordedUncertain(owner, client, account);
     // Automatic leaves remain authorized for this same account after sign-in.
@@ -151,7 +153,7 @@ export async function processAccountMembership(owner: string, factory: AccountFa
           if (!group || group.status !== "removed") {
             await client.query("UPDATE advertising_membership_jobs SET status='stopped',note='Destination is no longer marked removed.',updated_at=now() WHERE id=$1", [job.id]); return;
           }
-          if (!job.chat_id || group.chat_id !== job.chat_id) throw new AccountError("Cannot safely identify this group for leaving. Removed locally; check membership manually.");
+          if (!job.chat_id || group.chat_id !== job.chat_id) throw new AccountError(MISSING_LEAVE_IDENTITY);
           if (!driver.leave) throw new AccountError("This account client does not support leaving groups.");
           actionAttempted = true;
           const outcome = await driver.leave(job.target, job.chat_id);

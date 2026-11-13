@@ -2702,6 +2702,12 @@ export const GetAdvertisingWorkspaceResponse = zod.object({
 })
 
 
+/**
+ * Cookie-authenticated server-sent advertising workspace snapshots. Reconnects receive the latest snapshot.
+ */
+export const StreamAdvertisingWorkspaceResponse = zod.unknown()
+
+
 export const connectAdvertisingBotBodyTokenMin = 20;
 export const connectAdvertisingBotBodyTokenMax = 200;
 

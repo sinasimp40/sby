@@ -20,6 +20,20 @@ export async function checkAccountGroups(owner: string, ids: string[], factory: 
         continue;
       }
       try {
+        // Pin public/invite targets before checking posting rights. A denied
+        // posting check must not discard the identity needed for a safe leave.
+        if (!group.chat_id && !/^-\d+$/.test(group.target) && driver.membership) {
+          const membership = await driver.membership(group.target);
+          if (membership.chatId) {
+            const duplicate = await client.query("SELECT 1 FROM advertising_groups WHERE owner_id=$1 AND chat_id=$2 AND id<>$3",
+              [owner, membership.chatId, group.id]);
+            if (!duplicate.rowCount) {
+              await client.query("UPDATE advertising_groups SET chat_id=$3 WHERE owner_id=$1 AND id=$2",
+                [owner, group.id, membership.chatId]);
+              group.chat_id = membership.chatId;
+            }
+          }
+        }
         const checked = await driver.inspect(group.chat_id || group.target);
         const duplicate = (await client.query("SELECT status FROM advertising_groups WHERE owner_id=$1 AND chat_id=$2 AND id<>$3", [owner, checked.chatId, group.id])).rows[0];
         if (duplicate?.status === "removed") await client.query(`UPDATE advertising_groups SET enabled=false,status='removed',account_generation=NULL,

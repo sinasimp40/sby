@@ -3,6 +3,12 @@ name: Separate advertising account
 description: Merchant-required Telegram personal-account advertising, independent of the shop bot, with explicit recurring group controls.
 ---
 
+The user requires automatic, immediate group-list and count updates when data, membership, permission checks or errors change, rather than clicking Refresh or waiting five seconds.
+
+**Why:** The user explicitly requested “just make it smart update” after seeing stale group counts and failed leaves.
+
+**How to apply:** Keep the list, selection and counts synchronized with confirmed server/account changes. Distinguish removal from advertising from confirmed Telegram departure; a failed leave must never be presented as having left Telegram.
+
 The user explicitly requires advertising through their own Telegram client account, not an advertising bot, inside the same dashboard. Support both phone plus login code and QR login, Telegram two-step verification, selected destination groups, one shared interval between sequential group forwards, and Start/Stop controls. Keep `.txt` group-link segregation and manual group entry.
 
 **Why:** The user explicitly replaced the earlier separate-bot approach with an account that can chat in groups. They were concerned about advertisements interfering with customers using the shop bot.

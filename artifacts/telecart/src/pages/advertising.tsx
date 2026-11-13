@@ -12,9 +12,11 @@ import { ForwardingStatus, ForwardStartDialog, IntervalPanel, GroupsPerIntervalP
 import { MembershipPanel } from "@/components/advertising/membership-panel";
 import { ResumePanel } from "@/components/advertising/resume-panel";
 import { retainedGroupSelection } from "@/components/advertising/group-list";
+import { useLiveAdvertisingWorkspace } from "@/components/advertising/use-live-workspace";
 
 export default function AdvertisingPage() {
-  const ws = useGetAdvertisingWorkspace({ query: { queryKey: getGetAdvertisingWorkspaceQueryKey(), refetchInterval: 5000,
+  const live = useLiveAdvertisingWorkspace();
+  const ws = useGetAdvertisingWorkspace({ query: { queryKey: getGetAdvertisingWorkspaceQueryKey(),
     refetchOnWindowFocus: true, refetchOnReconnect: true } });
   const [source, setSource] = useState<AdvertisingSavedMessage | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -70,6 +72,9 @@ export default function AdvertisingPage() {
   return (
     <div>
       <PageHeader eyebrow="Growth" title="Advertising" description="Forward one message from your Saved Messages through your groups, one at a time with a shared delay. Nothing starts until you confirm, and it never touches orders, payments or the shop bot." />
+      <p className="mb-4 text-xs text-muted-foreground" role="status" data-testid="status-advertising-live">
+        {live ? "Live updates connected · group changes appear automatically." : "Connecting live updates… changes will sync when connected."}
+      </p>
       <ForwardingStatus ws={w} />
       <ResumePanel key={`resume-${accountId ?? "none"}`} ws={w} />
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">

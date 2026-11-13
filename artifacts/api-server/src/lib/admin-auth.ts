@@ -87,6 +87,18 @@ export const adminSessionMiddleware: RequestHandler = async (req, res, next) => 
   } catch { res.status(503).json({ error: "Unable to verify your admin session. Please try again." }); }
 };
 
+/** Revalidate long-lived streams after password changes, expiry or logout. */
+export async function hasCurrentAdminSession(req: Request) {
+  const token = req.cookies?.[adminCookieName()];
+  const s = settings();
+  if (!s || typeof token !== "string" || !/^[a-f0-9]{64}$/.test(token)) return false;
+  const [session] = await db.select().from(adminSessions).where(and(
+    eq(adminSessions.tokenHash, digest(token, s.secret)), eq(adminSessions.ownerId, s.owner),
+    eq(adminSessions.credentialVersion, credentialVersion()!), gt(adminSessions.expiresAt, new Date()),
+  ));
+  return Boolean(session);
+}
+
 export function requireSameOrigin(req: Request) {
   // Browser mutations require an exact configured origin; no forged host/header
   // may select a different trusted origin.

@@ -2,6 +2,8 @@ import { pool } from "@workspace/db";
 import type { PoolClient } from "@workspace/db";
 import type { AccountDriver, AccountFactory } from "./advertising-account-driver";
 import { AccountError, isTransportFailure, reportAccountError } from "./advertising-account-errors";
+import { queueAccountGroupUpdate } from "./advertising-group-updates";
+import { logger } from "./logger";
 
 type DriverInput = Parameters<AccountFactory>[0];
 type Entry = {
@@ -71,6 +73,17 @@ export async function connectedAccountSession(owner: string, key: string, input:
     live.set(owner, entry);
     published = true;
     driver.onFailure?.(error => failAccountSession(owner, ready.key, error));
+    driver.onGroupUpdate?.(change => {
+      // Use the entry's current key so QR/phone promotion and bounded network
+      // recovery keep updates on the same connection, without another login.
+      const generation = /^account:(\d+)$/.exec(ready.key)?.[1];
+      if (!generation || live.get(owner) !== ready) return;
+      void pool.query("SELECT account_id,generation FROM advertising_accounts WHERE owner_id=$1", [owner]).then(result => {
+        const account = result.rows[0];
+        if (live.get(owner) === ready && account?.account_id && account.generation === Number(generation))
+          queueAccountGroupUpdate(owner, account.account_id, account.generation, change, factory);
+      }).catch(() => logger.warn("Could not associate a Telegram update with its saved account; no membership action was taken."));
+    });
     return driver;
   } catch (error) {
     // A published entry owns its lease; otherwise this setup attempt owns it.

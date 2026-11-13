@@ -1395,6 +1395,104 @@ export function useGetAdvertisingWorkspace<TData = Awaited<ReturnType<typeof get
 
 
 
+export const getStreamAdvertisingWorkspaceUrl = () => {
+
+
+
+
+  return `/api/shop/advertising/events`
+}
+
+/**
+ * Cookie-authenticated server-sent advertising workspace snapshots. Reconnects receive the latest snapshot.
+ */
+export const streamAdvertisingWorkspace = async ( options?: Parameters<typeof customFetch>[1]): Promise<string> => {
+
+  return customFetch<string>(getStreamAdvertisingWorkspaceUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getStreamAdvertisingWorkspaceQueryKey = () => {
+    return [
+    `/api/shop/advertising/events`
+    ] as const;
+    }
+
+
+export const getStreamAdvertisingWorkspaceQueryOptions = <TData = Awaited<ReturnType<typeof streamAdvertisingWorkspace>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof streamAdvertisingWorkspace>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getStreamAdvertisingWorkspaceQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof streamAdvertisingWorkspace>>> = ({ signal }) => streamAdvertisingWorkspace({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof streamAdvertisingWorkspace>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type StreamAdvertisingWorkspaceQueryResult = NonNullable<Awaited<ReturnType<typeof streamAdvertisingWorkspace>>>
+export type StreamAdvertisingWorkspaceQueryError = ErrorType<void>
+
+
+export function useStreamAdvertisingWorkspace<TData = Awaited<ReturnType<typeof streamAdvertisingWorkspace>>, TError = ErrorType<void>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof streamAdvertisingWorkspace>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof streamAdvertisingWorkspace>>,
+          TError,
+          Awaited<ReturnType<typeof streamAdvertisingWorkspace>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useStreamAdvertisingWorkspace<TData = Awaited<ReturnType<typeof streamAdvertisingWorkspace>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof streamAdvertisingWorkspace>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof streamAdvertisingWorkspace>>,
+          TError,
+          Awaited<ReturnType<typeof streamAdvertisingWorkspace>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useStreamAdvertisingWorkspace<TData = Awaited<ReturnType<typeof streamAdvertisingWorkspace>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof streamAdvertisingWorkspace>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useStreamAdvertisingWorkspace<TData = Awaited<ReturnType<typeof streamAdvertisingWorkspace>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof streamAdvertisingWorkspace>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getStreamAdvertisingWorkspaceQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getConnectAdvertisingBotUrl = () => {
 
 

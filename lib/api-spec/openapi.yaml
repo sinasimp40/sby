@@ -104,6 +104,17 @@ paths:
       operationId: getAdvertisingWorkspace
       responses:
         "200": {description: Advertising workspace, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
+  /shop/advertising/events:
+    get:
+      operationId: streamAdvertisingWorkspace
+      description: Cookie-authenticated server-sent advertising workspace snapshots. Reconnects receive the latest snapshot.
+      responses:
+        "200":
+          description: Live workspace events
+          content:
+            text/event-stream:
+              schema: {type: string}
+        "401": {description: Admin sign-in required}
   /shop/advertising/connection:
     post:
       operationId: connectAdvertisingBot

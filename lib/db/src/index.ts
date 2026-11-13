@@ -2,7 +2,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { drizzle } from "drizzle-orm/sqlite-proxy";
 import * as schema from "./schema";
 import { sqlite, acquireDatabase, bindValue } from "./sqlite-engine";
-export { pool, sqlitePath, type PoolClient } from "./sqlite-engine";
+export { pool, sqlitePath, databaseChanges, type PoolClient } from "./sqlite-engine";
 export * from "./schema";
 
 // Hold the mutex for the ENTIRE async transaction, not individual statements:

@@ -15,6 +15,7 @@ import { parseAdvertisingTarget, segregateAdvertisingTargets } from "../lib/adve
 import { advertisingTelegram, validateAdvertisingDraft } from "../lib/advertising-telegram";
 import { createAdvertisingCampaign } from "../lib/advertising-campaigns";
 import accountRouter from "./shop-advertising-account";
+import eventsRouter from "./advertising-events";
 import { accountMode, discoverAccountGroups, checkAccountGroups } from "../lib/advertising-account-groups";
 import { stopAccountSchedules } from "../lib/advertising-account-auth";
 
@@ -32,6 +33,7 @@ const run = (fn: (req: Request, res: Response) => Promise<unknown>) => async (re
       .json({ error: error instanceof CommerceError ? error.message : error instanceof z.ZodError ? "Check the advertising fields and selection." : "Advertising request could not be completed. No credentials were exposed." });
   }
 };
+router.use(eventsRouter);
 router.get("/advertising", run(async req => advertisingWorkspace(owner(req))));
 router.get("/advertising/activity", run(async req => {
   const query = GetAdvertisingActivityQueryParams.parse(req.query);

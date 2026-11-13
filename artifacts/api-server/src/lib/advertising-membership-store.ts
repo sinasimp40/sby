@@ -22,14 +22,17 @@ export async function queueGroupRemoval(owner: string, client: AdvertisingClient
   const label = cause === "uncertain" ? "uncertain post" : "definite failure";
   await client.query("BEGIN");
   try {
-    await client.query(`UPDATE advertising_groups SET status='removed',enabled=false,note=$3 WHERE owner_id=$1 AND id=$2`,
-      [owner, group.id, `Removed after ${label}. ${reason} Leaving is queued; see membership activity.`]);
+    // Discovery can fail its first permission check before chat_id is saved.
+    // Its numeric target is already an immutable identity, unlike a username.
+    const chatId = group.chat_id || (/^-[1-9]\d*$/.test(group.target) ? group.target : null);
+    await client.query(`UPDATE advertising_groups SET status='removed',enabled=false,chat_id=$4,note=$3 WHERE owner_id=$1 AND id=$2`,
+      [owner, group.id, `Removed after ${label}. ${reason} Leaving is queued; see membership activity.`, chatId]);
     // Never rewrite posting evidence; only prevent subsequent scheduled sends.
     await client.query(`UPDATE advertising_schedules SET running=false,next_send_at=NULL,revision=revision+1,
       note=$3 WHERE owner_id=$1 AND group_id=$2`, [owner, group.id, `Destination removed after ${label}. Account leave queued; no post retry.`]);
     await client.query(`INSERT INTO advertising_membership_jobs(owner_id,account_id,generation,group_id,target,chat_id,title,action,request_key,payload_hash,note)
       VALUES($1,$2,$3,$4,$5,$6,$7,'leave',$8,'automatic',$9) ON CONFLICT DO NOTHING`,
-    [owner, account.account_id, account.generation, group.id, group.target, group.chat_id, group.title,
+    [owner, account.account_id, account.generation, group.id, group.target, chatId, group.title,
       requestKey, `Queued after ${label}. ${cause === "uncertain" ? "Telegram may already have posted. No post retry." : "Destination sending or permission failure."}`]);
     await client.query("COMMIT");
   } catch (error) { await client.query("ROLLBACK"); throw error; }

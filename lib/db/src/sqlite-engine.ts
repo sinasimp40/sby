@@ -4,6 +4,10 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, openSync, closeSync, 
 import { dirname, join, resolve } from "node:path";
 import { hostname } from "node:os";
 import { EventEmitter } from "node:events";
+// Notifications contain no records or credentials. Consumers re-read their own
+// authorized state after the writer releases its transaction.
+export const databaseChanges = new EventEmitter();
+databaseChanges.setMaxListeners(0);
 import { is, getTableName } from "drizzle-orm";
 import { SQLiteTable } from "drizzle-orm/sqlite-core";
 import * as schema from "./schema";
@@ -226,8 +230,12 @@ export class SQLiteClient extends EventEmitter {
         source.includes("/*portable*/") ? row : decodeRow(row)) : [];
       if (!statement.columns().length) {
         const result = statement.run(...parameters);
+        if (result.changes && /^\s*(INSERT|UPDATE|DELETE)\b/i.test(source) && /\badvertising_/.test(source))
+          databaseChanges.emit("advertising");
         return { rows, rowCount: Number(result.changes) };
       }
+      if (rows.length && /^\s*(INSERT|UPDATE|DELETE)\b/i.test(source) && /\badvertising_/.test(source))
+        databaseChanges.emit("advertising");
       return { rows, rowCount: rows.length };
     } catch (error) {
       // Preserve the known constraint classifications at the business boundary.
