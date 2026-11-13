@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthGate } from "@/components/auth-gate";
+import { useInventoryReveal } from "@/hooks/use-inventory-reveal";
 import { countLines, dateTime, errMsg } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -25,7 +26,7 @@ export default function InventoryPage() {
   const [clearTarget, setClearTarget] = useState<{ id: number; name: string; count: number } | null>(null);
   const qc = useQueryClient();
   const { toast } = useToast();
-  const { requireAuth } = useAuthGate();
+  const { requireAuth, isSignedIn } = useAuthGate();
 
   useEffect(() => {
     if (productId !== null || !products.data?.length) return;
@@ -37,6 +38,7 @@ export default function InventoryPage() {
   const imp = useImportInventory();
   const del = useDeleteInventoryItem();
   const clear = useClearProductInventory();
+  const stockReveal = useInventoryReveal(productId, inv.data?.map(item => item.id).join(",") ?? "", isSignedIn);
   const product = products.data?.find((p) => p.id === productId);
   const lines = countLines(entries);
   const availableCount = inv.data?.filter(i => i.status === "available").length ?? 0;
@@ -70,7 +72,7 @@ export default function InventoryPage() {
 
   return (
     <div>
-      <PageHeader eyebrow="Encrypted stock" title="Inventory" description="Import any text, one item per non-empty line. Blank lines are ignored. Items are encrypted and never shown back here." />
+      <PageHeader eyebrow="Encrypted stock" title="Inventory" description="Import any text, one item per non-empty line. Blank lines are ignored. Stock is encrypted; use Show inventory to inspect saved items." />
       {products.isError ? <ErrorState message="Failed to load products" onRetry={() => products.refetch()} /> : products.isLoading ? <RowsSkeleton /> : !products.data?.length ? (
         <EmptyState icon={KeyRound} title="No products to stock" body="Create a product first; inventory is always attached to one." />
       ) : (
@@ -106,7 +108,16 @@ export default function InventoryPage() {
             </div>
           </Panel>
           <Panel title={product ? product.name : "Stock"} meta={inv.data ? `${inv.data.filter((i) => i.status === "available").length} available · ${inv.data.length} total` : undefined} bodyClassName="p-0">
-            <div className="flex justify-end border-b border-border/60 px-4 py-2">
+            <div className="flex flex-wrap justify-end gap-2 border-b border-border/60 px-4 py-2">
+              <Button variant="outline" size="sm" disabled={!inv.data?.length || inv.isError || mutating}
+                aria-pressed={stockReveal.visible}
+                onClick={() => {
+                  if (stockReveal.visible || stockReveal.loading) stockReveal.hide();
+                  else if (requireAuth("view saved inventory")) void stockReveal.show();
+                }} data-testid="button-show-inventory">
+                {stockReveal.loading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : stockReveal.visible ? <EyeOff className="mr-1.5 h-3.5 w-3.5" /> : <Eye className="mr-1.5 h-3.5 w-3.5" />}
+                {stockReveal.loading ? "Cancel reveal" : stockReveal.visible ? "Hide inventory" : "Show inventory"}
+              </Button>
               <Button variant="outline" size="sm" className="text-destructive hover:text-destructive"
                 disabled={!product || !availableCount || inv.isError || inv.isLoading || mutating}
                 onClick={() => {
@@ -115,6 +126,8 @@ export default function InventoryPage() {
                 <Trash2 className="mr-1.5 h-3.5 w-3.5" />Clear inventory
               </Button>
             </div>
+            {stockReveal.error && <div role="alert" className="px-4 py-2 text-sm text-destructive" data-testid="text-reveal-inventory-error">{stockReveal.error}</div>}
+            {stockReveal.visible && <p className="px-4 py-2 text-xs text-muted-foreground">Saved items are visible only in this view. They hide when you switch products or leave this tab.</p>}
             {inv.isLoading ? <div className="p-4"><RowsSkeleton /></div> : inv.isError ? <div className="p-4"><ErrorState message="Failed to load inventory" onRetry={() => inv.refetch()} /></div> : !inv.data?.length ? (
               <div className="p-4"><EmptyState icon={KeyRound} title="No stock for this product" body="Import items on the left. Each purchased unit delivers one complete inventory line." /></div>
             ) : (
@@ -122,7 +135,9 @@ export default function InventoryPage() {
                 {inv.data.map((it) => (
                   <li key={it.id} className="flex items-center gap-3 px-4 py-2.5 text-sm" data-testid={`row-inventory-${it.id}`}>
                     <span className="font-mono text-xs text-muted-foreground">#{String(it.id).padStart(5, "0")}</span>
-                    <span className="font-mono text-xs tracking-widest text-muted-foreground/70">••••••••••••</span>
+                    <span className={cn("min-w-0 flex-1 font-mono text-xs", stockReveal.visible ? "whitespace-pre-wrap break-all select-text" : "tracking-widest text-muted-foreground/70")} data-testid={`text-inventory-content-${it.id}`}>
+                      {stockReveal.credentials.get(it.id) ?? "••••••••••••"}
+                    </span>
                     <StatusPill status={it.status} />
                     <span className="ml-auto hidden text-xs text-muted-foreground sm:inline">{dateTime(it.createdAt)}</span>
                     <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" disabled={it.status !== "available" || mutating} onClick={() => requireAuth("delete inventory") && setDeleteId(it.id)} data-testid={`button-delete-inventory-${it.id}`}><Trash2 className="h-3.5 w-3.5" /></Button>

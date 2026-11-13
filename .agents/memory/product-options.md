@@ -26,3 +26,9 @@ Inventory has no required username/password format. Each non-empty line is one i
 **Why:** The user explicitly requested that anything on the same line count as inventory, without specifying user/password or a format.
 
 **How to apply:** Accept arbitrary non-empty lines and preserve their contents. Keep legacy format metadata compatible with old data, but do not use it to constrain imports or delivery.
+
+The dashboard owner must be able to inspect saved inventory contents, not only masked dots.
+
+**Why:** The user explicitly corrected the inventory view because they need to check their stock in the dashboard.
+
+**How to apply:** Provide an authenticated reveal/hide control while retaining encryption at rest. Do not replace owner access with permanently masked metadata-only stock.

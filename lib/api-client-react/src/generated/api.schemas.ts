@@ -904,6 +904,15 @@ export interface InventoryClearResult {
   deleted: number;
 }
 
+export type InventoryRevealedItem = InventoryItem & {
+  credential: string;
+};
+
+export interface InventoryRevealResult {
+  productId: number;
+  items: InventoryRevealedItem[];
+}
+
 export interface OrderDelivery {
   orderId: string;
   inventoryId: number;

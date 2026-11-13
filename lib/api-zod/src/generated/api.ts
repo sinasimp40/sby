@@ -4779,6 +4779,29 @@ export const ClearProductInventoryResponse = zod.object({
 })
 
 
+/**
+ * Reveal decrypted stock only to its signed-in owner. Access is audited and responses must not be cached.
+ */
+
+
+
+export const RevealProductInventoryParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const RevealProductInventoryResponse = zod.object({
+  "productId": zod.number().int(),
+  "items": zod.array(zod.object({
+  "id": zod.number().int(),
+  "productId": zod.number().int(),
+  "status": zod.enum(['available', 'reserved', 'delivered']),
+  "createdAt": zod.string()
+}).and(zod.object({
+  "credential": zod.string()
+})))
+})
+
+
 
 
 

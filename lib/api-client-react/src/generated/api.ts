@@ -66,6 +66,7 @@ import type {
   InventoryClearResult,
   InventoryInput,
   InventoryItem,
+  InventoryRevealResult,
   NOWPaymentsCredentialInput,
   NOWPaymentsCredentialResult,
   Order,
@@ -4215,6 +4216,77 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getClearProductInventoryMutationOptions(options), queryClient);
+    }
+
+export const getRevealProductInventoryUrl = (id: number,) => {
+
+
+
+
+  return `/api/shop/products/${id}/inventory/reveal`
+}
+
+/**
+ * Reveal decrypted stock only to its signed-in owner. Access is audited and responses must not be cached.
+ */
+export const revealProductInventory = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<InventoryRevealResult> => {
+
+  return customFetch<InventoryRevealResult>(getRevealProductInventoryUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRevealProductInventoryMutationKey = () => ['revealProductInventory'] as const;
+
+export const getRevealProductInventoryMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revealProductInventory>>, TError,RevealProductInventoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof revealProductInventory>>, TError,RevealProductInventoryMutationVariables, TContext> => {
+
+const mutationKey = getRevealProductInventoryMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof revealProductInventory>>, RevealProductInventoryMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  revealProductInventory(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RevealProductInventoryMutationResult = NonNullable<Awaited<ReturnType<typeof revealProductInventory>>>
+
+    export type RevealProductInventoryMutationError = ErrorType<void>
+    export type RevealProductInventoryMutationVariables = {id: number}
+
+    export const useRevealProductInventory = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revealProductInventory>>, TError,RevealProductInventoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof revealProductInventory>>,
+        TError,
+        RevealProductInventoryMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRevealProductInventoryMutationOptions(options), queryClient);
     }
 
 export const getDeleteInventoryItemUrl = (id: number,) => {

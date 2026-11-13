@@ -450,6 +450,24 @@ paths:
         "400": { description: Invalid product }
         "401": { description: Sign-in required }
         "404": { description: Product not found }
+  /shop/products/{id}/inventory/reveal:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    post:
+      operationId: revealProductInventory
+      tags: [shop]
+      description: Reveal decrypted stock only to its signed-in owner. Access is audited and responses must not be cached.
+      responses:
+        "200":
+          description: Decrypted inventory for this product
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InventoryRevealResult" }
+        "400": { description: Invalid product }
+        "401": { description: Sign-in required }
+        "403": { description: Cross-origin access forbidden }
+        "404": { description: Product not found }
+        "503": { description: Inventory cannot be decrypted }
   /shop/inventory/{id}:
     parameters:
       - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
@@ -1229,6 +1247,19 @@ components:
       required: [deleted]
       properties:
         deleted: { type: integer, minimum: 0 }
+    InventoryRevealedItem:
+      allOf:
+        - { $ref: "#/components/schemas/InventoryItem" }
+        - type: object
+          required: [credential]
+          properties:
+            credential: { type: string }
+    InventoryRevealResult:
+      type: object
+      required: [productId, items]
+      properties:
+        productId: { type: integer }
+        items: { type: array, items: { $ref: "#/components/schemas/InventoryRevealedItem" } }
     Order:
       type: object
       required: [id, customer, productName, amount, status, paymentMethod, createdAt]

@@ -82,6 +82,8 @@ export * from './inventoryClearResult';
 export * from './inventoryInput';
 export * from './inventoryItem';
 export * from './inventoryItemStatus';
+export * from './inventoryRevealedItem';
+export * from './inventoryRevealResult';
 export * from './nOWPaymentsCredentialInput';
 export * from './nOWPaymentsCredentialResult';
 export * from './order';

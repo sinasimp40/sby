@@ -59,6 +59,23 @@ test("inventory accepts arbitrary non-empty lines without a credential format an
     assert.equal((await request(path, { entries: " \n\t\r\n" })).status, 400);
     assert.equal((await request(path, { entries: Array.from({ length: 501 }, (_, i) => `TEST_ONLY_${i}`).join("\n") })).status, 400);
     assert.equal((await (await request(path)).json()).length, lines.length);
+    const revealPath = path + "/reveal";
+    assert.equal((await request(revealPath, undefined, false, "POST")).status, 401);
+    const crossOrigin = await fetch(base + revealPath, {
+      method: "POST", headers: { cookie, origin: "https://untrusted.invalid" },
+    });
+    assert.equal(crossOrigin.status, 403);
+    assert.equal((await request("/invalid/inventory/reveal", undefined, true, "POST")).status, 400);
+    const revealed = await request(revealPath, undefined, true, "POST");
+    assert.equal(revealed.status, 200);
+    assert.equal(revealed.headers.get("cache-control"), "no-store");
+    const revealedBody = await revealed.json();
+    assert.equal(revealedBody.productId, product.id);
+    assert.deepEqual(revealedBody.items.map((row: { credential: string }) => row.credential), lines);
+    assert.ok(revealedBody.items.every((row: Record<string, unknown>) => !("encryptedCredential" in row) && !("fingerprint" in row)));
+    const viewedAudit = (await pool.query("SELECT description FROM shop_activity WHERE owner_id=$1 AND title='Inventory viewed'", [owner])).rows;
+    assert.equal(viewedAudit.length, 1);
+    assert.ok(!JSON.stringify(viewedAudit).includes("TEST_ONLY-REDEMPTION-CODE"));
     // Bulk deletion is scoped to one product and only its available stock.
     const beforeClear = await (await request(path)).json() as { id: number; status: string }[];
     await pool.query("UPDATE shop_inventory SET status='reserved' WHERE id=$1", [beforeClear[0]!.id]);
@@ -78,6 +95,10 @@ test("inventory accepts arbitrary non-empty lines without a credential format an
       method: "DELETE", headers: { cookie: otherCookie, origin: "https://test-only.invalid" },
     });
     assert.equal(forbidden.status, 404);
+    const forbiddenReveal = await fetch(base + revealPath, {
+      method: "POST", headers: { cookie: otherCookie, origin: "https://test-only.invalid" },
+    });
+    assert.equal(forbiddenReveal.status, 404);
     process.env.TELECART_OWNER_ID = owner;
     assert.equal((await (await request(path)).json()).length, lines.length);
     const cleared = await request(path, undefined, true, "DELETE");
@@ -86,6 +107,9 @@ test("inventory accepts arbitrary non-empty lines without a credential format an
     const remaining = await (await request(path)).json() as { id: number; status: string }[];
     assert.deepEqual(remaining.map(row => row.id).sort((a, b) => a - b), beforeClear.slice(0, 2).map(row => row.id).sort((a, b) => a - b));
     assert.deepEqual(remaining.map(row => row.status).sort(), ["delivered", "reserved"]);
+    const remainingReveal = await (await request(revealPath, undefined, true, "POST")).json();
+    assert.deepEqual(remainingReveal.items.map((row: { credential: string }) => row.credential), lines.slice(0, 2));
+    assert.deepEqual(remainingReveal.items.map((row: { status: string }) => row.status).sort(), ["delivered", "reserved"]);
     assert.equal((await (await request(`/${second.id}/inventory`)).json()).length, 1);
     const products = await (await request("")).json() as { id: number; stock: number }[];
     assert.equal(products.find(row => row.id === product.id)!.stock, 0);
@@ -96,6 +120,13 @@ test("inventory accepts arbitrary non-empty lines without a credential format an
     const repeatedClear = await request(path, undefined, true, "DELETE");
     assert.equal(repeatedClear.status, 200);
     assert.deepEqual(await repeatedClear.json(), { deleted: 0 });
+    await pool.query("UPDATE shop_inventory SET encrypted_credential='TEST_ONLY_DAMAGED' WHERE id=$1", [beforeClear[0]!.id]);
+    const damaged = await request(revealPath, undefined, true, "POST");
+    assert.equal(damaged.status, 503);
+    assert.equal(damaged.headers.get("cache-control"), "no-store");
+    const damagedBody = await damaged.json();
+    assert.deepEqual(Object.keys(damagedBody), ["error"]);
+    assert.ok(!JSON.stringify(damagedBody).includes(lines[1]!));
   } finally {
     await new Promise<void>(resolve => server.close(() => resolve()));
     await pool.query("DELETE FROM shop_inventory WHERE owner_id=$1", [owner]);

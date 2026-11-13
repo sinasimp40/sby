@@ -7,9 +7,10 @@ import {
   UpdateProductResponse, DeleteProductParams, ImportInventoryBody, ImportInventoryParams,
   ImportInventoryResponse, ListInventoryParams, ListInventoryResponse, DeleteInventoryItemParams,
   ClearProductInventoryParams, ClearProductInventoryResponse,
+  RevealProductInventoryParams, RevealProductInventoryResponse,
 } from "@workspace/api-zod";
 import { productsForOwner, ownedProduct, recordActivity } from "../lib/shop-store";
-import { encryptCredential, credentialFingerprint } from "../lib/inventory-encryption";
+import { encryptCredential, decryptCredential, credentialFingerprint } from "../lib/inventory-encryption";
 import { isProductEmoji } from "../lib/product-emoji";
 import { assertOwnedCustomEmoji } from "../lib/custom-emoji-library";
 import { announceProductAvailability } from "../lib/product-announcements";
@@ -141,6 +142,29 @@ router.post("/products/:id/inventory", async (req, res): Promise<void> => {
       logger.error({ ownerId, productId, errorType: error instanceof Error ? error.name : "Error" }, "Could not announce newly stocked product.");
     });
   }
+});
+
+router.post("/products/:id/inventory/reveal", async (req, res): Promise<void> => {
+  const params = RevealProductInventoryParams.safeParse(req.params);
+  if (!params.success) { res.status(400).json({ error: "Invalid product." }); return; }
+  const ownerId = getAuth(req).userId!;
+  const productId = params.data.id;
+  if (!await ownedProduct(ownerId, productId)) { res.status(404).json({ error: "Product not found." }); return; }
+  const rows = await db.select().from(shopInventory).where(and(
+    eq(shopInventory.ownerId, ownerId), eq(shopInventory.productId, productId),
+  )).orderBy(shopInventory.id);
+  let items;
+  try {
+    items = rows.map(row => ({
+      id: row.id, productId: row.productId, status: row.status, createdAt: row.createdAt.toISOString(),
+      credential: decryptCredential(row.encryptedCredential, ownerId, productId),
+    }));
+  } catch {
+    res.status(503).json({ error: "Inventory could not be decrypted. Check the inventory encryption configuration." });
+    return;
+  }
+  await recordActivity(ownerId, "Inventory viewed", `Product #${productId} · ${rows.length} items revealed`, "inventory_access");
+  res.json(RevealProductInventoryResponse.parse({ productId, items }));
 });
 
 router.delete("/products/:id/inventory", async (req, res): Promise<void> => {
