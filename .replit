@@ -23,7 +23,8 @@ timeoutMs = 20000
 
 [userenv.production]
 TELECART_ADMIN_EMAIL = "admin@admin.com"
-TELECART_PUBLIC_URL = "https://sales-bot-dashboard.replit.app"
+TELECART_PUBLIC_URL = "https://sbyone.replit.app"
+TELECART_OWNER_ID = "local-8f1ba325-02da-4c00-a6b1-6263fa3c50c2"
 
 [userenv.development]
 TELECART_ADMIN_EMAIL = "admin@admin.com"
