@@ -118,6 +118,15 @@ test("groups-per-interval controls render one-copy semantics and bounded group c
     assert.deepEqual(filteredGroups(filterFixture, "all", "-100456").map(group => group.id), ["bad-2"]);
     for (const status of ["ready", "pending", "needs_setup", "duplicate"])
       assert.deepEqual(filteredGroups(filterFixture, status, "").map(group => group.id), [status === "ready" ? "good" : status]);
+    const enabledFixture = filterFixture.map((group, index) => ({ ...group, enabled: index !== 0 && index !== 2 }));
+    const disabled = filteredGroups(enabledFixture, "disabled", "");
+    assert.deepEqual(disabled.map(group => group.id), ["bad-1", "good"],
+      "disabled is based on the enable switch, regardless of permission status");
+    assert.deepEqual(filteredGroups(enabledFixture, "disabled", "ready").map(group => group.id), ["good"]);
+    assert.deepEqual(selectedGroupIdsInView(disabled, allSelected), ["bad-1", "good"]);
+    assert.deepEqual(snapshotGroupRemoval(disabled, allSelected).map(group => group.id), ["bad-1", "good"]);
+    assert.deepEqual([...selectGroupsInView(disabled, new Set(), true)], ["bad-1", "good"]);
+    assert.deepEqual(filteredGroups(enabledFixture.map(group => ({ ...group, enabled: true })), "disabled", ""), []);
     const withoutErrors = selectGroupsInView(errors, allSelected, false);
     assert.ok(withoutErrors.has("good"));
     assert.ok(!withoutErrors.has("bad-1"));
@@ -134,6 +143,7 @@ test("groups-per-interval controls render one-copy semantics and bounded group c
       createElement(GroupsPanel, { ws: { groups: visible, account: { connected: false } }, selected: selection,
         setSelected: () => {}, sequential: true, onRefresh: () => {}, refreshing })));
     const groupHtml = renderGroups(groups);
+    assert.match(groupHtml, /data-testid="filter-group-disabled"/);
     assert.match(groupHtml, /data-testid="text-selected-count">5 selected/);
     assert.match(groupHtml, /Select all 5 shown/);
     assert.match(groupHtml, /data-testid="text-visible-selected-count">5 selected here/);

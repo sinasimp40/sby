@@ -313,7 +313,7 @@ export function GroupsPanel({ ws, selected: savedSelected, setSelected, sequenti
     } catch (x) { toast({ title: "Check failed", description: errMsg(x), variant: "destructive" }); }
     finally { setProgress(""); }
   }
-  const statuses = ["all", "ready", "pending", "needs_setup", "error", "duplicate"];
+  const statuses = ["all", "ready", "disabled", "pending", "needs_setup", "error", "duplicate"];
   return (
     <Panel title="Groups" meta={<span data-testid="text-group-count">{ws.groups.length} total · {ws.groups.filter(g => g.status === "ready" && g.enabled).length} sendable</span>}>
       <div className="space-y-3">

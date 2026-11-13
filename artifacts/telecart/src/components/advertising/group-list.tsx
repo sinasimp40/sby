@@ -11,7 +11,7 @@ export function retainedGroupSelection(groups: Pick<AdvertisingGroup, "id">[], s
 
 export function filteredGroups(groups: AdvertisingGroup[], status: string, search: string) {
   const query = search.trim().toLowerCase();
-  return groups.filter(group => (status === "all" || group.status === status) &&
+  return groups.filter(group => (status === "all" || (status === "disabled" ? !group.enabled : group.status === status)) &&
     (!query || `${group.title} ${group.target} ${group.chatId ?? ""}`.toLowerCase().includes(query)));
 }
 
