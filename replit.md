@@ -2,6 +2,17 @@
 
 A web administration workspace for a Telegram digital-product shop.
 
+## Running this imported project on Replit
+
+- Runtime: Node.js 24 (required for the existing native SQLite implementation); install dependencies with `pnpm install --frozen-lockfile`.
+- Run the managed `artifacts/api-server: API Server` and `artifacts/telecart: web` workflows. The API serves `/api` on port 8080 and the dashboard serves `/` on port 18237 through Replit's shared preview proxy. The optional Canvas workflow is not required for the dashboard.
+- Sign in with the configured `TELECART_ADMIN_EMAIL` and the password supplied securely as `TELECART_ADMIN_INITIAL_PASSWORD`. Keep `SESSION_SECRET` unchanged for encrypted data. No Clerk service or OTP is required for this explicitly owner-bound installation.
+- Development `TELECART_ADMIN_ORIGIN` and `TELECART_PUBLIC_URL` must match the current workspace's HTTPS origin, not the source repository's old workspace URL. Update them through environment settings if the workspace domain changes.
+- Keep `TELECART_TELEGRAM_DISABLED=true` for this preview. No external provider credentials were added or live sending/payment processing activated during import setup.
+- SQLite initializes its existing schema automatically at startup at `data/telecart.db`; never commit the database or its locks/journals. Workspace data was not imported from a previous installation.
+- Verification: `pnpm run typecheck`, `pnpm test:local`, `pnpm test:sqlite`, and `GET /api/healthz`. During import verification, typechecking and local tests passed; 42 of 43 SQLite regression files passed. The existing `shop-transfer.test.ts` table-list assertion expects 24 tables while the current schema has 26, including advertising checkpoints and membership jobs.
+- Workspace preview only: do not use a published Replit app's ephemeral filesystem for live SQLite shop data. Use persistent-disk hosting for this existing storage design.
+
 ## SQLite storage — current source of truth
 
 The user explicitly switched live storage from PostgreSQL to SQLite. Historical PostgreSQL-specific notes below describe the previous engine, not the current runtime. `TELECART_SQLITE_PATH` selects the file (default `data/telecart.db`, relative to the project root). All 24 tables now use SQLite builders and a native `node:sqlite` engine through Drizzle's async SQLite driver; no PostgreSQL server is used by the application. `pg` is retained only for the explicit read-only migration tool.
