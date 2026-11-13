@@ -12,6 +12,19 @@ export const DATABASE_TABLES = [
   "shop_inventory", "shop_payments", "shop_products", "shop_records", "shop_settings", "wallet_entries",
 ];
 
+export function processCommand(executable, args, platform = process.platform) {
+  if (platform !== "win32") return { executable, args, shell: false };
+  const words = [executable, ...args];
+  if (words.some(word => !/^[A-Za-z0-9@._:/-]+$/.test(word))) {
+    throw new Error("The Windows command contains an unsupported argument; it was not executed.");
+  }
+  return {
+    executable: "cmd.exe",
+    args: ["/d", "/s", "/c", words.join(" ")],
+    shell: false,
+  };
+}
+
 const LOCAL_ENV_KEYS = [
   "DATABASE_URL",
   "SESSION_SECRET",
