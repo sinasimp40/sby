@@ -8,12 +8,24 @@
 import * as zod from 'zod';
 
 
+export const getAdvertisingActivityQueryCursorMax = 512;
+
+
+export const getAdvertisingActivityQueryCursorRegExp = new RegExp('^[A-Za-z0-9_-]+$');
+
+
 export const GetAdvertisingActivityQueryParams = zod.object({
   "from": zod.date().optional(),
-  "to": zod.date().optional()
+  "to": zod.date().optional(),
+  "cursor": zod.coerce.string().min(1).max(getAdvertisingActivityQueryCursorMax).regex(getAdvertisingActivityQueryCursorRegExp).optional()
 })
 
-export const GetAdvertisingActivityResponseItem = zod.object({
+export const getAdvertisingActivityResponseItemsMax = 10;
+
+
+
+export const GetAdvertisingActivityResponse = zod.object({
+  "items": zod.array(zod.object({
   "id": zod.string().uuid(),
   "groupId": zod.string().uuid(),
   "target": zod.string(),
@@ -21,8 +33,9 @@ export const GetAdvertisingActivityResponseItem = zod.object({
   "note": zod.string(),
   "startedAt": zod.coerce.date(),
   "sentAt": zod.coerce.date().nullable()
+})).max(getAdvertisingActivityResponseItemsMax),
+  "nextCursor": zod.string().nullable()
 })
-export const GetAdvertisingActivityResponse = zod.array(GetAdvertisingActivityResponseItem)
 
 
 export const saveAdvertisingAppCredentialsBodyApiIdMax = 2147483647;

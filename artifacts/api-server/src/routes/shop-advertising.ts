@@ -7,7 +7,7 @@ import {
   GetAdvertisingActivityQueryParams,
 } from "@workspace/api-zod";
 import { getShopAuth } from "../lib/admin-auth";
-import { advertisingActivity, maintainAdvertisingActivity } from "../lib/advertising-activity";
+import { advertisingActivityPage, maintainAdvertisingActivity } from "../lib/advertising-activity";
 import { CommerceError } from "../lib/commerce-providers";
 import { advertisingWorkspace, advertisingBotForOwner, advertisingCampaigns, withAdvertisingLock, cancelAdvertisingCampaign } from "../lib/advertising-store";
 import { addAdvertisingTargets, checkAdvertisingTargets, connectAdvertising, discoverAdvertisingTargets, stopAdvertising } from "../lib/advertising-management";
@@ -36,7 +36,7 @@ router.get("/advertising", run(async req => advertisingWorkspace(owner(req))));
 router.get("/advertising/activity", run(async req => {
   const query = GetAdvertisingActivityQueryParams.parse(req.query);
   await maintainAdvertisingActivity(owner(req));
-  return advertisingActivity(owner(req), query.from, query.to);
+  return advertisingActivityPage(owner(req), query.from, query.to, query.cursor);
 }));
 router.use(accountRouter);
 router.post("/advertising/connection", run(async req => {

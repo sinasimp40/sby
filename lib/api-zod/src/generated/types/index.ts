@@ -21,6 +21,7 @@ export * from './advertisingAccountRunStatus';
 export * from './advertisingAccountStartInput';
 export * from './advertisingAccountStartInputExpectedGroupsItem';
 export * from './advertisingAccountVerification';
+export * from './advertisingActivityPage';
 export * from './advertisingAppCredentialsInput';
 export * from './advertisingBot';
 export * from './advertisingCampaign';

@@ -15,12 +15,13 @@ paths:
       parameters:
         - {name: from, in: query, schema: {type: string, format: date-time}}
         - {name: to, in: query, schema: {type: string, format: date-time}}
+        - {name: cursor, in: query, schema: {type: string, minLength: 1, maxLength: 512, pattern: '^[A-Za-z0-9_-]+$'}}
       responses:
         "200":
-          description: Latest ten posting records within five days, optionally filtered by a local calendar day's UTC boundaries.
+          description: A bounded page of posting records within five days, optionally filtered by a local calendar day's UTC boundaries.
           content:
             application/json:
-              schema: {type: array, items: {$ref: "#/components/schemas/AdvertisingAccountRun"}}
+              schema: {$ref: "#/components/schemas/AdvertisingActivityPage"}
   /shop/advertising/account/app:
     put:
       operationId: saveAdvertisingAppCredentials
@@ -1016,6 +1017,12 @@ components:
         draft: {$ref: "#/components/schemas/AdvertisingDraft"}
         permissionConfirmed: {type: boolean}
         idempotencyKey: {type: string, format: uuid}
+    AdvertisingActivityPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items: {type: array, maxItems: 10, items: {$ref: "#/components/schemas/AdvertisingAccountRun"}}
+        nextCursor: {type: ["string", "null"]}
     AdvertisingAccountRun:
       type: object
       required: [id, groupId, target, status, note, startedAt, sentAt]

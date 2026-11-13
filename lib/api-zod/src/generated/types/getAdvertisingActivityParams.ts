@@ -9,4 +9,10 @@
 export type GetAdvertisingActivityParams = {
 from?: Date;
 to?: Date;
+/**
+ * @minLength 1
+ * @maxLength 512
+ * @pattern ^[A-Za-z0-9_-]+$
+ */
+cursor?: string;
 };

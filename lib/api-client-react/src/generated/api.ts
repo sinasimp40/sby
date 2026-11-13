@@ -30,9 +30,9 @@ import type {
   AdminSession,
   AdvertisingAccountLoginInput,
   AdvertisingAccountPoll,
-  AdvertisingAccountRun,
   AdvertisingAccountStartInput,
   AdvertisingAccountVerification,
+  AdvertisingActivityPage,
   AdvertisingAppCredentialsInput,
   AdvertisingCampaign,
   AdvertisingCampaignDetail,
@@ -130,9 +130,9 @@ export const getGetAdvertisingActivityUrl = (params?: GetAdvertisingActivityPara
   return stringifiedParams.length > 0 ? `/api/shop/advertising/activity?${stringifiedParams}` : `/api/shop/advertising/activity`
 }
 
-export const getAdvertisingActivity = async (params?: GetAdvertisingActivityParams, options?: Parameters<typeof customFetch>[1]): Promise<AdvertisingAccountRun[]> => {
+export const getAdvertisingActivity = async (params?: GetAdvertisingActivityParams, options?: Parameters<typeof customFetch>[1]): Promise<AdvertisingActivityPage> => {
 
-  return customFetch<AdvertisingAccountRun[]>(getGetAdvertisingActivityUrl(params),
+  return customFetch<AdvertisingActivityPage>(getGetAdvertisingActivityUrl(params),
   {
     ...options,
     method: 'GET'

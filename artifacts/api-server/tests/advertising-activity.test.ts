@@ -2,9 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { pool } from "@workspace/db";
-import { advertisingActivity, pruneAdvertisingActivity } from "../src/lib/advertising-activity";
+import { advertisingActivity, advertisingActivityPage, pruneAdvertisingActivity } from "../src/lib/advertising-activity";
 
-test("activity is capped at ten, date-filtered, owner-isolated and safely retained for five days", async () => {
+test("activity has bounded pages, stable cursors, date/owner isolation and safe five-day retention", async () => {
   if (process.env.NODE_ENV === "production") throw new Error("Development fixtures only.");
   const owner = `activity-test-${randomUUID()}`, other = `${owner}-other`;
   const group = randomUUID();
@@ -21,7 +21,8 @@ test("activity is capped at ten, date-filtered, owner-isolated and safely retain
     return id;
   };
   try {
-    for (let i = 0; i < 15; i++) await insert(owner, new Date(yesterday.getTime() + i * 60000));
+    const dailyIds: string[] = [];
+    for (let i = 0; i < 15; i++) dailyIds.push(await insert(owner, new Date(yesterday.getTime() + i * 60000)));
     const boundary = await insert(owner, today);
     const overnight = await insert(owner, new Date(today.getTime() - 1000));
     await pool.query("UPDATE advertising_account_runs SET sent_at=$2 WHERE id=$1",
@@ -49,6 +50,50 @@ test("activity is capped at ten, date-filtered, owner-isolated and safely retain
     await assert.rejects(advertisingActivity(owner, today, yesterday), /calendar date/);
     await assert.rejects(advertisingActivity(owner, old, today), /calendar date/);
     assert.equal((await advertisingActivity(other)).length, 0);
+
+    const first = await advertisingActivityPage(owner, yesterday, today);
+    assert.equal(first.items.length, 10);
+    assert.ok(first.nextCursor);
+    const second = await advertisingActivityPage(owner, yesterday, today, first.nextCursor!);
+    assert.equal(second.items.length, 5);
+    assert.equal(second.nextCursor, null);
+    assert.deepEqual(new Set([...first.items, ...second.items].map(r => r.id)), new Set(dailyIds));
+    await assert.rejects(advertisingActivityPage(other, yesterday, today, first.nextCursor!), /cursor/);
+    await assert.rejects(advertisingActivityPage(owner, today, new Date(today.getTime() + 86400000), first.nextCursor!), /cursor/);
+    await assert.rejects(advertisingActivityPage(owner, yesterday, today, "not-a-valid-cursor"), /cursor/);
+    await assert.rejects(advertisingActivityPage(owner, yesterday, today, "a".repeat(513)), /cursor/);
+    const invalidCalendar = JSON.parse(Buffer.from(first.nextCursor!, "base64url").toString("utf8"));
+    invalidCalendar.at = "2026-02-31T12:00:00.000000Z";
+    await assert.rejects(advertisingActivityPage(owner, yesterday, today,
+      Buffer.from(JSON.stringify(invalidCalendar)).toString("base64url")), /cursor/);
+
+    const ties: string[] = [], micros: string[] = [];
+    const tieAt = new Date(yesterday.getTime() + 10 * 3600000);
+    const microAt = new Date(yesterday.getTime() + 12 * 3600000);
+    for (let i = 0; i < 13; i++) {
+      const tied = await insert(owner, tieAt, "sent", 100 + i);
+      const micro = await insert(owner, microAt, "sent", 200 + i);
+      await pool.query("UPDATE advertising_account_runs SET started_at=$2::timestamptz+$3*interval '1 microsecond' WHERE id=$1", [micro, microAt, i]);
+      ties.push(tied); micros.push(micro);
+    }
+    const collected: string[] = [];
+    let cursor: string | undefined;
+    let pages = 0;
+    do {
+      const page = await advertisingActivityPage(owner, yesterday, today, cursor);
+      assert.ok(page.items.length <= 10);
+      collected.push(...page.items.map(r => r.id));
+      cursor = page.nextCursor ?? undefined;
+      assert.ok(++pages < 10, "pagination must reach the end");
+    } while (cursor);
+    assert.deepEqual(collected, [...micros.reverse(), ...ties.sort().reverse(), ...dailyIds.reverse()],
+      "equal timestamps and PostgreSQL microseconds must not skip or duplicate records");
+    assert.equal(new Set(collected).size, 41);
+    const snapshot = await advertisingActivityPage(owner, yesterday, today);
+    const newPost = await insert(owner, new Date(today.getTime() - 1), "sent", 300);
+    const continuation = await advertisingActivityPage(owner, yesterday, today, snapshot.nextCursor!);
+    assert.ok(!continuation.items.some(r => r.id === newPost), "newer insertions cannot shift an existing cursor");
+    assert.equal((await advertisingActivityPage(owner, yesterday, today)).items[0]!.id, newPost);
 
     assert.equal(await pruneAdvertisingActivity(owner), 1);
     const retained = (await pool.query("SELECT id FROM advertising_account_runs WHERE id=ANY($1::uuid[])",

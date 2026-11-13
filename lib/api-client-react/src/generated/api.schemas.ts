@@ -547,6 +547,13 @@ export interface AdvertisingAccountStartInput {
   idempotencyKey: string;
 }
 
+export interface AdvertisingActivityPage {
+  /** @maxItems 10 */
+  items: AdvertisingAccountRun[];
+  /** @nullable */
+  nextCursor: string | null;
+}
+
 export interface PaymentMinimum {
   coin: string;
   /** @nullable */
@@ -1215,5 +1222,11 @@ export type ShopSettings = SettingsInput & {
 export type GetAdvertisingActivityParams = {
 from?: string;
 to?: string;
+/**
+ * @minLength 1
+ * @maxLength 512
+ * @pattern ^[A-Za-z0-9_-]+$
+ */
+cursor?: string;
 };
 

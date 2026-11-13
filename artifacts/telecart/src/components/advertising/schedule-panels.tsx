@@ -1,18 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   useStartAdvertisingAccountSchedules, useStopAdvertisingAccountSchedules, useStopAllAdvertisingAccountSchedules,
-  useSaveAdvertisingDraft, useGetAdvertisingActivity, type AdvertisingWorkspace, type AdvertisingGroup, type AdvertisingDraft,
+  useSaveAdvertisingDraft, type AdvertisingWorkspace, type AdvertisingGroup, type AdvertisingDraft,
 } from "@workspace/api-client-react";
-import { Loader2, Play, Square, OctagonX, Activity, Filter } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Panel, EmptyState } from "@/components/shared";
+import { Loader2, Play, Square, OctagonX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { errMsg, dateTime } from "@/lib/format";
-import { MessagePreview, Tag, fmtInterval, useWorkspaceSync, type DraftState } from "@/components/advertising-panels";
+import { errMsg } from "@/lib/format";
+import { MessagePreview, fmtInterval, useWorkspaceSync, type DraftState } from "@/components/advertising-panels";
+export { RunsPanel } from "./posting-activity";
 
 export function ScheduleBar({ ws, selected, problem, onStart }: { ws: AdvertisingWorkspace; selected: Set<string>; problem: string; onStart: () => void }) {
   const sync = useWorkspaceSync();
@@ -50,7 +49,6 @@ export function ScheduleBar({ ws, selected, problem, onStart }: { ws: Advertisin
     </div>
   );
 }
-
 type Snapshot = { accountId: string; accountName: string; draft: AdvertisingDraft; preview: DraftState; groups: AdvertisingGroup[] };
 
 export function StartDialog({ open, onOpenChange, ws, d, toDraft, selected, onStarted }: { open: boolean; onOpenChange: (o: boolean) => void; ws: AdvertisingWorkspace; d: DraftState; toDraft: (d: DraftState) => AdvertisingDraft; selected: Set<string>; onStarted: (fp: string) => void }) {
@@ -117,50 +115,5 @@ export function StartDialog({ open, onOpenChange, ws, d, toDraft, selected, onSt
         <DialogFooter><Button disabled={!ok || busy || !snap?.groups.length || !ws.account.connected} onClick={go} data-testid="button-confirm-start">{busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Play className="mr-1.5 h-4 w-4" />}{err ? "Retry start" : `Start ${snap?.groups.length ?? 0} schedules`}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-export function RunsPanel({ ws }: { ws: AdvertisingWorkspace }) {
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [date, setDate] = useState("");
-  const range = useMemo(() => {
-    if (!date) return undefined;
-    const [year, month, day] = date.split("-").map(Number);
-    const from = new Date(year!, month! - 1, day);
-    const to = new Date(year!, month! - 1, day! + 1);
-    if (!Number.isFinite(from.getTime()) || !Number.isFinite(to.getTime())) return undefined;
-    return { from: from.toISOString(), to: to.toISOString() };
-  }, [date]);
-  const filtered = useGetAdvertisingActivity(range, { query: { enabled: !!range, refetchInterval: 5000 } });
-  const runs = [...(range ? filtered.data ?? [] : ws.accountRuns)]
-    .sort((a, b) => (b.sentAt ?? b.startedAt).localeCompare(a.sentAt ?? a.startedAt)).slice(0, 10);
-  const uncertain = runs.filter(r => r.status === "uncertain").length;
-  const legacySent = runs.some(r => r.status === "sent" && !r.note?.startsWith("Verified in selected group: message #"));
-  return (
-    <Panel title="Posting activity" meta={<span data-testid="text-run-count">{runs.length} posts</span>}>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <span className="text-xs text-muted-foreground">Latest 10 posts · logs kept for 5 days</span>
-        <Button size="sm" variant="outline" onClick={() => setFiltersOpen(v => !v)} aria-expanded={filtersOpen} data-testid="button-activity-filter">
-          <Filter className="mr-2 h-3.5 w-3.5" />{date ? `Date: ${date}` : "Filter by date"}
-        </Button>
-      </div>
-      {filtersOpen && <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border p-3">
-        <label htmlFor="activity-date" className="text-xs">Posting date</label>
-        <Input id="activity-date" type="date" value={date} onChange={e => setDate(e.target.value)} className="w-auto" data-testid="input-activity-date" />
-        {date && <Button variant="ghost" size="sm" onClick={() => setDate("")} data-testid="button-clear-activity-date">Clear</Button>}
-        <span className="text-xs text-muted-foreground">Your local time · last 5 days only</span>
-      </div>}
-      {legacySent && <p className="mb-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">Older “sent” records were not checked by reading the message back from the group. They are not proof the message was visible.</p>}
-      {uncertain > 0 && <p className="mb-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900" data-testid="banner-uncertain">{uncertain} uncertain {uncertain === 1 ? "result" : "results"}: Telegram may have posted. Those groups are stopped until you check them and start again. No automatic retry.</p>}
-      {range && filtered.isLoading ? <p className="py-6 text-sm text-muted-foreground">Loading posts…</p> :
-      range && filtered.isError ? <p className="py-6 text-sm text-destructive" role="alert">Could not load posts for this date. {errMsg(filtered.error)}</p> :
-      runs.length === 0 ? <EmptyState icon={Activity} title={date ? "No posts on this date" : "No posts yet"} body="Only posting logs from the last five days are available." /> :
-        <ul className="divide-y rounded-lg border">{runs.map(r => (
-          <li key={r.id} className="p-3" data-testid={`row-run-${r.id}`}>
-            <div className="flex flex-wrap items-center gap-2"><Tag s={r.status === "sent" && !r.note?.startsWith("Verified in selected group: message #") ? "unverified" : r.status} testId={`status-run-${r.id}`} /><span className="min-w-0 flex-1 truncate font-mono text-xs">{r.target}</span><span className="text-[11px] text-muted-foreground">{dateTime(r.sentAt ?? r.startedAt)}</span></div>
-            {r.note && <div className="mt-1 text-xs text-muted-foreground">{r.status === "sent" && !r.note.startsWith("Verified in selected group: message #") ? "Legacy send result; no saved message receipt or group read-back verification." : r.note}</div>}
-          </li>
-        ))}</ul>}
-    </Panel>
   );
 }
