@@ -12,6 +12,7 @@ import {
   makeChildEnvironment,
   makeSystemEnvironment,
   parseLocalEnv,
+  processCommand,
   schemaAction,
   shouldAskProcessingConsent,
   stopOwnedChildren,
@@ -27,12 +28,13 @@ const envPath = join(projectRoot, ".env.local");
 const packageManager = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 
 function runPnpm(args, env, { capture = false } = {}) {
-  return spawnSync(packageManager, args, {
+  const command = processCommand(packageManager, args);
+  return spawnSync(command.executable, command.args, {
     cwd: projectRoot,
     env,
     encoding: capture ? "utf8" : undefined,
     stdio: capture ? ["ignore", "pipe", "pipe"] : "inherit",
-    shell: process.platform === "win32",
+    shell: command.shell,
     windowsHide: true,
   });
 }
@@ -73,11 +75,12 @@ function checkPrerequisites(env) {
   if (!supportedNodeVersion(process.versions.node)) {
     throw new Error(`This project needs Node.js 22.16+ or 24+. You have Node.js ${process.versions.node}. Install a supported version; the launcher will not install system software.`);
   }
-  const result = spawnSync(packageManager, ["--version"], {
+  const command = processCommand(packageManager, ["--version"]);
+  const result = spawnSync(command.executable, command.args, {
     cwd: projectRoot,
     env,
     encoding: "utf8",
-    shell: process.platform === "win32",
+    shell: command.shell,
     windowsHide: true,
   });
   if (result.error?.code === "ENOENT") {
@@ -89,15 +92,18 @@ function checkPrerequisites(env) {
   console.log(`Using Node.js ${process.versions.node} and pnpm ${result.stdout.trim()}.`);
 }
 
-function dependenciesInstalled() {
-  const installMarkers = [
+function requiredDependenciesAvailable() {
+  return [
     "node_modules/.pnpm/lock.yaml",
     "artifacts/api-server/node_modules/pg",
     "artifacts/api-server/node_modules/esbuild",
     "artifacts/telecart/node_modules/vite",
     "lib/db/node_modules/drizzle-kit",
-  ];
-  if (!installMarkers.every(path => existsSync(join(projectRoot, path)))) return false;
+  ].every(path => existsSync(join(projectRoot, path)));
+}
+
+function dependenciesInstalled() {
+  if (!requiredDependenciesAvailable()) return false;
   try {
     return readFileSync(join(projectRoot, "node_modules", ".telecart-local-install"), "utf8").trim() === dependencyFingerprint();
   } catch {
@@ -132,7 +138,7 @@ function prepareDependencies() {
   if (result.error || result.status !== 0) {
     throw new Error("Dependency setup failed. Review the pnpm output, install the project prerequisites, and run the launcher again.");
   }
-  if (!dependenciesInstalled()) {
+  if (!requiredDependenciesAvailable()) {
     throw new Error("pnpm finished, but required workspace packages are still missing. Review the dependency output.");
   }
   writeFileSync(join(projectRoot, "node_modules", ".telecart-local-install"), `${dependencyFingerprint()}\n`, { mode: 0o600 });
@@ -281,11 +287,12 @@ function launchBrowser() {
 }
 
 function spawnService(label, args, env) {
-  const child = spawn(packageManager, args, {
+  const command = processCommand(packageManager, args);
+  const child = spawn(command.executable, command.args, {
     cwd: projectRoot,
     env,
     stdio: "inherit",
-    shell: process.platform === "win32",
+    shell: command.shell,
     detached: process.platform !== "win32",
     windowsHide: true,
   });

@@ -12,6 +12,7 @@ import {
   isLoopbackDatabase,
   makeChildEnvironment,
   parseLocalEnv,
+  processCommand,
   schemaAction,
   serializeLocalEnv,
   shouldAskProcessingConsent,
@@ -37,6 +38,19 @@ test("the supported Node versions match the documented local prerequisites", () 
   assert.equal(supportedNodeVersion("v22.20.0"), true);
   assert.equal(supportedNodeVersion("v23.1.0"), false);
   assert.equal(supportedNodeVersion("v24.0.0"), true);
+});
+
+test("Windows package commands use cmd.exe without shell argument forwarding", () => {
+  const windows = processCommand("pnpm.cmd", ["--filter", "@workspace/api-server", "run", "start"], "win32");
+  assert.deepEqual(windows, {
+    executable: "cmd.exe",
+    args: ["/d", "/s", "/c", "pnpm.cmd --filter @workspace/api-server run start"],
+    shell: false,
+  });
+  assert.throws(() => processCommand("pnpm.cmd", ["install & whoami"], "win32"), /unsupported argument/);
+  assert.deepEqual(processCommand("pnpm", ["--version"], "linux"), {
+    executable: "pnpm", args: ["--version"], shell: false,
+  });
 });
 
 test("private environment serialization round-trips quotes, slashes and spaces", () => {
