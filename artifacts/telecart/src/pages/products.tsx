@@ -124,7 +124,7 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
             <FormField control={form.control} name="description" render={({ field }) => (
               <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea rows={3} placeholder="What the buyer receives, warranty terms, region…" {...field} data-testid="input-product-description" /></FormControl><FormMessage /></FormItem>
             )} />
-            <div className="grid grid-cols-2 gap-3">
+            <div>
               <FormField control={form.control} name="status" render={({ field }) => (
                 <FormItem><FormLabel>Status</FormLabel>
                   <FormControl>
@@ -133,15 +133,6 @@ function ProductDialog({ open, onOpenChange, product }: { open: boolean; onOpenC
                     </select>
                   </FormControl>
                   <p className="text-xs text-muted-foreground">Only Active products with available stock appear in Telegram. Drafts stay hidden.</p><FormMessage /></FormItem>
-              )} />
-              <FormField control={form.control} name="deliveryFormat" render={({ field }) => (
-                <FormItem><FormLabel>Delivery format</FormLabel>
-                  <FormControl>
-                    <select {...field} disabled={pending} className={cn(selectClassName, "font-mono")} data-testid="select-product-format">
-                      <option value="email:pass">email:pass</option><option value="user:pass">user:pass</option>
-                    </select>
-                  </FormControl>
-                  <FormMessage /></FormItem>
               )} />
             </div>
             <DialogFooter>
@@ -224,7 +215,7 @@ export default function ProductsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead><tr className="border-b border-border/70 text-left font-mono text-[10.5px] uppercase tracking-wider text-muted-foreground">
-                <th className="px-4 py-2.5 font-medium">Product</th><th className={th}>Status</th><th className={th}>Format</th><th className={cn(th, "text-right")}>Stock</th><th className={cn(th, "text-right")}>Sold</th><th className={cn(th, "text-right")}>Price</th><th className="px-4 py-2.5" /></tr></thead>
+                <th className="px-4 py-2.5 font-medium">Product</th><th className={th}>Status</th><th className={cn(th, "text-right")}>Stock</th><th className={cn(th, "text-right")}>Sold</th><th className={cn(th, "text-right")}>Price</th><th className="px-4 py-2.5" /></tr></thead>
               {groups.map(g => {
                 const open = expanded[g.id] ?? false;
                 const stock = g.options.reduce((a, o) => a + o.stock, 0);
@@ -239,7 +230,6 @@ export default function ProductsPage() {
                       <span className="ml-1 shrink-0 rounded-full bg-accent px-1.5 py-px font-mono text-[10px] text-accent-foreground">{g.options.length} options</span>
                     </div><div className="truncate pl-5 text-xs text-muted-foreground">{active} active{g.description ? ` · ${g.description}` : ""}</div></td>
                     <td className="px-3 py-3 text-xs text-muted-foreground">Group</td>
-                    <td className="px-3 py-3 font-mono text-xs text-muted-foreground">—</td>
                     <td className={cn("tabular px-3 py-3 text-right font-mono", stock === 0 && "text-signal")}>{stock}</td>
                     <td className="tabular px-3 py-3 text-right font-mono text-muted-foreground">{sold}</td>
                     <td className="px-3 py-3 text-right text-xs text-muted-foreground">Per option</td>
@@ -253,7 +243,6 @@ export default function ProductsPage() {
                       <td className="max-w-[320px] py-2.5 pl-11 pr-4"><div className="truncate border-l-2 border-primary/40 pl-2.5 font-medium">{o.optionName ?? o.name}</div>
                         {o.description && <div className="truncate pl-3 text-xs text-muted-foreground">{o.description}</div>}</td>
                       <td className="px-3 py-2.5"><StatusPill status={o.status} /></td>
-                      <td className="px-3 py-2.5 font-mono text-xs text-muted-foreground">{o.deliveryFormat}</td>
                       <td className={cn("tabular px-3 py-2.5 text-right font-mono", o.stock === 0 && "text-signal")}>{o.stock}</td>
                       <td className="tabular px-3 py-2.5 text-right font-mono text-muted-foreground">{o.sold}</td>
                       <td className="tabular px-3 py-2.5 text-right font-mono font-medium">{money(o.price)}</td>
@@ -270,7 +259,6 @@ export default function ProductsPage() {
                       <span className="truncate">{p.name}</span>
                     </div><div className="truncate text-xs text-muted-foreground">Added {shortDate(p.createdAt)}</div></td>
                     <td className="px-3 py-3"><StatusPill status={p.status} /></td>
-                    <td className="px-3 py-3 font-mono text-xs text-muted-foreground">{p.deliveryFormat}</td>
                     <td className={cn("tabular px-3 py-3 text-right font-mono", p.stock === 0 && "text-signal")}>{p.stock}</td>
                     <td className="tabular px-3 py-3 text-right font-mono text-muted-foreground">{p.sold}</td>
                     <td className="tabular px-3 py-3 text-right font-mono font-medium">{money(p.price)}</td>

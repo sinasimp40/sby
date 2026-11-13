@@ -4751,12 +4751,31 @@ export const importInventoryBodyEntriesMax = 100000;
 
 
 export const ImportInventoryBody = zod.object({
-  "entries": zod.string().min(1).max(importInventoryBodyEntriesMax).describe('One login:password per line, maximum 500 lines. Credentials are encrypted server-side.')
+  "entries": zod.string().min(1).max(importInventoryBodyEntriesMax).describe('Any text, one item per non-empty line, maximum 500 lines. Items are encrypted server-side.')
 })
 
 export const ImportInventoryResponse = zod.object({
   "imported": zod.number().int(),
   "skipped": zod.number().int()
+})
+
+
+/**
+ * Permanently remove all available inventory for the selected owned product. Reserved and delivered items are preserved.
+ */
+
+
+
+export const ClearProductInventoryParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const clearProductInventoryResponseDeletedMin = 0;
+
+
+
+export const ClearProductInventoryResponse = zod.object({
+  "deleted": zod.number().int().min(clearProductInventoryResponseDeletedMin)
 })
 
 

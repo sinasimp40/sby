@@ -437,6 +437,19 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ImportResult" }
+    delete:
+      operationId: clearProductInventory
+      tags: [shop]
+      description: Permanently remove all available inventory for the selected owned product. Reserved and delivered items are preserved.
+      responses:
+        "200":
+          description: Available inventory cleared
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InventoryClearResult" }
+        "400": { description: Invalid product }
+        "401": { description: Sign-in required }
+        "404": { description: Product not found }
   /shop/inventory/{id}:
     parameters:
       - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
@@ -1196,7 +1209,7 @@ components:
       additionalProperties: false
       required: [entries]
       properties:
-        entries: { type: string, minLength: 1, maxLength: 100000, description: "One login:password per line, maximum 500 lines. Credentials are encrypted server-side." }
+        entries: { type: string, minLength: 1, maxLength: 100000, description: "Any text, one item per non-empty line, maximum 500 lines. Items are encrypted server-side." }
     InventoryItem:
       type: object
       required: [id, productId, status, createdAt]
@@ -1211,6 +1224,11 @@ components:
       properties:
         imported: { type: integer }
         skipped: { type: integer }
+    InventoryClearResult:
+      type: object
+      required: [deleted]
+      properties:
+        deleted: { type: integer, minimum: 0 }
     Order:
       type: object
       required: [id, customer, productName, amount, status, paymentMethod, createdAt]

@@ -78,6 +78,7 @@ export * from './integrationStatus';
 export * from './integrationStatusSettlementStatus';
 export * from './integrationStatusTelegramRuntimeState';
 export * from './integrationStatusTelegramTransport';
+export * from './inventoryClearResult';
 export * from './inventoryInput';
 export * from './inventoryItem';
 export * from './inventoryItemStatus';

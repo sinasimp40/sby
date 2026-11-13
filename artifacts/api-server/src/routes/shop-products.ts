@@ -6,6 +6,7 @@ import {
   CreateProductBody, CreateProductResponse, UpdateProductBody, UpdateProductParams,
   UpdateProductResponse, DeleteProductParams, ImportInventoryBody, ImportInventoryParams,
   ImportInventoryResponse, ListInventoryParams, ListInventoryResponse, DeleteInventoryItemParams,
+  ClearProductInventoryParams, ClearProductInventoryResponse,
 } from "@workspace/api-zod";
 import { productsForOwner, ownedProduct, recordActivity } from "../lib/shop-store";
 import { encryptCredential, credentialFingerprint } from "../lib/inventory-encryption";
@@ -24,7 +25,7 @@ router.get("/products", async (req, res): Promise<void> => {
 router.post("/products", async (req, res): Promise<void> => {
   const parsed = CreateProductBody.safeParse(req.body);
   if (!parsed.success || !parsed.data.name.trim()) {
-    res.status(400).json({ error: "Enter a product name, valid price and delivery format." });
+    res.status(400).json({ error: "Enter a product name and valid price." });
     return;
   }
   const ownerId = getAuth(req).userId!;
@@ -112,19 +113,15 @@ router.get("/products/:id/inventory", async (req, res): Promise<void> => {
 router.post("/products/:id/inventory", async (req, res): Promise<void> => {
   const params = ImportInventoryParams.safeParse(req.params);
   const body = ImportInventoryBody.safeParse(req.body);
-  if (!params.success || !body.success) { res.status(400).json({ error: "Choose a product and enter login:password lines." }); return; }
+  if (!params.success || !body.success) { res.status(400).json({ error: "Choose a product and enter inventory items, one per line." }); return; }
   const ownerId = getAuth(req).userId!;
   if (!await ownedProduct(ownerId, params.data.id)) { res.status(404).json({ error: "Product not found." }); return; }
-  const lines = body.data.entries.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const lines = body.data.entries.split(/\r?\n/).filter((line) => line.trim().length > 0);
   if (!lines.length || lines.length > 500) {
-    res.status(400).json({ error: "Import between 1 and 500 accounts at a time." }); return;
-  }
-  const invalidIndex = lines.findIndex((line) => line.indexOf(":") <= 0 || line.indexOf(":") === line.length - 1);
-  if (invalidIndex !== -1) {
-    res.status(400).json({ error: `Line ${invalidIndex + 1} must contain a login and password separated by a colon.` }); return;
+    res.status(400).json({ error: "Import between 1 and 500 items at a time." }); return;
   }
   if (!process.env.SESSION_SECRET) {
-    res.status(503).json({ error: "Secure inventory storage needs configuration before accounts can be imported." }); return;
+    res.status(503).json({ error: "Secure inventory storage needs configuration before items can be imported." }); return;
   }
   const productId = params.data.id;
   const rows = [...new Set(lines)].map((line) => ({
@@ -134,7 +131,7 @@ router.post("/products/:id/inventory", async (req, res): Promise<void> => {
   const result = await db.transaction(async (tx) => {
     const inserted = await tx.insert(shopInventory).values(rows).onConflictDoNothing().returning({ id: shopInventory.id });
     await tx.insert(shopActivity).values({
-      ownerId, title: "Inventory imported", description: `${inserted.length} accounts securely added`, type: "inventory",
+      ownerId, title: "Inventory imported", description: `${inserted.length} items securely added`, type: "inventory",
     });
     return inserted.length;
   });
@@ -144,6 +141,26 @@ router.post("/products/:id/inventory", async (req, res): Promise<void> => {
       logger.error({ ownerId, productId, errorType: error instanceof Error ? error.name : "Error" }, "Could not announce newly stocked product.");
     });
   }
+});
+
+router.delete("/products/:id/inventory", async (req, res): Promise<void> => {
+  const params = ClearProductInventoryParams.safeParse(req.params);
+  if (!params.success) { res.status(400).json({ error: "Invalid product." }); return; }
+  const ownerId = getAuth(req).userId!;
+  const product = await ownedProduct(ownerId, params.data.id);
+  if (!product) { res.status(404).json({ error: "Product not found." }); return; }
+  const deleted = await db.transaction(async (tx) => {
+    const rows = await tx.delete(shopInventory).where(and(
+      eq(shopInventory.ownerId, ownerId), eq(shopInventory.productId, params.data.id),
+      eq(shopInventory.status, "available"),
+    )).returning({ id: shopInventory.id });
+    if (rows.length) await tx.insert(shopActivity).values({
+      ownerId, title: "Inventory cleared",
+      description: `${rows.length} available items removed from ${product.name}`, type: "inventory",
+    });
+    return rows.length;
+  });
+  res.json(ClearProductInventoryResponse.parse({ deleted }));
 });
 
 router.delete("/inventory/:id", async (req, res): Promise<void> => {

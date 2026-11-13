@@ -63,6 +63,7 @@ import type {
   ImportResult,
   IntegrationInput,
   IntegrationStatus,
+  InventoryClearResult,
   InventoryInput,
   InventoryItem,
   NOWPaymentsCredentialInput,
@@ -4143,6 +4144,77 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getImportInventoryMutationOptions(options), queryClient);
+    }
+
+export const getClearProductInventoryUrl = (id: number,) => {
+
+
+
+
+  return `/api/shop/products/${id}/inventory`
+}
+
+/**
+ * Permanently remove all available inventory for the selected owned product. Reserved and delivered items are preserved.
+ */
+export const clearProductInventory = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<InventoryClearResult> => {
+
+  return customFetch<InventoryClearResult>(getClearProductInventoryUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getClearProductInventoryMutationKey = () => ['clearProductInventory'] as const;
+
+export const getClearProductInventoryMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof clearProductInventory>>, TError,ClearProductInventoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof clearProductInventory>>, TError,ClearProductInventoryMutationVariables, TContext> => {
+
+const mutationKey = getClearProductInventoryMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof clearProductInventory>>, ClearProductInventoryMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  clearProductInventory(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ClearProductInventoryMutationResult = NonNullable<Awaited<ReturnType<typeof clearProductInventory>>>
+
+    export type ClearProductInventoryMutationError = ErrorType<void>
+    export type ClearProductInventoryMutationVariables = {id: number}
+
+    export const useClearProductInventory = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof clearProductInventory>>, TError,ClearProductInventoryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof clearProductInventory>>,
+        TError,
+        ClearProductInventoryMutationVariables,
+        TContext
+      > => {
+      return useMutation(getClearProductInventoryMutationOptions(options), queryClient);
     }
 
 export const getDeleteInventoryItemUrl = (id: number,) => {

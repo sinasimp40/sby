@@ -20,3 +20,9 @@ Grouping an existing product must preserve the original product identity and its
 **Why:** Credentials are encrypted for their owner and product identity, and historical purchases refer to that identity. Recreating the item or moving encrypted rows could break delivery and past orders.
 
 **How to apply:** Preserve existing option IDs when editing or grouping. Archive unwanted saved options instead of silently dropping them from a bulk edit. Do not delete a group with order history or reserved/delivered stock.
+
+Inventory has no required username/password format. Each non-empty line is one item, whether it contains a code, link, credentials, or other text. Do not ask users to select a delivery format in products, options, or inventory.
+
+**Why:** The user explicitly requested that anything on the same line count as inventory, without specifying user/password or a format.
+
+**How to apply:** Accept arbitrary non-empty lines and preserve their contents. Keep legacy format metadata compatible with old data, but do not use it to constrain imports or delivery.

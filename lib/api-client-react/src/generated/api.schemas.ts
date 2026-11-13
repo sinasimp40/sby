@@ -871,7 +871,7 @@ export interface EmojiImportLink {
 
 export interface InventoryInput {
   /**
-     * One login:password per line, maximum 500 lines. Credentials are encrypted server-side.
+     * Any text, one item per non-empty line, maximum 500 lines. Items are encrypted server-side.
      * @minLength 1
      * @maxLength 100000
      */
@@ -897,6 +897,11 @@ export interface InventoryItem {
 export interface ImportResult {
   imported: number;
   skipped: number;
+}
+
+export interface InventoryClearResult {
+  /** @minimum 0 */
+  deleted: number;
 }
 
 export interface OrderDelivery {

@@ -158,13 +158,10 @@ export function ProductGroupEditor({ open, onOpenChange, group, convertFrom }: {
                     aria-label="Remove unsaved option" onClick={() => set("options", d.options.filter(x => x.key !== o.key))} data-testid={`button-remove-option-${i}`}><Trash2 className="h-4 w-4" /></Button>
                 )}
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <Input type="number" step="0.01" min="0.01" value={o.price} disabled={pending} onChange={e => setOpt(o.key, { price: e.target.value })} placeholder="Price USD" className="h-8 font-mono" aria-label="Price" data-testid={`input-option-price-${i}`} />
                 <select value={o.status} disabled={pending} onChange={e => setOpt(o.key, { status: e.target.value as Status })} className={cn(selectClassName, "h-8")} aria-label="Status" data-testid={`select-option-status-${i}`}>
                   <option value="active">Active</option><option value="draft">Draft</option><option value="archived">Archived</option>
-                </select>
-                <select value={o.deliveryFormat} disabled={pending} onChange={e => setOpt(o.key, { deliveryFormat: e.target.value as Format })} className={cn(selectClassName, "h-8 font-mono")} aria-label="Delivery format" data-testid={`select-option-format-${i}`}>
-                  <option value="email:pass">email:pass</option><option value="user:pass">user:pass</option>
                 </select>
               </div>
               <Textarea rows={2} maxLength={2000} value={o.description} disabled={pending} onChange={e => setOpt(o.key, { description: e.target.value })} placeholder="What this option includes" aria-label="Option description" data-testid={`input-option-description-${i}`} />
