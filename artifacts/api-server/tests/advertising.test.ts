@@ -174,7 +174,10 @@ test("advertising API and durable sender isolate credentials, require approval, 
     assert.equal(attempts.length, 5);
     const exported = await exportShopTransfer(owner);
     const decoded = decodeShopArchive(exported.zip);
-    assert.equal(decoded.data.advertisingBots.length, 1); assert.equal(decoded.data.advertisingGroups.length, 4);
+    assert.equal(decoded.data.advertisingBots.length, 1);
+    assert.equal(decoded.data.advertisingGroups.filter(group => group.status !== "removed").length, 4);
+    assert.equal(decoded.data.advertisingGroups.filter(group => group.status === "removed").length, 1,
+      "portable exports retain removed identities so restoring cannot silently rediscover them");
     assert.ok(decoded.data.advertisingCampaigns.length > 0 && decoded.data.advertisingDeliveries.length > 0);
     assert.ok(!JSON.stringify(decoded.data).includes(token)); validateShopRelationships(decoded.data, owner);
     const disabledCampaign = await start();

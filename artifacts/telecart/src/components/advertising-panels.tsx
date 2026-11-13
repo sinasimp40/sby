@@ -10,7 +10,8 @@ import {
 import { Loader2, FileUp, Search, Trash2, Pencil, ShieldCheck, Send, Ban, Megaphone, Radar, X, Timer, Link2, Bold, Italic, Unlink, Sparkles, RefreshCw } from "lucide-react";
 import { adjustForEdit, covered, entitiesProblem, insertEmoji, linkAt, normalize, safeHttps, segments, setLink, snapSelection, toggleStyle, type Entity } from "@/lib/ad-entities";
 import { EmojiSetPicker } from "@/components/advertising/emoji-set-picker";
-import { alphabeticalGroups, retainedGroupSelection, ScrollableGroupList } from "@/components/advertising/group-list";
+import { alphabeticalGroups, retainedGroupSelection, filteredGroups, selectedGroupIdsInView, selectGroupsInView, snapshotGroupRemoval, ScrollableGroupList } from "@/components/advertising/group-list";
+import { GroupRemovalDialog } from "@/components/advertising/group-removal-dialog";
 import { Panel, EmptyState, ErrorState, RowsSkeleton } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -291,16 +292,18 @@ export function GroupsPanel({ ws, selected: savedSelected, setSelected, sequenti
   const [editing, setEditing] = useState<AdvertisingGroup | null>(null);
   const [editTarget, setEditTarget] = useState("");
   const [deleting, setDeleting] = useState<AdvertisingGroup | null>(null);
+  const [bulkRemoving, setBulkRemoving] = useState<Pick<AdvertisingGroup, "id" | "title" | "target">[] | null>(null);
   const [progress, setProgress] = useState("");
   const [intervalFor, setIntervalFor] = useState<AdvertisingGroup | null>(null);
   const [ivValue, setIvValue] = useState("");
   const [ivUnit, setIvUnit] = useState<"m" | "h" | "d">("m");
   const ivSec = Math.round(Number(ivValue) * (ivUnit === "m" ? 60 : ivUnit === "h" ? 3600 : 86400));
   const ivBad = !Number.isFinite(ivSec) || ivSec < 60 || ivSec > 2592000;
-  const list = useMemo(() => orderedGroups.filter(g => (status === "all" || g.status === status) && (!q || `${g.title} ${g.target} ${g.chatId ?? ""}`.toLowerCase().includes(q.toLowerCase()))), [orderedGroups, q, status]);
+  const list = useMemo(() => filteredGroups(orderedGroups, status, q), [orderedGroups, q, status]);
+  const visibleSelected = useMemo(() => selectedGroupIdsInView(list, selected), [list, selected]);
   const toggle = (id: string) => { const n = new Set(selected); if (n.has(id)) n.delete(id); else n.add(id); setSelected(n); };
   async function checkPerms() {
-    const ids = [...selected].filter(id => ws.groups.some(g => g.id === id));
+    const ids = [...visibleSelected];
     try {
       for (let i = 0; i < ids.length; i += 20) {
         setProgress(`${Math.min(i + 20, ids.length)} / ${ids.length}`);
@@ -319,13 +322,23 @@ export function GroupsPanel({ ws, selected: savedSelected, setSelected, sequenti
           <div className="flex gap-1 overflow-x-auto">{statuses.map(s => <button key={s} onClick={() => setStatus(s)} data-testid={`filter-group-${s}`} className={cn("shrink-0 rounded-md px-2.5 py-1.5 font-mono text-[11px] uppercase", status === s ? "bg-ink text-white" : "bg-muted text-muted-foreground hover:text-foreground")}>{s.replace("_", " ")}</button>)}</div>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <Checkbox checked={list.length > 0 && list.every(g => selected.has(g.id))} onCheckedChange={v => { const n = new Set(selected); list.forEach(g => v === true ? n.add(g.id) : n.delete(g.id)); setSelected(n); }} data-testid="checkbox-select-all" />
-          <span data-testid="text-selected-count">{selected.size} selected</span>
+          <Checkbox id="select-all-advertising-groups" disabled={!list.length}
+            checked={list.length > 0 && visibleSelected.length === list.length ? true : visibleSelected.length ? "indeterminate" : false}
+            onCheckedChange={value => setSelected(selectGroupsInView(list, selected, value === true))}
+            aria-label={`Select all ${list.length} groups in this view`} data-testid="checkbox-select-all" />
+          <label htmlFor="select-all-advertising-groups" className="cursor-pointer">Select all {list.length} shown</label>
+          <span data-testid="text-visible-selected-count">{visibleSelected.length} selected here</span>
+          <span className="text-muted-foreground" data-testid="text-selected-count">{selected.size} selected total</span>
+          <Button size="sm" variant="outline" className="text-destructive" disabled={!visibleSelected.length}
+            data-testid="button-remove-selected-groups" onClick={() => {
+              if (visibleSelected.length > 1000) { toast({ title: "Choose up to 1,000 groups at a time", variant: "destructive" }); return; }
+              setBulkRemoving(snapshotGroupRemoval(list, selected));
+            }}><Trash2 className="mr-1 h-3.5 w-3.5" />Remove selected ({visibleSelected.length})</Button>
           {onRefresh && <Button size="sm" variant="outline" className="ml-auto" disabled={refreshing} onClick={onRefresh}
             title="Refresh saved groups and membership results; this does not rediscover or rejoin groups." data-testid="button-refresh-groups">
             <RefreshCw className={cn("mr-1 h-3.5 w-3.5", refreshing && "animate-spin")} />Refresh list
           </Button>}
-          <Button size="sm" variant="outline" className={onRefresh ? "" : "ml-auto"} disabled={!selected.size || check.isPending || !ws.account.connected} onClick={checkPerms} data-testid="button-check-permissions">{check.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="mr-1 h-3.5 w-3.5" />}{progress ? `Checking ${progress}` : "Check permissions"}</Button>
+          <Button size="sm" variant="outline" className={onRefresh ? "" : "ml-auto"} disabled={!visibleSelected.length || check.isPending || !ws.account.connected} onClick={checkPerms} data-testid="button-check-permissions">{check.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="mr-1 h-3.5 w-3.5" />}{progress ? `Checking ${progress}` : `Check permissions (${visibleSelected.length})`}</Button>
         </div>
         {sequential && <p className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs leading-relaxed text-muted-foreground" data-testid="text-sequential-explainer">New queues follow this alphabetical list from top to bottom. Numbers show each selected ready group's place in the next queue. The shared delay applies after each batch; running campaigns keep their confirmed order.</p>}
         {ws.groups.length === 0 ? <EmptyState icon={Megaphone} title="No groups yet" body="Paste links, import a .txt file, or discover groups your account has already joined." /> :
@@ -377,10 +390,11 @@ export function GroupsPanel({ ws, selected: savedSelected, setSelected, sequenti
       </Dialog>
       <AlertDialog open={!!deleting} onOpenChange={o => !o && setDeleting(null)}>
         <AlertDialogContent>
-          <AlertDialogHeader><AlertDialogTitle>Remove this group?</AlertDialogTitle><AlertDialogDescription className="font-mono">{deleting?.target}</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogHeader><AlertDialogTitle>Remove this group?</AlertDialogTitle><AlertDialogDescription>{deleting?.target}. This stops advertising to this group, but does not leave it on Telegram. Posting history is kept.</AlertDialogDescription></AlertDialogHeader>
           <AlertDialogFooter><AlertDialogCancel>Keep</AlertDialogCancel><AlertDialogAction data-testid="button-confirm-delete-group" onClick={async () => { if (!deleting) return; try { sync(await del.mutateAsync({ id: deleting.id })); const n = new Set(selected); n.delete(deleting.id); setSelected(n); } catch (x) { toast({ title: "Delete failed", description: errMsg(x), variant: "destructive" }); } }}>Remove</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <GroupRemovalDialog groups={bulkRemoving} onClose={() => setBulkRemoving(null)} onRemoved={workspace => { sync(workspace); toast({ title: "Selected groups removed from advertising" }); }} />
     </Panel>
   );
 }

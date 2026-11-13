@@ -22,7 +22,7 @@ test("groups-per-interval controls render one-copy semantics and bounded group c
   });
   try {
     const { GroupsPerIntervalPanel, ForwardingStatus, groupsPerIntervalOk, queueGroups } = await vite.ssrLoadModule("/src/components/advertising/forwarding-panels.tsx");
-    const { alphabeticalGroups, retainedGroupSelection, ScrollableGroupList, groupListViewportHeight } = await vite.ssrLoadModule("/src/components/advertising/group-list.tsx");
+    const { alphabeticalGroups, retainedGroupSelection, filteredGroups, selectedGroupIdsInView, selectGroupsInView, snapshotGroupRemoval, ScrollableGroupList, groupListViewportHeight } = await vite.ssrLoadModule("/src/components/advertising/group-list.tsx");
     const { CampaignGroupCounts, campaignGroupCounts } = await vite.ssrLoadModule("/src/components/advertising/campaign-group-counts.tsx");
     const countGroups = Array.from({ length: 211 }, (_, i) => ({
       id: `count-${i}`, title: `Group ${i}`, target: `-${i + 1}`, chatId: i < 205 ? `-${i + 1}` : null,
@@ -103,12 +103,44 @@ test("groups-per-interval controls render one-copy semantics and bounded group c
     assert.equal(retainedGroupSelection([...afterLeave, { id: "newly-discovered" }], afterPoll).has("newly-discovered"), false,
       "a refresh must never select newly discovered destinations automatically");
     assert.equal(retainedGroupSelection([], afterPoll).size, 0);
+    const filterFixture = [
+      { id: "bad-1", title: "Alpha error", status: "error", target: "-123", chatId: "-100123" },
+      { id: "bad-2", title: "Beta error", status: "error", target: "@test_only", chatId: "-100456" },
+      { id: "good", title: "Alpha ready", status: "ready", target: "-789", chatId: "-100789" },
+      ...["pending", "needs_setup", "duplicate"].map(status => ({ id: status, status, title: status, target: `@${status}`, chatId: null })),
+    ];
+    const allSelected = new Set(filterFixture.map(group => group.id));
+    const errors = filteredGroups(filterFixture, "error", "");
+    assert.deepEqual(selectedGroupIdsInView(errors, allSelected), ["bad-1", "bad-2"],
+      "error-category actions cannot target selected ready or hidden groups");
+    const searchedErrors = filteredGroups(filterFixture, "error", " ALPHA ");
+    assert.deepEqual(selectedGroupIdsInView(searchedErrors, allSelected), ["bad-1"]);
+    assert.deepEqual(filteredGroups(filterFixture, "all", "-100456").map(group => group.id), ["bad-2"]);
+    for (const status of ["ready", "pending", "needs_setup", "duplicate"])
+      assert.deepEqual(filteredGroups(filterFixture, status, "").map(group => group.id), [status === "ready" ? "good" : status]);
+    const withoutErrors = selectGroupsInView(errors, allSelected, false);
+    assert.ok(withoutErrors.has("good"));
+    assert.ok(!withoutErrors.has("bad-1"));
+    assert.equal(allSelected.size, filterFixture.length, "selection updates cannot mutate saved choices");
+    assert.deepEqual([...selectGroupsInView(errors, new Set(["good"]), true)], ["good", "bad-1", "bad-2"]);
+    assert.deepEqual(selectedGroupIdsInView(filteredGroups(filterFixture, "error", "no-match"), allSelected), []);
+    const confirmed = snapshotGroupRemoval(searchedErrors, allSelected);
+    filterFixture[0].title = "Changed by a live update";
+    searchedErrors.push({ ...filterFixture[1], id: "new-live-error" });
+    assert.deepEqual(confirmed, [{ id: "bad-1", title: "Alpha error", target: "-123" }],
+      "a live update cannot expand or retarget the confirmed removal");
     const { GroupsPanel } = await vite.ssrLoadModule("/src/components/advertising-panels.tsx");
-    const renderGroups = (visible, refreshing = false) => renderToStaticMarkup(createElement(QueryClientProvider, { client: new QueryClient() },
-      createElement(GroupsPanel, { ws: { groups: visible, account: { connected: false } }, selected: staleSelected,
+    const renderGroups = (visible, refreshing = false, selection = staleSelected) => renderToStaticMarkup(createElement(QueryClientProvider, { client: new QueryClient() },
+      createElement(GroupsPanel, { ws: { groups: visible, account: { connected: false } }, selected: selection,
         setSelected: () => {}, sequential: true, onRefresh: () => {}, refreshing })));
     const groupHtml = renderGroups(groups);
     assert.match(groupHtml, /data-testid="text-selected-count">5 selected/);
+    assert.match(groupHtml, /Select all 5 shown/);
+    assert.match(groupHtml, /data-testid="text-visible-selected-count">5 selected here/);
+    assert.match(groupHtml, /data-testid="button-remove-selected-groups"/);
+    assert.match(renderGroups(groups, false, new Set([groups[0].id])), /aria-checked="mixed"/);
+    const noSelection = renderGroups(groups, false, new Set());
+    assert.match(noSelection, /<button[^>]*disabled=""[^>]*data-testid="button-remove-selected-groups"/);
     assert.match(groupHtml, new RegExp(`data-testid="row-group-${groups[0].id}"`));
     const refreshedHtml = renderGroups(afterLeave, true);
     assert.match(refreshedHtml, /data-testid="text-selected-count">4 selected/);

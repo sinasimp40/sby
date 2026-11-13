@@ -5,6 +5,7 @@ import {
   ConnectAdvertisingBotBody, PreviewAdvertisingGroupsBody, AddAdvertisingGroupsBody,
   CheckAdvertisingGroupsBody, UpdateAdvertisingGroupBody, SaveAdvertisingDraftBody, StartAdvertisingCampaignBody,
   GetAdvertisingActivityQueryParams,
+  RemoveAdvertisingGroupsBody, RemoveAdvertisingGroupsResponse,
 } from "@workspace/api-zod";
 import { getShopAuth } from "../lib/admin-auth";
 import { advertisingActivityPage, maintainAdvertisingActivity } from "../lib/advertising-activity";
@@ -18,6 +19,7 @@ import accountRouter from "./shop-advertising-account";
 import eventsRouter from "./advertising-events";
 import { accountMode, discoverAccountGroups, checkAccountGroups } from "../lib/advertising-account-groups";
 import { stopAccountSchedules } from "../lib/advertising-account-auth";
+import { removeAdvertisingGroups } from "../lib/advertising-group-removal";
 
 const router: IRouter = Router();
 router.use("/advertising", (req, res, next) => {
@@ -118,15 +120,12 @@ router.patch("/advertising/groups/:id", run(async req => {
   });
   return advertisingWorkspace(owner(req));
 }));
+router.post("/advertising/groups/remove", run(async req => {
+  await removeAdvertisingGroups(owner(req), RemoveAdvertisingGroupsBody.parse(req.body).groupIds);
+  return RemoveAdvertisingGroupsResponse.parse(await advertisingWorkspace(owner(req)));
+}));
 router.delete("/advertising/groups/:id", run(async req => {
-  await withAdvertisingLock(owner(req), async client => {
-    const existing = (await client.query("SELECT status FROM advertising_groups WHERE owner_id=$1 AND id=$2", [owner(req), id(req)])).rows[0];
-    if (existing?.status === "removed") throw new CommerceError("Removed destinations are retained to prevent accidental rediscovery. Restore through membership import.", 409);
-    const result = await client.query("DELETE FROM advertising_groups WHERE owner_id=$1 AND id=$2", [owner(req), id(req)]);
-    if (!result.rowCount) throw new CommerceError("Group not found.", 404);
-    await stopAccountSchedules(owner(req), client, [id(req)], "Group removed.");
-    await client.query("DELETE FROM advertising_schedules WHERE owner_id=$1 AND group_id=$2", [owner(req), id(req)]);
-  });
+  await removeAdvertisingGroups(owner(req), [id(req)]);
   return advertisingWorkspace(owner(req));
 }));
 router.put("/advertising/draft", run(async req => {

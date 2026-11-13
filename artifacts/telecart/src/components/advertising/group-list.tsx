@@ -9,6 +9,27 @@ export function retainedGroupSelection(groups: Pick<AdvertisingGroup, "id">[], s
   return new Set([...selected].filter(id => present.has(id)));
 }
 
+export function filteredGroups(groups: AdvertisingGroup[], status: string, search: string) {
+  const query = search.trim().toLowerCase();
+  return groups.filter(group => (status === "all" || group.status === status) &&
+    (!query || `${group.title} ${group.target} ${group.chatId ?? ""}`.toLowerCase().includes(query)));
+}
+
+/** Bulk actions must never include selections hidden by the current filters. */
+export function selectedGroupIdsInView(groups: Pick<AdvertisingGroup, "id">[], selected: Set<string>) {
+  return groups.filter(group => selected.has(group.id)).map(group => group.id);
+}
+
+export function selectGroupsInView(groups: Pick<AdvertisingGroup, "id">[], selected: Set<string>, checked: boolean) {
+  const next = new Set(selected);
+  groups.forEach(group => checked ? next.add(group.id) : next.delete(group.id));
+  return next;
+}
+
+export function snapshotGroupRemoval(groups: AdvertisingGroup[], selected: Set<string>) {
+  return groups.filter(group => selected.has(group.id)).map(({ id, title, target }) => ({ id, title, target }));
+}
+
 export function alphabeticalGroups(groups: AdvertisingGroup[]) {
   return [...groups].sort((a, b) =>
     names.compare((a.title || a.target).trim(), (b.title || b.target).trim()) ||

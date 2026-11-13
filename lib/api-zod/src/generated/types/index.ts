@@ -41,6 +41,7 @@ export * from './advertisingForwardStartInput';
 export * from './advertisingForwardStartInputExpectedGroupsItem';
 export * from './advertisingGroup';
 export * from './advertisingGroupKind';
+export * from './advertisingGroupRemoval';
 export * from './advertisingGroupSelection';
 export * from './advertisingGroupsInput';
 export * from './advertisingGroupStatus';
