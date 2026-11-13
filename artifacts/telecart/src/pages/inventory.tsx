@@ -131,7 +131,7 @@ export default function InventoryPage() {
             {inv.isLoading ? <div className="p-4"><RowsSkeleton /></div> : inv.isError ? <div className="p-4"><ErrorState message="Failed to load inventory" onRetry={() => inv.refetch()} /></div> : !inv.data?.length ? (
               <div className="p-4"><EmptyState icon={KeyRound} title="No stock for this product" body="Import items on the left. Each purchased unit delivers one complete inventory line." /></div>
             ) : (
-              <ul className="max-h-[520px] divide-y divide-border/60 overflow-y-auto">
+              <ul className="dashboard-scroll divide-y divide-border/60" tabIndex={0} aria-label="Product inventory" data-testid="scroll-inventory">
                 {inv.data.map((it) => (
                   <li key={it.id} className="flex items-center gap-3 px-4 py-2.5 text-sm" data-testid={`row-inventory-${it.id}`}>
                     <span className="font-mono text-xs text-muted-foreground">#{String(it.id).padStart(5, "0")}</span>

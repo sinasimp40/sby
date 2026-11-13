@@ -38,7 +38,7 @@ export default function OverviewPage() {
                 {isLoading ? <div className="p-4"><RowsSkeleton rows={3} /></div> : !data?.recentOrders.length ? (
                   <div className="p-4"><EmptyState icon={Receipt} title="No orders yet" body="Orders appear here once the Telegram bot and NOWPayments checkout are connected. Nothing is faked in the meantime." /></div>
                 ) : (
-                  <ul className="divide-y divide-border/70">
+                  <ul className="dashboard-scroll divide-y divide-border/70" tabIndex={0} aria-label="Recent orders">
                     {data.recentOrders.map((o) => (
                       <li key={o.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm" data-testid={`row-recent-order-${o.id}`}>
                         <div className="min-w-0"><div className="truncate font-medium">{o.productName}</div><div className="text-xs text-muted-foreground">{customerName(o.customer)} · {ago(o.createdAt)}</div></div>
@@ -52,7 +52,7 @@ export default function OverviewPage() {
                 {isLoading ? <div className="p-4"><RowsSkeleton rows={3} /></div> : !data?.topProducts.length ? (
                   <div className="p-4"><EmptyState icon={Package} title="No products" body="Add your first product to start building a catalog." action={<Button size="sm" asChild><Link href="/products">Add product</Link></Button>} /></div>
                 ) : (
-                  <ul className="divide-y divide-border/70">
+                  <ul className="dashboard-scroll divide-y divide-border/70" tabIndex={0} aria-label="Top products">
                     {data.topProducts.map((p, i) => (
                       <li key={p.id} className="flex items-center gap-3 px-4 py-3 text-sm" data-testid={`row-top-product-${p.id}`}>
                         <span className="w-5 font-mono text-xs text-muted-foreground">{String(i + 1).padStart(2, "0")}</span>

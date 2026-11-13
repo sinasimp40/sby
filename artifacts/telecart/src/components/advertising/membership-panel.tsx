@@ -81,7 +81,7 @@ export function MembershipPanel({ ws }: { ws: AdvertisingWorkspace }) {
       {!ready && <p className="text-xs text-muted-foreground">Connect and verify your advertising account to preview or join.</p>}
       {error && <p role="alert" className="text-sm text-destructive" data-testid="error-membership">{error}</p>}
       {preview && <div className="space-y-3 rounded-lg border p-3" data-testid="panel-membership-preview">
-        <ul className="max-h-80 divide-y overflow-y-auto">
+        <ul className="dashboard-scroll divide-y" tabIndex={0} aria-label="Group join preview" data-testid="scroll-membership-preview">
           {[...preview.rows].sort((a, b) => (a.title || a.target).localeCompare(b.title || b.target, undefined, { sensitivity: "base", numeric: true })).map((row, i) =>
             <li key={`${row.target}-${i}`} className="flex gap-2 py-2">
               <Checkbox checked={selected.has(row.target) && row.canJoin} disabled={!row.canJoin || busy}
@@ -108,7 +108,7 @@ export function MembershipPanel({ ws }: { ws: AdvertisingWorkspace }) {
       {!!jobs.length && <div data-testid="panel-membership-activity">
         <h3 className="mb-2 text-sm font-medium">Membership activity · {pendingJoins} joins waiting</h3>
         <p className="mb-2 text-xs text-muted-foreground">Stop affects joins not yet started. One in-flight action may finish. Awaiting approval only checks membership; it never submits the request again.</p>
-        <ul className="max-h-80 divide-y overflow-y-auto rounded-md border">
+        <ul className="dashboard-scroll divide-y rounded-md border" tabIndex={0} aria-label="Group leave and join results" data-testid="scroll-membership-results">
           {jobs.map(job => <li key={job.id} className="px-3 py-2 text-xs" data-testid={`membership-job-${job.id}`}>
             <div className="break-all font-medium">{job.title || job.target} · {job.action} · {job.status.replaceAll("_", " ")}</div>
             <div className="break-all text-muted-foreground">{job.note}</div>

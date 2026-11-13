@@ -14,3 +14,9 @@ Discovered advertising groups must be alphabetical, with ten visible rows and th
 **Why:** The user explicitly requested this order and scroll behavior for group discovery, and repeated “like 10 show its collapsing” when the list shrank.
 
 **How to apply:** Keep search, selection, and new queue previews consistent with the alphabetical display. Do not reorder already-confirmed running campaigns.
+
+Dashboard record lists must be scrollable when needed, including leave/join results, orders and other growing collections.
+
+**Why:** The user requested “check the whole dashboard make sure everything is scroolable if necessary like the result of leave group, order and others.”
+
+**How to apply:** Bound long result windows without dropping records to fit them. Preserve search, filters, exports and actions, allow wide tables to scroll sideways on narrow screens, and keep long drawers and confirmations reachable.

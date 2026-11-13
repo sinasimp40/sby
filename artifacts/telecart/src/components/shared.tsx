@@ -19,7 +19,7 @@ export function PageHeader({ eyebrow, title, description, actions }: { eyebrow: 
 
 export function Panel({ title, meta, children, className, bodyClassName }: { title?: ReactNode; meta?: ReactNode; children: ReactNode; className?: string; bodyClassName?: string }) {
   return (
-    <section className={cn("rise rounded-xl border border-card-border bg-card shadow-sm", className)}>
+    <section className={cn("rise min-w-0 rounded-xl border border-card-border bg-card shadow-sm", className)}>
       {(title || meta) && (
         <header className="flex items-center justify-between gap-3 border-b border-border/70 px-4 py-3">
           <h2 className="font-display text-[15px] font-semibold">{title}</h2>

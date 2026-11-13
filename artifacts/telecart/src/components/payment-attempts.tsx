@@ -17,7 +17,7 @@ export function PaymentAttemptsPanel() {
       {payments.isError ? <ErrorState message="Could not load payments" onRetry={() => payments.refetch()} /> :
         payments.isLoading ? <p className="text-sm text-muted-foreground">Loading payments…</p> :
         !payments.data?.length ? <p className="py-4 text-sm text-muted-foreground">No real payment attempts yet. Invoices appear here when a customer chooses a payment method in the connected bot.</p> : (
-          <div className="overflow-x-auto"><table className="w-full text-left text-xs">
+          <div className="dashboard-scroll dashboard-table-scroll" tabIndex={0} role="region" aria-label="Payment history" data-testid="scroll-payments"><table className="w-full text-left text-xs">
             <thead><tr className="border-b"><th className="p-2">Reference / customer</th><th className="p-2">Purpose / amount</th><th className="p-2">Provider status</th><th className="p-2">Fulfillment</th><th className="p-2">Verify</th></tr></thead>
             <tbody>{payments.data.map(p => <tr key={p.id} className="border-b" data-testid={`payment-row-${p.id}`}>
               <td className="p-2"><div className="font-mono" title={p.id}>{p.id.slice(0, 8)}</div><div className="text-muted-foreground">{p.customer}</div><div className="font-mono text-muted-foreground">{p.providerPaymentId || "No provider ID"}</div></td>

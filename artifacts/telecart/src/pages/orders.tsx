@@ -46,7 +46,7 @@ export default function OrdersPage() {
         {isLoading ? <div className="p-4"><RowsSkeleton /></div> : isError ? <div className="p-4"><ErrorState message={(error as Error)?.message ?? "Failed to load orders"} onRetry={() => refetch()} /></div> : !rows.length ? (
           <div className="p-4"><EmptyState icon={Receipt} title={data?.length ? "No matching orders" : "No orders yet"} body={data?.length ? "Adjust the search or status filter." : "When buyers check out through your bot, each order lands here with its payment and delivery status."} /></div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="dashboard-scroll dashboard-table-scroll" tabIndex={0} role="region" aria-label="Orders" data-testid="scroll-orders">
             <table className="w-full text-sm">
               <thead><tr className="border-b border-border/70 text-left font-mono text-[10.5px] uppercase tracking-wider text-muted-foreground"><th className="px-4 py-2.5 font-medium">Order</th><th className="px-3 py-2.5 font-medium">Customer</th><th className="px-3 py-2.5 font-medium">Product</th><th className="px-3 py-2.5 font-medium">Status</th><th className="px-4 py-2.5 text-right font-medium">Amount</th></tr></thead>
               <tbody className="divide-y divide-border/60">

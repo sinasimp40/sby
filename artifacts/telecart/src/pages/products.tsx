@@ -212,7 +212,7 @@ export default function ProductsPage() {
         {loading ? <div className="p-4"><RowsSkeleton /></div> : failed ? <div className="p-4"><ErrorState message={((error ?? groupsQ.error) as Error)?.message ?? "Failed to load"} onRetry={() => { refetch(); groupsQ.refetch(); }} /></div> : !rows.length && !groups.length ? (
           <div className="p-4"><EmptyState icon={Package} title={total ? "No matches" : "No products yet"} body={total ? "Try a different search or filter." : "Create a product or a grouped product with options, then import credentials into inventory."} action={!total ? <Button size="sm" onClick={openNew}><Plus className="mr-1 h-3.5 w-3.5" />New product</Button> : undefined} /></div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="dashboard-scroll dashboard-table-scroll" tabIndex={0} role="region" aria-label="Products and options" data-testid="scroll-products">
             <table className="w-full text-sm">
               <thead><tr className="border-b border-border/70 text-left font-mono text-[10.5px] uppercase tracking-wider text-muted-foreground">
                 <th className="px-4 py-2.5 font-medium">Product</th><th className={th}>Status</th><th className={cn(th, "text-right")}>Stock</th><th className={cn(th, "text-right")}>Sold</th><th className={cn(th, "text-right")}>Price</th><th className="px-4 py-2.5" /></tr></thead>

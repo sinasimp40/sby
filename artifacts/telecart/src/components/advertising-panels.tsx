@@ -387,7 +387,7 @@ export function HistoryPanel({ ws, selectedId, setSelectedId }: { ws: Advertisin
   return (
     <Panel title="Earlier bot campaigns" meta="read only">
       {camps.length === 0 ? <EmptyState icon={Send} title="No earlier campaigns" body="One-time bot campaigns from before account posting appear here." /> :
-        <ul className="divide-y rounded-lg border">{camps.map(c => (
+        <ul className="dashboard-scroll divide-y rounded-lg border" tabIndex={0} aria-label="Earlier advertising campaigns" data-testid="scroll-campaign-history">{camps.map(c => (
           <li key={c.id}><button onClick={() => setSelectedId(selectedId === c.id ? null : c.id)} className={cn("w-full p-3 text-left hover:bg-muted/40", selectedId === c.id && "bg-muted/60")} data-testid={`row-campaign-${c.id}`}>
             <div className="flex items-center gap-2"><Tag s={c.status} testId={`status-campaign-${c.id}`} /><span className="text-xs text-muted-foreground">{dateTime(c.createdAt)}</span></div>
             <div className="mt-1 truncate text-sm">{c.text}</div>
@@ -419,7 +419,7 @@ function CampaignDetail({ id, onClose }: { id: string; onClose: () => void }) {
         <div key={s} className="mb-3">
           <div className="mb-1 flex items-center gap-2"><Tag s={s} /><span className="font-mono text-xs">{rows.length}</span></div>
           {s === "uncertain" && <p className="mb-1 text-xs text-amber-800">Telegram may have posted these. They are not retried, to avoid double posts. Check the groups manually.</p>}
-          <ul className="space-y-1">{rows.map(r => <li key={r.id} className="text-xs" data-testid={`row-delivery-${r.id}`}><span className="font-mono">{r.target}</span>{r.sentAt && <span className="text-muted-foreground"> · {dateTime(r.sentAt)}</span>}{r.note && <div className="text-muted-foreground">{r.note}</div>}</li>)}</ul>
+          <ul className="dashboard-scroll space-y-1" tabIndex={0} aria-label={`${s} campaign results`}>{rows.map(r => <li key={r.id} className="text-xs" data-testid={`row-delivery-${r.id}`}><span className="font-mono">{r.target}</span>{r.sentAt && <span className="text-muted-foreground"> · {dateTime(r.sentAt)}</span>}{r.note && <div className="text-muted-foreground">{r.note}</div>}</li>)}</ul>
         </div>
       ))}
       <AlertDialog open={confirm} onOpenChange={setConfirm}>

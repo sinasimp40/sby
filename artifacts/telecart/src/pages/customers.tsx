@@ -23,7 +23,7 @@ export default function CustomersPage() {
         {isLoading ? <div className="p-4"><RowsSkeleton /></div> : isError ? <div className="p-4"><ErrorState message={(error as Error)?.message ?? "Failed to load customers"} onRetry={() => refetch()} /></div> : !rows.length ? (
           <div className="p-4"><EmptyState icon={Users} title={data?.length ? "No matches" : "No customers yet"} body={data?.length ? "Try another username." : "Customers appear after they interact with your connected Telegram bot."} /></div>
         ) : (
-          <div className="overflow-x-auto"><table className="w-full text-sm">
+          <div className="dashboard-scroll dashboard-table-scroll" tabIndex={0} role="region" aria-label="Customers" data-testid="scroll-customers"><table className="w-full text-sm">
             <thead><tr className="border-b border-border/70 text-left font-mono text-[10.5px] uppercase tracking-wider text-muted-foreground"><th className="px-4 py-2.5 font-medium">Customer</th><th className="px-3 py-2.5 text-right font-medium">Orders</th><th className="px-3 py-2.5 text-right font-medium">Spent</th><th className="px-4 py-2.5 text-right font-medium">Wallet</th></tr></thead>
             <tbody className="divide-y divide-border/60">{rows.map((c) => (
               <tr key={c.id} onClick={() => setSel(c)} className="cursor-pointer hover:bg-muted/40" data-testid={`row-customer-${c.id}`}>
@@ -45,7 +45,7 @@ export default function CustomersPage() {
             </div>
             <div className="mt-5 text-sm font-semibold">Orders</div>
             {!selOrders.length ? <p className="mt-1 text-sm text-muted-foreground">No orders recorded.</p> : (
-              <ul className="mt-2 divide-y divide-border rounded-lg border border-border text-sm">{selOrders.map((o) => (
+              <ul className="dashboard-scroll mt-2 divide-y divide-border rounded-lg border border-border text-sm" tabIndex={0} aria-label="Customer order history" data-testid="scroll-customer-orders">{selOrders.map((o) => (
                 <li key={o.id} className="flex items-center justify-between px-3 py-2"><span className="truncate">{o.productName}</span><span className="flex items-center gap-2"><StatusPill status={o.status} /><span className="font-mono">{money(o.amount)}</span></span></li>))}</ul>
             )}
           </>)}
