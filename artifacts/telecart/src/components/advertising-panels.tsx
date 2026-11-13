@@ -10,6 +10,7 @@ import {
 import { Loader2, FileUp, Search, Trash2, Pencil, ShieldCheck, Send, Ban, Megaphone, Radar, X, Timer, Link2, Bold, Italic, Unlink, Sparkles } from "lucide-react";
 import { adjustForEdit, covered, entitiesProblem, insertEmoji, linkAt, normalize, safeHttps, segments, setLink, snapSelection, toggleStyle, type Entity } from "@/lib/ad-entities";
 import { EmojiSetPicker } from "@/components/advertising/emoji-set-picker";
+import { alphabeticalGroups, ScrollableGroupList } from "@/components/advertising/group-list";
 import { Panel, EmptyState, ErrorState, RowsSkeleton } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -277,7 +278,8 @@ export function ImportPanel({ ws }: { ws: AdvertisingWorkspace }) {
 
 /* ---------------- Group list ---------------- */
 export function GroupsPanel({ ws, selected, setSelected, sequential = false }: { ws: AdvertisingWorkspace; selected: Set<string>; setSelected: (s: Set<string>) => void; sequential?: boolean }) {
-  const queuePos = useMemo(() => { const m = new Map<string, number>(); let i = 0; for (const g of ws.groups) if (selected.has(g.id) && g.enabled && g.status === "ready" && g.chatId) m.set(g.id, ++i); return m; }, [ws.groups, selected]);
+  const orderedGroups = useMemo(() => alphabeticalGroups(ws.groups), [ws.groups]);
+  const queuePos = useMemo(() => { const m = new Map<string, number>(); let i = 0; for (const g of orderedGroups) if (selected.has(g.id) && g.enabled && g.status === "ready" && g.chatId) m.set(g.id, ++i); return m; }, [orderedGroups, selected]);
   const sync = useWorkspaceSync();
   const { toast } = useToast();
   const check = useCheckAdvertisingGroups();
@@ -294,7 +296,7 @@ export function GroupsPanel({ ws, selected, setSelected, sequential = false }: {
   const [ivUnit, setIvUnit] = useState<"m" | "h" | "d">("m");
   const ivSec = Math.round(Number(ivValue) * (ivUnit === "m" ? 60 : ivUnit === "h" ? 3600 : 86400));
   const ivBad = !Number.isFinite(ivSec) || ivSec < 60 || ivSec > 2592000;
-  const list = useMemo(() => ws.groups.filter(g => (status === "all" || g.status === status) && (!q || `${g.title} ${g.target} ${g.chatId ?? ""}`.toLowerCase().includes(q.toLowerCase()))), [ws.groups, q, status]);
+  const list = useMemo(() => orderedGroups.filter(g => (status === "all" || g.status === status) && (!q || `${g.title} ${g.target} ${g.chatId ?? ""}`.toLowerCase().includes(q.toLowerCase()))), [orderedGroups, q, status]);
   const toggle = (id: string) => { const n = new Set(selected); if (n.has(id)) n.delete(id); else n.add(id); setSelected(n); };
   async function checkPerms() {
     const ids = [...selected].filter(id => ws.groups.some(g => g.id === id));
@@ -320,10 +322,10 @@ export function GroupsPanel({ ws, selected, setSelected, sequential = false }: {
           <span data-testid="text-selected-count">{selected.size} selected</span>
           <Button size="sm" variant="outline" className="ml-auto" disabled={!selected.size || check.isPending || !ws.account.connected} onClick={checkPerms} data-testid="button-check-permissions">{check.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="mr-1 h-3.5 w-3.5" />}{progress ? `Checking ${progress}` : "Check permissions"}</Button>
         </div>
-        {sequential && <p className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs leading-relaxed text-muted-foreground" data-testid="text-sequential-explainer">Queue order follows this list from top to bottom. Selected ready groups receive the forward one at a time, separated by the single shared delay, then the queue repeats. Numbers show each group's place in the queue.</p>}
+        {sequential && <p className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs leading-relaxed text-muted-foreground" data-testid="text-sequential-explainer">New queues follow this alphabetical list from top to bottom. Numbers show each selected ready group's place in the next queue. The shared delay applies after each batch; running campaigns keep their confirmed order.</p>}
         {ws.groups.length === 0 ? <EmptyState icon={Megaphone} title="No groups yet" body="Paste links, import a .txt file, or discover groups your account has already joined." /> :
           list.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">No groups match.</p> :
-          <ul className="divide-y rounded-lg border">
+          <ScrollableGroupList count={list.length}>
             {list.map(g => (
               <li key={g.id} className="flex items-start gap-3 p-3" data-testid={`row-group-${g.id}`}>
                 {sequential && <span className={cn("mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full font-mono text-[10px] font-semibold", queuePos.has(g.id) ? "bg-ink text-white" : "border border-dashed text-muted-foreground")} data-testid={`text-queue-pos-${g.id}`}>{queuePos.get(g.id) ?? "-"}</span>}
@@ -348,7 +350,7 @@ export function GroupsPanel({ ws, selected, setSelected, sequential = false }: {
                 </div>
               </li>
             ))}
-          </ul>}
+          </ScrollableGroupList>}
       </div>
       <Dialog open={!!editing} onOpenChange={o => !o && setEditing(null)}>
         <DialogContent>

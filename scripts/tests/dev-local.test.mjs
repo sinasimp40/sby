@@ -154,7 +154,7 @@ test("database readiness inspection uses only synthetic tables and owner-scoped 
 });
 
 test("first-run configuration generates a fresh secret without reading Replit environment", async () => {
-  const visible = ["1", "", "admin@example.com"];
+  const visible = ["1", "admin@example.com"];
   const hidden = [config.TELECART_ADMIN_INITIAL_PASSWORD, config.TELECART_ADMIN_INITIAL_PASSWORD];
   const result = await makeFirstRunConfig({
     ask: async () => visible.shift(),
@@ -162,13 +162,15 @@ test("first-run configuration generates a fresh secret without reading Replit en
   });
   assert.equal(result.TELECART_OWNER_ID, "local-admin");
   assert.equal(result.TELECART_ADMIN_EMAIL, "admin@example.com");
+  assert.equal(result.TELECART_SQLITE_PATH, "data/telecart.db");
+  assert.equal(visible.length, 0, "setup only asks for installation type and admin email");
   assert.equal(result.SESSION_SECRET.length, 96);
   assert.match(result.SESSION_SECRET, /^[a-f0-9]{96}$/);
   assert.equal(validateLocalConfig(result), null);
 });
 
 test("attaching an existing database preserves its original secret and owner", async () => {
-  const visible = ["2", "data/existing.db", "existing-shop-owner", "admin@example.com"];
+  const visible = ["2", "existing-shop-owner", "admin@example.com"];
   const hidden = [
     "the-original-session-secret-for-this-shop-123456",
     config.TELECART_ADMIN_INITIAL_PASSWORD,
@@ -180,10 +182,11 @@ test("attaching an existing database preserves its original secret and owner", a
   });
   assert.equal(result.SESSION_SECRET, "the-original-session-secret-for-this-shop-123456");
   assert.equal(result.TELECART_OWNER_ID, "existing-shop-owner");
+  assert.equal(result.TELECART_SQLITE_PATH, "data/telecart.db");
 });
 
 test("new installations reject a short password without saving configuration", async () => {
-  const visible = ["1", "", "admin@example.com"];
+  const visible = ["1", "admin@example.com"];
   const hidden = ["short", "short"];
   await assert.rejects(makeFirstRunConfig({
     ask: async () => visible.shift(),

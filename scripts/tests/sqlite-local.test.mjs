@@ -51,9 +51,13 @@ test("an active or uncheckable local process can never be taken over", async t =
 });
 test("copied lock requires explicit confirmation and preserves the database", async t => {
   const fixture = lockFixture(t);
-  await assert.rejects(reviewLocalDatabaseLock(fixture.file, { host: "TEST_ONLY_LOCAL", ask: async () => "" }), /cancelled/);
+  await assert.rejects(reviewLocalDatabaseLock(fixture.file, { host: "TEST_ONLY_LOCAL", ask: async () => "n" }), /cancelled/);
   assert.equal(readFileSync(fixture.lockPath, "utf8"), fixture.original);
-  await reviewLocalDatabaseLock(fixture.file, { host: "TEST_ONLY_LOCAL", ask: async () => "USE THIS LOCAL COPY" });
+  await reviewLocalDatabaseLock(fixture.file, { host: "TEST_ONLY_LOCAL", ask: async question => {
+    assert.match(question, /\[Y\/n\]/);
+    assert.doesNotMatch(question, /Type USE THIS LOCAL COPY/);
+    return "";
+  } });
   assert.equal(existsSync(fixture.lockPath), false);
   const backups = readdirSync(fixture.directory).filter(name => name.includes(".reviewed-"));
   assert.equal(backups.length, 1);
@@ -163,16 +167,16 @@ test("replacing repeated copies stops obsolete multi-copy jobs and preserves dat
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
-test("folder entered at setup is saved as a database file before credentials are requested", async () => {
-  const directory = mkdtempSync(join(tmpdir(), "telecart setup directory "));
-  try {
-    const visible = ["1", directory, "test@example.invalid"];
-    const config = await makeFirstRunConfig({
-      ask: async () => visible.shift(), askSecret: async () => "TEST_ONLY_PASSWORD",
-    });
-    assert.equal(config.TELECART_SQLITE_PATH, join(directory, "telecart.db"));
-    assert.equal(existsSync(config.TELECART_SQLITE_PATH), false, "setup must not create a database before confirmation");
-  } finally { rmSync(directory, { recursive: true, force: true }); }
+test("setup uses the default SQLite path without asking for a folder or creating a database", async () => {
+  const questions = [];
+  const visible = ["1", "test@example.invalid"];
+  const config = await makeFirstRunConfig({
+    ask: async question => { questions.push(question); return visible.shift(); },
+    askSecret: async () => "TEST_ONLY_PASSWORD",
+  });
+  assert.equal(config.TELECART_SQLITE_PATH, "data/telecart.db");
+  assert.equal(visible.length, 0);
+  assert.ok(questions.every(question => !/folder or database|SQLite.*path/i.test(question)));
 });
 
 test("saved directory path is repaired in memory without resetting the configuration or secret", async () => {

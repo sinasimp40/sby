@@ -38,3 +38,9 @@ Preserve uniform six-digit UTC timestamp precision across SQLite defaults, bound
 **Why:** PostgreSQL-era archives and history cursors preserve microseconds. Mixing millisecond and microsecond ISO strings changes lexical ordering even for the same instant, which can skip or repeat history records.
 
 **How to apply:** Do not normalize portable date strings through JavaScript Date alone, or change just one side of a stored-date comparison when evolving the database.
+
+Local launchers should default to `data/telecart.db` and make “Use this local copy” the default choice, without requiring those values to be typed.
+
+**Why:** The user explicitly requested fewer repeated setup inputs on Windows and shell launchers.
+
+**How to apply:** Preserve existing configured database locations and keys. Keep live-process lock checks and warnings about stopping the original copy; accepting the local-copy default must not silently enable providers or resume unapproved work.

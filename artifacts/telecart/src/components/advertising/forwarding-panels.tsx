@@ -12,6 +12,7 @@ import { errMsg, dateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { fmtInterval, useWorkspaceSync } from "@/components/advertising-panels";
 import { SavedMessageCard } from "./saved-message-picker";
+import { alphabeticalGroups } from "./group-list";
 
 export type IntervalUnit = "m" | "h";
 export const unitSec = (u: IntervalUnit) => (u === "m" ? 60 : 3600);
@@ -21,7 +22,7 @@ export const groupsPerIntervalOk = (n: number) => Number.isInteger(n) && n >= 1 
 export const splitInterval = (s: number): [string, IntervalUnit] => (s % 3600 === 0 ? [String(s / 3600), "h"] : [String(Math.max(1, Math.round(s / 60))), "m"]);
 
 /** Groups eligible for the queue, in displayed (workspace) order. */
-export const queueGroups = (ws: AdvertisingWorkspace, selected: Set<string>) => ws.groups.filter(g => selected.has(g.id) && g.enabled && g.status === "ready" && !!g.chatId);
+export const queueGroups = (ws: AdvertisingWorkspace, selected: Set<string>) => alphabeticalGroups(ws.groups).filter(g => selected.has(g.id) && g.enabled && g.status === "ready" && !!g.chatId);
 export const legacyRunning = (ws: AdvertisingWorkspace) => ws.forwarding?.running ? ws.groups.filter(g => g.running && !ws.forwarding!.groupIds.includes(g.id)) : ws.groups.filter(g => g.running);
 
 export function IntervalPanel({ value, unit, onChange }: { value: string; unit: IntervalUnit; onChange: (v: string, u: IntervalUnit) => void }) {

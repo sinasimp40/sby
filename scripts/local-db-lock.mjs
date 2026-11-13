@@ -25,7 +25,8 @@ export async function reviewLocalDatabaseLock(databasePath, {
   console.warn("This SQLite file has a lock from a different computer.");
   console.warn("Stop the original shop first. Continue only for a private local copy, never a shared drive or two running copies.");
   console.warn("This preserves the database and moves only the old lock aside. Saved work may resume after the separate processing confirmation.");
-  if (!ask || await ask("Type USE THIS LOCAL COPY to confirm the original is stopped, or press Enter to cancel: ") !== "USE THIS LOCAL COPY") {
+  const answer = ask ? (await ask("Use this local copy after stopping the original? [Y/n] (Enter = use this copy): ")).trim().toLowerCase() : null;
+  if (answer === null || !["", "y", "yes", "use this local copy"].includes(answer)) {
     throw new Error("Local database takeover cancelled. Database, configuration and lock were left unchanged.");
   }
   // Coordinate with the live engine's recovery mechanism; never overwrite an

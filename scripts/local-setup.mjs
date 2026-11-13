@@ -3,7 +3,6 @@ import { closeSync, openSync, writeFileSync } from "node:fs";
 import { createInterface } from "node:readline";
 import { StringDecoder } from "node:string_decoder";
 import { serializeLocalEnv, validateLocalConfig } from "./local-core.mjs";
-import { normalizeSqlitePath } from "./sqlite-path.mjs";
 
 function askLine(question) {
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
@@ -76,9 +75,8 @@ export async function makeFirstRunConfig({ ask = askLine, askSecret = askHidden 
   const installation = await ask("1) New local installation   2) Attach an existing installation [1/2]: ");
   if (!["1", "2"].includes(installation)) throw new Error("Choose 1 or 2. No configuration was saved.");
 
-  const enteredPath = await ask("SQLite folder or database file [data/telecart.db]: ") || "data/telecart.db";
-  const databasePath = normalizeSqlitePath(enteredPath);
-  if (databasePath !== enteredPath.trim()) console.log("Using telecart.db inside the selected folder (or removing surrounding path quotes).");
+  const databasePath = "data/telecart.db";
+  console.log("Using SQLite database: data/telecart.db. Existing .env.local paths are kept; edit TELECART_SQLITE_PATH there if you need a different location.");
   const sessionSecret = installation === "1"
     ? randomBytes(48).toString("hex")
     : await askSecret("Original SESSION_SECRET for this existing installation (input hidden): ");

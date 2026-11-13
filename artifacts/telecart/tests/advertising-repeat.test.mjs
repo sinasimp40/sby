@@ -20,7 +20,22 @@ test("groups-per-interval controls render one-copy semantics and bounded group c
     server: { middlewareMode: true, hmr: false },
   });
   try {
-    const { GroupsPerIntervalPanel, groupsPerIntervalOk } = await vite.ssrLoadModule("/src/components/advertising/forwarding-panels.tsx");
+    const { GroupsPerIntervalPanel, groupsPerIntervalOk, queueGroups } = await vite.ssrLoadModule("/src/components/advertising/forwarding-panels.tsx");
+    const { alphabeticalGroups, ScrollableGroupList, groupListViewportHeight } = await vite.ssrLoadModule("/src/components/advertising/group-list.tsx");
+    const groups = ["Zulu", "beta 10", "Alpha", "beta 2", ""].map((title, i) => ({
+      id: String(i), title, target: title || "Charlie", enabled: true, status: "ready", chatId: `-${i + 1}`,
+    }));
+    const original = groups.map(g => g.id);
+    assert.deepEqual(alphabeticalGroups(groups).map(g => g.title || g.target), ["Alpha", "beta 2", "beta 10", "Charlie", "Zulu"]);
+    assert.deepEqual(groups.map(g => g.id), original, "sorting must not mutate the cached workspace");
+    assert.deepEqual(queueGroups({ groups }, new Set(original)).map(g => g.id), alphabeticalGroups(groups).map(g => g.id));
+    const rows = Array.from({ length: 12 }, (_, i) => ({ getBoundingClientRect: () => ({ bottom: 110 + (i + 1) * 81 }) }));
+    assert.equal(groupListViewportHeight({ children: rows, getBoundingClientRect: () => ({ top: 110 }) }), 811);
+    assert.equal(groupListViewportHeight({ children: rows.slice(0, 10), getBoundingClientRect: () => ({ top: 110 }) }), undefined);
+    const listHtml = renderToStaticMarkup(createElement(ScrollableGroupList, { count: 12 },
+      Array.from({ length: 12 }, (_, i) => createElement("li", { key: i }, `Group ${i + 1}`))));
+    assert.equal((listHtml.match(/<li>/g) ?? []).length, 12, "all rows remain reachable without pagination");
+    assert.match(listHtml, /overflow-y-auto/);
     for (const value of ["1", "2", "500"]) {
       assert.equal(groupsPerIntervalOk(Number(value)), true);
       const html = renderToStaticMarkup(createElement(GroupsPerIntervalPanel, { value, onChange: () => {} }));
