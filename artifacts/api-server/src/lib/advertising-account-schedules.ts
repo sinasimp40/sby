@@ -10,6 +10,7 @@ import { logger } from "./logger";
 import { processAccountRecovery, recoveryState } from "./advertising-account-recovery";
 import { validateForwardSnapshot } from "./advertising-saved-messages";
 import { maintainAdvertisingActivity } from "./advertising-activity";
+import { resetCampaignInterval } from "./advertising-campaign-timing";
 
 export async function startAccountSchedules(owner: string, input: AdvertisingAccountStartInput) {
   if (input.draft.forward) throw new AccountError("Use the Saved Messages forwarding confirmation instead.");
@@ -49,6 +50,7 @@ export async function startAccountSchedules(owner: string, input: AdvertisingAcc
         ON CONFLICT(group_id) DO UPDATE SET running=true,account_generation=EXCLUDED.account_generation,draft=EXCLUDED.draft,
         next_send_at=now(),revision=advertising_schedules.revision+1,last_status='queued',note=EXCLUDED.note`,
         [group.id, owner, account.generation, JSON.stringify(input.draft)]);
+      await resetCampaignInterval(owner, client);
       await client.query("INSERT INTO advertising_account_commands(owner_id,request_key,payload_hash) VALUES($1,$2,$3)", [owner, input.idempotencyKey, payloadHash]);
       await client.query("COMMIT");
     } catch (error) { await client.query("ROLLBACK"); throw error; }
@@ -82,7 +84,7 @@ export async function processAccountSchedules(owner: string, factory: AccountFac
     if (!account?.session_encrypted || account.last_error || account.login_encrypted || account.generation !== schedule.account_generation) {
       await stopAccountSchedules(owner, client, undefined, "Posting stopped because the account connection changed."); return;
     }
-    if (new Date(account.next_send_at).getTime() > Date.now()) return;
+    if (Math.max(new Date(account.next_send_at).getTime(), new Date(account.telegram_wait_until).getTime()) > Date.now()) return;
     await assertTransferReviewed(owner);
     const group = (await client.query("SELECT * FROM advertising_groups WHERE owner_id=$1 AND id=$2", [owner, schedule.group_id])).rows[0];
     if (!group?.enabled || group.status !== "ready" || !group.chat_id || group.account_generation !== account.generation) {
@@ -141,7 +143,10 @@ export async function processAccountSchedules(owner: string, factory: AccountFac
       if (safe.kind === "rate_limit") {
         await client.query("UPDATE advertising_account_runs SET status='rate_limited',note=$2 WHERE id=$1", [run.id, safe.message]);
         const wait = Math.max(safe.waitSeconds, forward ? gap : 0);
-        await client.query("UPDATE advertising_accounts SET next_send_at=now()+$2*interval '1 second' WHERE owner_id=$1", [owner, wait]);
+        await client.query(`UPDATE advertising_accounts SET
+          next_send_at=GREATEST(telegram_wait_until,now()+$2*interval '1 second'),
+          telegram_wait_until=GREATEST(telegram_wait_until,now()+$3*interval '1 second')
+          WHERE owner_id=$1`, [owner, wait, safe.waitSeconds]);
         if (forward) await client.query(`UPDATE advertising_schedules SET revision=revision+1,last_status='rate_limited',note=$3
           WHERE owner_id=$1 AND group_id=$2`, [owner, group.id, safe.message]);
         else await client.query("UPDATE advertising_schedules SET next_send_at=now()+$3*interval '1 second',last_status='rate_limited',note=$4 WHERE owner_id=$1 AND group_id=$2",
@@ -154,6 +159,13 @@ export async function processAccountSchedules(owner: string, factory: AccountFac
         const invalidSource = forward && ["SAVED_MESSAGE_MISSING", "SAVED_MESSAGE_CHANGED", "CHAT_FORWARDS_RESTRICTED",
           "MESSAGE_ID_INVALID", "PREMIUM_ACCOUNT_REQUIRED"].includes(safe.telegramCode);
         await stopAccountSchedules(owner, client, ["auth", "restricted"].includes(safe.kind) || invalidSource ? undefined : [group.id], safe.message);
+        if (safe.kind === "permission") {
+          await client.query(`UPDATE advertising_groups SET enabled=false,status='error',account_generation=NULL,
+            checked_at=now(),note=$3 WHERE owner_id=$1 AND id=$2`,
+            [owner, group.id, `Automatically disabled: ${safe.message} Recheck permissions and explicitly enable this group before restarting it.`]);
+          await client.query(`UPDATE advertising_schedules SET note=$3 WHERE owner_id=$1 AND group_id=$2`,
+            [owner, group.id, "Group automatically disabled because membership or posting permission was denied."]);
+        }
         if (["auth", "restricted"].includes(safe.kind))
           await client.query("UPDATE advertising_accounts SET last_error=$2,checked_at=now() WHERE owner_id=$1", [owner, safe.message]);
       }

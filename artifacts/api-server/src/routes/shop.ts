@@ -6,6 +6,7 @@ import {
   GetOverviewResponse, ListOrdersResponse, ListCustomersResponse, ListDepositsResponse,
   ListActivityResponse, SaveSettingsBody, SaveSettingsResponse,
   RevealOrderDeliveryParams, RevealOrderDeliveryResponse,
+  parseMessageEmojis,
 } from "@workspace/api-zod";
 import { productsForOwner, recordsForOwner, settingsForOwner, recordActivity } from "../lib/shop-store";
 import productRouter from "./shop-products";
@@ -18,6 +19,7 @@ import advertisingRouter from "./shop-advertising";
 import { validateCoinButtonIcons } from "../lib/coin-button-icons";
 import { validProductMediaUrl, PRODUCT_MEDIA_ERROR } from "../lib/product-media";
 import { WELCOME_CAPTION_LIMIT } from "../lib/welcome-message";
+import { validateMessageEmojis } from "../lib/custom-emoji-library";
 
 const router: IRouter = Router();
 const writes = new Map<string, { count: number; expires: number }>();
@@ -97,7 +99,7 @@ router.put("/settings", async (req, res): Promise<void> => {
   if (welcomeImageUrl && !validProductMediaUrl(welcomeImageUrl)) {
     res.status(400).json({ error: PRODUCT_MEDIA_ERROR }); return;
   }
-  if (welcomeImageUrl && body.data.welcomeMessage.length > WELCOME_CAPTION_LIMIT) {
+  if (welcomeImageUrl && parseMessageEmojis(body.data.welcomeMessage).text.length > WELCOME_CAPTION_LIMIT) {
     res.status(400).json({ error: "Shorten the welcome message to 1,024 characters when using an image. The image and text must fit in one Telegram message." }); return;
   }
   const coinButtonIcons = body.data.coinButtonIcons ?? previous.coinButtonIcons ?? {};
@@ -105,6 +107,7 @@ router.put("/settings", async (req, res): Promise<void> => {
   await db.transaction(async tx => {
     // SQLite BEGIN IMMEDIATE serializes owner updates.
     await validateCoinButtonIcons(ownerId, coinButtonIcons, tx);
+    await validateMessageEmojis(ownerId, [body.data.welcomeMessage, body.data.supportMessage], tx);
     await tx.insert(shopSettings).values({ ownerId, preferences }).onConflictDoUpdate({
       target: shopSettings.ownerId, set: { preferences, updatedAt: new Date() },
     });

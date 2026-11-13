@@ -1,6 +1,6 @@
 ---
 name: Telegram button icon eligibility
-description: Selectable product and coin icons, bot-owner eligibility and optional normal fallbacks.
+description: Custom emojis in buttons and welcome/support text, bot-owner eligibility and normal fallbacks.
 ---
 
 The user initially replaced animated coin icons with static symbols, concerned about Premium restrictions. They later explicitly approved per-coin normal/custom emoji selection in the Payments dashboard.
@@ -20,3 +20,9 @@ The normal fallback emoji is optional and must be deselectable. Dashboard produc
 **Why:** The user confirmed custom emojis work in Telegram but reported that the dashboard did not reflect them, could not unclick the normal emoji, and later pointed out the wrong icon beside the product name in the purchase caption.
 
 **How to apply:** An explicitly cleared normal fallback means no normal icon, including when Telegram cannot use the custom icon. Do not silently restore a generic shopping-bag emoji for that state.
+
+The user explicitly requested custom emojis inside both welcome and support messages, not only on menu buttons.
+
+**Why:** They chose “Welcome and support messages” when asked which message fields should support custom emojis.
+
+**How to apply:** Reuse the imported library for message-body insertion and distinguish inline message emojis from button icons. Preserve ordinary message text rather than interpreting it as merchant-supplied HTML.

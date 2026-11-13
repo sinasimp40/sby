@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useId } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListCustomEmojis, getListCustomEmojisQueryKey, useImportCustomEmojiPack, useStartEmojiImport,
   useStopEmojiImport, useDeleteCustomEmoji, getListProductsQueryKey,
-  getPreviewCustomEmojiUrl,
+  getPreviewCustomEmojiUrl, getGetSettingsQueryKey,
 } from "@workspace/api-client-react";
 import type { CustomEmoji } from "@workspace/api-client-react";
 import { Search, RefreshCw, Link2, Send, X, Trash2, Loader2, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
@@ -24,12 +24,13 @@ export function EmojiPreview({ item, customEmojiId, fallback, className }: { ite
     const emoji = item?.emoji || fallback;
     return emoji ? <span className={cn("inline-grid place-items-center", className)} aria-hidden>{emoji}</span> : null;
   }
-  return <img src={previewUrl} alt="Selected custom product icon" loading="lazy" decoding="async" onError={() => setFailed(true)} className={cn("inline-block shrink-0 object-contain align-middle", className)} />;
+  return <img src={previewUrl} alt={item?.emoji || fallback || "Custom Telegram emoji"} loading="lazy" decoding="async" onError={() => setFailed(true)} className={cn("inline-block shrink-0 object-contain align-middle", className)} />;
 }
 
-export function CustomEmojiPicker({ open, value, onChange, fallbackEmoji, disabled }: {
-  open: boolean; value: string | null; onChange: (id: string | null) => void; fallbackEmoji: string; disabled?: boolean;
+export function CustomEmojiPicker({ open, value, onChange, fallbackEmoji, disabled, mode = "select" }: {
+  open: boolean; value: string | null; onChange: (id: string | null, item?: CustomEmoji) => void; fallbackEmoji: string; disabled?: boolean; mode?: "select" | "insert";
 }) {
+  const packInputId = useId();
   const qc = useQueryClient();
   const { toast } = useToast();
   const [session, setSession] = useState<{ url: string; expiresAt: string } | null>(null);
@@ -79,7 +80,7 @@ export function CustomEmojiPicker({ open, value, onChange, fallbackEmoji, disabl
   const doDelete = (item: CustomEmoji) => del.mutate({ id: item.id }, {
     onSuccess: () => {
       if (value === item.id) onChange(null);
-      refreshLib(); qc.invalidateQueries({ queryKey: getListProductsQueryKey() });
+      refreshLib(); qc.invalidateQueries({ queryKey: getListProductsQueryKey() }); qc.invalidateQueries({ queryKey: getGetSettingsQueryKey() });
       setDeleting(null); toast({ title: "Icon removed from library" });
     },
     onError: e => toast({ variant: "destructive", title: "Delete failed", description: errMsg(e) }),
@@ -89,27 +90,27 @@ export function CustomEmojiPicker({ open, value, onChange, fallbackEmoji, disabl
     <div className="space-y-3 rounded-lg border bg-card p-3" data-testid="custom-emoji-picker">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-medium">Custom Telegram icon <span className="font-normal text-muted-foreground">(optional)</span></p>
-          <p className="mt-0.5 text-xs text-muted-foreground">Needs the bot owner to have Telegram Premium or a Fragment username. Customers don't need Premium. Sticker packs and photos can't be button icons. If unavailable, the bot uses your normal fallback or no icon if cleared.</p>
+          <p className="text-sm font-medium">{mode === "insert" ? "Insert a custom Telegram emoji" : "Custom Telegram icon"} <span className="font-normal text-muted-foreground">(optional)</span></p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Needs the bot owner to have Telegram Premium or a Fragment username. Customers don't need Premium. {mode === "insert" ? "Choose an imported custom emoji to insert at the cursor. A normal emoji is retained as its fallback." : "Sticker packs and photos can't be button icons. If unavailable, the bot uses your normal fallback or no icon if cleared."}</p>
         </div>
         <Button type="button" size="sm" variant="ghost" onClick={() => lib.refetch()} disabled={lib.isFetching} data-testid="button-refresh-emojis" aria-label="Refresh library">
           <RefreshCw className={cn("h-3.5 w-3.5", lib.isFetching && "animate-spin")} />
         </Button>
       </div>
 
-      <div className="flex items-center gap-2 rounded-md bg-muted/50 px-2.5 py-2 text-sm" data-testid="text-custom-selection">
+      {mode !== "insert" && <div className="flex items-center gap-2 rounded-md bg-muted/50 px-2.5 py-2 text-sm" data-testid="text-custom-selection">
         {value ? <>
           <EmojiPreview item={selected} customEmojiId={value} fallback={fallbackEmoji} className="h-6 w-6 text-lg" />
           <span className="min-w-0 flex-1 truncate">{selected ? (selected.setName ?? "Imported icon") : "Saved icon (not in loaded library)"} <span className="font-mono text-[11px] text-muted-foreground">#{value}</span></span>
           <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={() => onChange(null)} data-testid="button-clear-custom-emoji">Remove custom icon</Button>
         </> : <span className="text-muted-foreground">{fallbackEmoji ? "None selected — button uses the normal emoji." : "None selected — button has no icon."}</span>}
-      </div>
+      </div>}
 
       <div className="grid gap-2 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <label className="text-xs font-medium" htmlFor="emoji-pack">Import by pack link</label>
+          <label className="text-xs font-medium" htmlFor={packInputId}>Import by pack link</label>
           <div className="flex gap-1.5">
-            <Input id="emoji-pack" value={pack} onChange={e => setPack(e.target.value)} maxLength={250} placeholder="t.me/addemoji/PackName" className="h-8 text-xs"
+            <Input id={packInputId} value={pack} onChange={e => setPack(e.target.value)} maxLength={250} placeholder="t.me/addemoji/PackName" className="h-8 text-xs"
               onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); doImport(); } }} data-testid="input-emoji-pack" />
             <Button type="button" size="sm" className="h-8" disabled={disabled || !pack.trim() || importPack.isPending} onClick={doImport} data-testid="button-import-pack" aria-label="Import emoji pack">
               {importPack.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
@@ -162,7 +163,7 @@ export function CustomEmojiPicker({ open, value, onChange, fallbackEmoji, disabl
               <div key={item.id} className="group relative">
                 <button type="button" role="option" aria-selected={value === item.id} disabled={disabled}
                   title={`${item.setName ?? "Imported"} · ${item.format} · #${item.id}`}
-                  onClick={() => onChange(value === item.id ? null : item.id)} data-testid={`button-custom-emoji-${item.id}`}
+                  onClick={() => onChange(mode === "insert" ? item.id : value === item.id ? null : item.id, item)} data-testid={`button-custom-emoji-${item.id}`}
                   className={cn("grid aspect-square w-full place-items-center rounded-md border bg-background p-1 text-xl transition-colors hover:border-primary/60",
                     value === item.id && "border-primary ring-2 ring-primary/30")}>
                   <EmojiPreview item={item} fallback={item.emoji} className="h-8 w-8" />
@@ -188,7 +189,7 @@ export function CustomEmojiPicker({ open, value, onChange, fallbackEmoji, disabl
       <AlertDialog open={!!deleting} onOpenChange={o => !o && setDeleting(null)}>
         <AlertDialogContent>
           <AlertDialogHeader><AlertDialogTitle>Remove this icon from your library?</AlertDialogTitle>
-            <AlertDialogDescription>Any products using it will revert to their normal emoji.{deleting && value === deleting.id ? " It is selected in this form and will be cleared." : ""}</AlertDialogDescription></AlertDialogHeader>
+            <AlertDialogDescription>Products, coin buttons, welcome messages and support replies using it will revert to their normal emoji. Unsaved message edits may still contain its marker and must be removed before saving.{deleting && value === deleting.id ? " It is selected in this form and will be cleared." : ""}</AlertDialogDescription></AlertDialogHeader>
           <AlertDialogFooter><AlertDialogCancel>Keep it</AlertDialogCancel>
             <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" disabled={del.isPending} data-testid="button-confirm-delete-emoji"
               onClick={e => { e.preventDefault(); if (deleting) doDelete(deleting); }}>{del.isPending && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}Remove icon</AlertDialogAction></AlertDialogFooter>

@@ -7,6 +7,7 @@ import { createAccountDriver, type AccountFactory } from "./advertising-account-
 import { AccountError } from "./advertising-account-errors";
 import { assertTransferReviewed } from "./shop-transfer-safety";
 import { validateForwardSnapshot } from "./advertising-saved-messages";
+import { resetCampaignInterval } from "./advertising-campaign-timing";
 
 export async function loadOwnerSavedMessages(owner: string, input: AdvertisingSavedMessagesInput, factory: AccountFactory = createAccountDriver) {
   return withAdvertisingLock(owner, client => withAccountDriver(owner, client, async driver => {
@@ -63,8 +64,7 @@ export async function startForwardLoop(owner: string, input: AdvertisingForwardS
           interval_seconds=EXCLUDED.interval_seconds,next_send_at=EXCLUDED.next_send_at,revision=advertising_schedules.revision+1,
           last_status='queued',note=EXCLUDED.note`, [groupId, owner, account.generation, JSON.stringify(draft), input.intervalSeconds, order]);
       }
-      // Preserve a prior wait/flood gate, including across Stop followed by Start.
-      await client.query("UPDATE advertising_accounts SET next_send_at=GREATEST(next_send_at,now()) WHERE owner_id=$1", [owner]);
+      await resetCampaignInterval(owner, client);
       await client.query("INSERT INTO advertising_account_commands(owner_id,request_key,payload_hash) VALUES($1,$2,$3)", [owner, input.idempotencyKey, payloadHash]);
       await client.query("COMMIT");
     } catch (error) { await client.query("ROLLBACK"); throw error; }

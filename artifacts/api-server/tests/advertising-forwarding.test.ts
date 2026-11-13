@@ -8,7 +8,7 @@ import app from "../src/app";
 import { adminCookieName, issueAdminSession } from "../src/lib/admin-auth";
 import { encryptProviderSecret } from "../src/lib/provider-credentials";
 import { createAccountDriver, type AccountFactory } from "../src/lib/advertising-account-driver";
-import { AccountError } from "../src/lib/advertising-account-errors";
+import { AccountError, safeAccountError } from "../src/lib/advertising-account-errors";
 import { savedMessagePreview, readSavedMessages, readSavedMessage } from "../src/lib/advertising-saved-messages";
 import { loadOwnerSavedMessages, startForwardLoop } from "../src/lib/advertising-forward-loop";
 import { processAccountSchedules, stopSelectedAccountSchedules } from "../src/lib/advertising-account-schedules";
@@ -25,6 +25,18 @@ const saved = (id = 42, text = "TEST_ONLY original ⭐", protectedContent = fals
     new Api.MessageEntityCustomEmoji({ offset: text.length - 1, length: 1, documentId: bigInt("123456789") })],
 });
 const source = () => savedMessagePreview(saved(), accountId)!;
+
+test("group access failures are distinct from temporary waits and account-wide restrictions", () => {
+  for (const code of ["USER_NOT_PARTICIPANT", "USER_KICKED", "USER_BANNED_IN_CHANNEL",
+    "CHAT_WRITE_FORBIDDEN", "CHANNEL_PRIVATE", "CHAT_SEND_PHOTOS_FORBIDDEN", "CHAT_SEND_STICKERS_FORBIDDEN"]) {
+    const error = safeAccountError({ errorMessage: code });
+    assert.equal(error.kind, "permission");
+    assert.equal(error.telegramCode, code);
+  }
+  assert.equal(safeAccountError({ errorMessage: "FLOOD_WAIT", seconds: 120 }).kind, "rate_limit");
+  assert.equal(safeAccountError({ errorMessage: "USER_RESTRICTED" }).kind, "restricted");
+  assert.equal(safeAccountError({ code: "ETIMEDOUT" }).kind, "network");
+});
 
 test("Saved Messages reads are bounded, self-only, paginated and mark protected content", async () => {
   const calls: unknown[] = [];
@@ -110,12 +122,13 @@ test("a single persisted queue spaces groups and cycles, stops safely, and trans
     target: parseAdvertisingTarget(`@TEST_ONLY_${i}`).target, chatId: `-10012345678${i}` }));
   const identity = { id: accountId, username: "TEST_ONLY", displayName: "TEST_ONLY" };
   const posts: string[] = [];
-  let current = source(), mode = "ok", pageReads = 0;
+  let current = source(), mode = "ok", pageReads = 0, permissionCode = "";
   const factory: AccountFactory = () => ({
     connect: async () => {}, disconnect: async () => {}, logout: async () => {}, session: () => "TEST_ONLY_SESSION",
     me: async () => identity, sendCode: async () => "TEST_ONLY", code: async () => {}, password: async () => {},
     qr: async () => ({ authorized: true }), groups: async () => [],
     inspect: async target => {
+      if (mode === "permission-inspect" && target === groups[0]!.target) throw { errorMessage: permissionCode };
       const group = groups.find(g => g.target === target || g.chatId === target)!;
       if (!group) throw new AccountError("TEST_ONLY missing group");
       return { chatId: group.chatId, target: group.target, title: group.target };
@@ -124,6 +137,7 @@ test("a single persisted queue spaces groups and cycles, stops safely, and trans
     savedMessages: async () => { pageReads++; return { accountId, messages: [current], nextOffsetId: null }; },
     savedMessage: async () => current,
     forward: async (chatId, snapshot) => {
+      if (mode === "permission-forward" && chatId === groups[0]!.chatId) throw { errorMessage: permissionCode };
       assert.equal(snapshot.source.id, 42);
       if (mode === "uncertain") throw new AccountError("TEST_ONLY unconfirmed forward", "network", 0, "POST_NOT_CONFIRMED");
       if (mode === "flood") throw new AccountError("TEST_ONLY Telegram wait", "rate_limit", 120, "FLOOD_WAIT");
@@ -143,7 +157,8 @@ test("a single persisted queue spaces groups and cycles, stops safely, and trans
   const input = (ids = groups.map(g => g.id)) => ({ accountId, messageId: 42, sourceFingerprint: current.fingerprint, groupIds: ids,
     expectedGroups: ids.map(id => ({ id, chatId: groups.find(g => g.id === id)?.chatId ?? "-100999999999" })), intervalSeconds: 60,
     permissionConfirmed: true, idempotencyKey: randomUUID() });
-  const due = () => pool.query("UPDATE advertising_accounts SET next_send_at=now()-interval '1 second' WHERE owner_id=$1", [owner]);
+  // Advance both clocks explicitly; normal Start must never clear Telegram's clock.
+  const due = () => pool.query("UPDATE advertising_accounts SET next_send_at=now()-interval '1 second',telegram_wait_until=now()-interval '1 second' WHERE owner_id=$1", [owner]);
   try {
     await pool.query(`INSERT INTO advertising_accounts(owner_id,api_id,api_hash_encrypted,session_encrypted,account_id,generation,checked_at)
       VALUES($1,12345,$2,$3,$4,1,now())`, [owner, encryptProviderSecret("a".repeat(32), owner, "advertising-account"),
@@ -218,17 +233,65 @@ test("a single persisted queue spaces groups and cycles, stops safely, and trans
       const count = posts.length; await processAccountSchedules(owner, factory); assert.equal(posts.length, count);
       await due(); await processAccountSchedules(owner, factory); assert.equal(posts.at(-1), groups[1]!.chatId);
     });
-    await t.test("Telegram flood waits keep the unposted group at the head and uncertain forwards are not replayed", async () => {
+    await t.test("confirmed restart clears the old campaign interval, but replaying Start does not reset it", async () => {
+      mode = "ok";
+      await startForwardLoop(owner, input(), factory);
+      const before = posts.length;
+      await processAccountSchedules(owner, factory);
+      assert.equal(posts.length, before + 1, "a fresh confirmed start is immediately due");
+      await stopSelectedAccountSchedules(owner);
+      const confirmation = input();
+      await startForwardLoop(owner, confirmation, factory);
+      await processAccountSchedules(owner, factory);
+      assert.equal(posts.length, before + 2, "Stop then Start must not inherit the prior interval");
+      await startForwardLoop(owner, confirmation, factory);
+      await processAccountSchedules(owner, factory);
+      assert.equal(posts.length, before + 2, "a retried HTTP request must not create an immediate duplicate");
+    });
+    await t.test("permission failures disable only the affected group and skip it on following cycles", async () => {
+      for (const [code, stage] of [
+        ["USER_NOT_PARTICIPANT", "permission-inspect"], ["USER_KICKED", "permission-inspect"],
+        ["USER_BANNED_IN_CHANNEL", "permission-inspect"], ["CHAT_WRITE_FORBIDDEN", "permission-inspect"],
+        ["CHAT_SEND_MEDIA_FORBIDDEN", "permission-inspect"], ["CHAT_ADMIN_REQUIRED", "permission-inspect"],
+        ["CHANNEL_PRIVATE", "permission-inspect"], ["CHAT_WRITE_FORBIDDEN", "permission-forward"],
+      ]) {
+        await pool.query("UPDATE advertising_groups SET enabled=true,status='ready',account_generation=1 WHERE owner_id=$1", [owner]);
+        await startForwardLoop(owner, input([groups[0]!.id, groups[1]!.id]), factory);
+        await due(); mode = stage!; permissionCode = code!;
+        const before = posts.length;
+        await processAccountSchedules(owner, factory);
+        assert.equal(posts.length, before);
+        const bad = (await pool.query("SELECT enabled,status,note FROM advertising_groups WHERE id=$1", [groups[0]!.id])).rows[0];
+        assert.equal(bad.enabled, false, code);
+        assert.equal(bad.status, "error");
+        assert.match(bad.note, /Automatically disabled/);
+        assert.equal((await pool.query("SELECT running FROM advertising_schedules WHERE group_id=$1", [groups[0]!.id])).rows[0].running, false);
+        await due(); await processAccountSchedules(owner, factory);
+        await due(); await processAccountSchedules(owner, factory);
+        assert.equal(posts.length, before + 2, "the remaining group must continue through later loops");
+        assert.deepEqual(posts.slice(before), [groups[1]!.chatId, groups[1]!.chatId]);
+      }
+      mode = "ok"; permissionCode = "";
+      await pool.query("UPDATE advertising_groups SET enabled=true,status='ready',account_generation=1 WHERE owner_id=$1", [owner]);
+    });
+    await t.test("Telegram flood waits survive Stop/Start and uncertain forwards are not replayed", async () => {
       await startForwardLoop(owner, input(), factory); await due(); mode = "flood";
       const count = posts.length; await processAccountSchedules(owner, factory);
       assert.equal(posts.length, count);
       assert.equal((await request()).data.forwarding.nextGroupId, groups[0]!.id);
+      const wait = (await pool.query("SELECT telegram_wait_until FROM advertising_accounts WHERE owner_id=$1", [owner])).rows[0].telegram_wait_until;
+      await stopSelectedAccountSchedules(owner);
+      await startForwardLoop(owner, input(), factory);
+      const retained = (await pool.query("SELECT next_send_at FROM advertising_accounts WHERE owner_id=$1", [owner])).rows[0].next_send_at;
+      assert.ok(new Date(retained).getTime() >= new Date(wait).getTime());
       mode = "ok"; await processAccountSchedules(owner, factory); assert.equal(posts.length, count);
       await due(); await processAccountSchedules(owner, factory); assert.equal(posts.at(-1), groups[0]!.chatId);
       await due(); mode = "uncertain"; await processAccountSchedules(owner, factory);
       mode = "ok"; const after = posts.length; await processAccountSchedules(owner, factory); assert.equal(posts.length, after);
       const stopped = (await pool.query("SELECT running FROM advertising_schedules WHERE group_id=$1", [groups[1]!.id])).rows[0];
       assert.equal(stopped.running, false);
+      assert.equal((await pool.query("SELECT enabled FROM advertising_groups WHERE id=$1", [groups[1]!.id])).rows[0].enabled, true,
+        "an uncertain network failure is not evidence of a group ban");
     });
     await t.test("changed or missing source stops the whole loop instead of forwarding different content", async () => {
       await assert.rejects(startForwardLoop(owner, input(), factory), /not ready/,

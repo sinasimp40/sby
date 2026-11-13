@@ -228,7 +228,9 @@ export async function withAccountDriver<T>(owner: string, client: AdvertisingCli
       else await recordStoppedAccount(owner, client, row.generation, safe);
       await closeAccountSession(owner, key, safe);
     } else if (safe.kind === "rate_limit") {
-      await client.query("UPDATE advertising_accounts SET next_send_at=greatest(next_send_at,now()+$2*interval '1 second') WHERE owner_id=$1", [owner, safe.waitSeconds]);
+      await client.query(`UPDATE advertising_accounts SET
+        telegram_wait_until=greatest(telegram_wait_until,now()+$2*interval '1 second'),
+        next_send_at=greatest(next_send_at,now()+$2*interval '1 second') WHERE owner_id=$1`, [owner, safe.waitSeconds]);
     }
     throw safe;
   }

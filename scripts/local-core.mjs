@@ -124,10 +124,11 @@ export function shouldAskProcessingConsent(status) {
 }
 
 export function hasCompleteSchema(status) {
-  return status.missingTables.length === 0;
+  return status.missingTables.length === 0 && !status.needsMigration && !status.unsupportedSchema;
 }
 
 export function schemaAction(status, explicitSetup = false) {
+  if (status.needsMigration && !status.unsupportedSchema) return "upgrade_known";
   if (hasCompleteSchema(status)) return explicitSetup ? "review_changes" : "ready";
   if (status.tableCount === 0) return "initialize_empty";
   return explicitSetup ? "review_changes" : "blocked";

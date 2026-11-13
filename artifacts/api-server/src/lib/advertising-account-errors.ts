@@ -1,7 +1,16 @@
 import { CommerceError } from "./commerce-providers";
 import { logger } from "./logger";
 
+const groupPermissionCodes = new Set([
+  "USER_NOT_PARTICIPANT", "USER_KICKED", "CHAT_WRITE_FORBIDDEN", "USER_BANNED_IN_CHANNEL",
+  "CHAT_ADMIN_REQUIRED", "CHANNEL_PRIVATE", "CHAT_RESTRICTED", "CHAT_SEND_PLAIN_FORBIDDEN",
+  "CHAT_SEND_MEDIA_FORBIDDEN", "CHAT_SEND_PHOTOS_FORBIDDEN", "CHAT_SEND_VIDEOS_FORBIDDEN",
+  "CHAT_SEND_GIFS_FORBIDDEN", "CHAT_SEND_DOCS_FORBIDDEN", "CHAT_SEND_AUDIOS_FORBIDDEN",
+  "CHAT_SEND_VOICES_FORBIDDEN", "CHAT_SEND_ROUNDVIDEOS_FORBIDDEN", "CHAT_SEND_STICKERS_FORBIDDEN",
+  "CHAT_SEND_POLL_FORBIDDEN", "CHAT_SEND_INLINE_FORBIDDEN",
+]);
 const codes = new Set([
+  ...groupPermissionCodes,
   "PEER_FLOOD", "USER_DEACTIVATED", "USER_DEACTIVATED_BAN", "USER_RESTRICTED",
   "SESSION_PASSWORD_NEEDED", "PASSWORD_HASH_INVALID", "PHONE_CODE_INVALID", "PHONE_CODE_EMPTY",
   "PHONE_CODE_EXPIRED", "AUTH_TOKEN_EXPIRED", "AUTH_TOKEN_INVALID", "API_ID_INVALID",
@@ -46,11 +55,11 @@ export function safeAccountError(error: unknown): AccountError {
   if (code === "CHAT_FORWARDS_RESTRICTED") return make("Telegram does not allow forwarding this protected message. Choose another saved message.");
   if (code === "MESSAGE_ID_INVALID") return make("Telegram could not find the selected saved message. Load Saved Messages and choose it again.");
   if (code === "PREMIUM_ACCOUNT_REQUIRED") return make("Telegram requires Premium on this account for the selected content. Choose another saved message or check the account's eligibility.");
-  if (code === "USER_NOT_PARTICIPANT") return make("The Telegram account connected in Advertising is not a member of this group. Check that it is the same account you used to join.");
+  if (code === "USER_NOT_PARTICIPANT") return make("The Telegram account connected in Advertising is not a member of this group. Check that it is the same account you used to join.", "permission");
   if (["AUTH_KEY_UNREGISTERED", "AUTH_KEY_DUPLICATED", "AUTH_KEY_INVALID", "AUTH_KEY_PERM_EMPTY", "SESSION_REVOKED", "SESSION_EXPIRED"].includes(code))
     return make("Telegram invalidated or revoked this session. Advertising has stopped. Review Telegram Settings → Devices and any security notice before starting another login. Never run the same session on multiple servers.", "auth");
-  if (["CHAT_WRITE_FORBIDDEN", "USER_BANNED_IN_CHANNEL", "CHAT_ADMIN_REQUIRED", "CHANNEL_PRIVATE", "CHAT_SEND_PLAIN_FORBIDDEN", "CHAT_SEND_MEDIA_FORBIDDEN"].includes(code))
-    return make("This account is not allowed to post this message in the selected group.");
+  if (groupPermissionCodes.has(code))
+    return make("This account is blocked, removed, or not allowed to post this message in the selected group.", "permission");
   if (code) return make("Telegram rejected the request. Check account access, group permissions and the message.");
   return make("Telegram did not confirm the request. Check the connection before continuing.", "network");
 }

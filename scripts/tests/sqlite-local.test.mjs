@@ -6,8 +6,8 @@ import { join, win32 } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
-import { initializeSqlite } from "../init-sqlite.mjs";
-import { DATABASE_TABLES, makeSystemEnvironment } from "../local-core.mjs";
+import { initializeSqlite, sqliteSchemaVersion, root } from "../init-sqlite.mjs";
+import { DATABASE_TABLES, makeSystemEnvironment, schemaAction } from "../local-core.mjs";
 import { normalizeSqlitePath } from "../sqlite-path.mjs";
 import { loadConfig } from "../dev-local.mjs";
 import { makeFirstRunConfig, saveFirstRunConfig } from "../local-setup.mjs";
@@ -79,6 +79,33 @@ const checker = fileURLToPath(new URL("../../artifacts/api-server/scripts/check-
 const inspectFile = file => spawnSync(process.execPath, [checker], {
   env: { ...makeSystemEnvironment(process.env), TELECART_SQLITE_PATH: file },
   encoding: "utf8",
+});
+
+test("known SQLite upgrade preserves records and conservatively retains an old unknown wait", () => {
+  const directory = mkdtempSync(join(tmpdir(), "telecart schema upgrade "));
+  const file = join(directory, "shop.db");
+  try {
+    const old = new DatabaseSync(file);
+    const firstMigration = readdirSync(join(root, "lib/db/migrations")).filter(name => name.endsWith(".sql")).sort()[0];
+    old.exec(readFileSync(join(root, "lib/db/migrations", firstMigration), "utf8"));
+    const future = new Date(Date.now() + 3600000).toISOString().replace("Z", "000Z");
+    old.prepare("INSERT INTO advertising_accounts(owner_id,next_send_at) VALUES(?,?)").run("TEST_ONLY", future);
+    old.prepare("INSERT INTO shop_settings(owner_id,preferences) VALUES(?,?)").run("TEST_ONLY", '{"keep":true}');
+    old.exec("PRAGMA user_version=1");
+    old.close();
+    const status = JSON.parse(inspectFile(file).stdout);
+    assert.equal(status.needsMigration, true);
+    assert.equal(schemaAction(status), "upgrade_known");
+    initializeSqlite(file);
+    initializeSqlite(file);
+    const upgraded = new DatabaseSync(file, { readOnly: true });
+    assert.equal(upgraded.prepare("PRAGMA user_version").get().user_version, sqliteSchemaVersion);
+    assert.equal(upgraded.prepare("SELECT telegram_wait_until FROM advertising_accounts").get().telegram_wait_until, future);
+    assert.equal(upgraded.prepare("SELECT preferences FROM shop_settings").get().preferences, '{"keep":true}');
+    assert.equal(upgraded.prepare("PRAGMA integrity_check").get().integrity_check, "ok");
+    upgraded.close();
+    assert.equal(JSON.parse(inspectFile(file).stdout).needsMigration, false);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
 test("folder entered at setup is saved as a database file before credentials are requested", async () => {
@@ -157,7 +184,7 @@ test("new SQLite files initialize in folders with spaces and preserve data on re
   try {
     initializeSqlite(file);
     const database = new DatabaseSync(file);
-    assert.equal(database.prepare("PRAGMA user_version").get().user_version, 1);
+    assert.equal(database.prepare("PRAGMA user_version").get().user_version, sqliteSchemaVersion);
     const names = database.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(row => row.name);
     assert.ok(DATABASE_TABLES.every(name => names.includes(name)));
     database.prepare("INSERT INTO shop_settings(owner_id,preferences) VALUES(?,?)").run("TEST_ONLY", '{"persistent":true}');

@@ -210,6 +210,7 @@ function checkDatabase(config, env) {
     }
     throw new Error("Could not inspect the SQLite database. Check the file path and permissions; no servers were started.");
   }
+  if (status.unsupportedSchema) throw new Error("This SQLite file has an unsupported or unversioned schema. Update the full application or select the correct live database; no data was changed.");
   if (config.TELECART_SQLITE_PATH !== env.TELECART_SQLITE_PATH) {
     throw new Error("The local database configuration was not passed safely to the checker.");
   }
@@ -232,7 +233,8 @@ async function prepareSchema(status, config, explicitSetup) {
     if (answer !== "CREATE TELECART TABLES") throw new Error("Database initialization cancelled. No schema changes were made.");
   } else {
     console.warn("This database already contains the Telecart tables. Schema setup may change its structure.");
-    if (!hasCompleteSchema(status)) console.warn("Some required Telecart tables are missing.");
+    if (action === "upgrade_known") console.warn("A known, non-destructive SQLite upgrade is required. Existing records and installation keys are preserved.");
+    else if (!hasCompleteSchema(status)) console.warn("Some required Telecart tables are missing.");
     console.warn("Existing SQLite data is preserved. Unknown or incomplete live schemas are refused, not silently rewritten.");
     const answer = await askLine("Type APPLY SCHEMA CHANGES to continue, or press Enter to cancel: ");
     if (answer !== "APPLY SCHEMA CHANGES") throw new Error("Database schema setup cancelled. The application schema was not changed.");

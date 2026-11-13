@@ -15,6 +15,7 @@ import { historyMenu, historyOrderView, isHistoryScope, topupCategoryMenu, topup
 import { customerHistoryPage, customerHistorySummary } from "./telegram-history-store";
 import { sendDepositCoinMenu } from "./deposit-coin-buttons";
 import { sendWelcomeMessage } from "./welcome-message";
+import { sendMessageWithEmojis } from "./message-emojis";
 import { sendMaintenanceNotice } from "./maintenance-notice";
 import { customerDeliveredInventory } from "./order-delivery";
 import { quantityPrompt, quantityKeyboard, purchaseConfirmation } from "./purchase-copy";
@@ -297,7 +298,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate, services = cu
           () => showMenuView(productCatalogMenu(products, page, false)),
         );
       } else if ([settings.supportLabel, labels[0]![1], "/support"].includes(text)) {
-        await send(`${settings.supportMessage}${settings.supportUsername ? `\n@${settings.supportUsername.replace(/^@/, "")}` : ""}`);
+        await sendMessageWithEmojis(customer!.chatId, customerMessageText(`${settings.supportMessage}${settings.supportUsername ? `\n@${settings.supportUsername.replace(/^@/, "")}` : ""}`), services.telegram);
       } else if ([settings.walletLabel, labels[1]![0], "/wallet"].includes(text)) {
         await send(walletSummary(customer!.balanceCents, settings.minDeposit), {
           inline_keyboard: [

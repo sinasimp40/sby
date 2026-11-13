@@ -12,6 +12,7 @@ import { validProductMediaUrl } from "./product-media";
 import { parseAdvertisingTarget } from "./advertising-targets";
 import { validateAdvertisingDraft } from "./advertising-telegram";
 import type { AdvertisingDraft } from "@workspace/api-zod";
+import { parseMessageEmojis } from "@workspace/api-zod";
 import { accountMessage } from "./advertising-account-driver";
 
 export function validateShopRelationships(data: TransferData, ownerId: string) {
@@ -58,7 +59,10 @@ export function validateShopRelationships(data: TransferData, ownerId: string) {
       const preferences = JSON.parse(settings.preferences as string) as Record<string, unknown>;
       if (preferences?.welcomeImageUrl != null &&
         (typeof preferences.welcomeImageUrl !== "string" || !validProductMediaUrl(preferences.welcomeImageUrl) ||
-          typeof preferences.welcomeMessage !== "string" || preferences.welcomeMessage.length > 1024)) throw new Error();
+          typeof preferences.welcomeMessage !== "string" || parseMessageEmojis(preferences.welcomeMessage).text.length > 1024)) throw new Error();
+      for (const message of [preferences.welcomeMessage, preferences.supportMessage]) {
+        if (typeof message === "string" && parseMessageEmojis(message).entities.some(entity => !customEmojis.has(entity.custom_emoji_id))) throw new Error();
+      }
       const parsed = SaveSettingsBody.shape.coinButtonIcons.safeParse(preferences?.coinButtonIcons);
       if (!parsed.success) throw new Error();
       const icons = parsed.data ?? {};

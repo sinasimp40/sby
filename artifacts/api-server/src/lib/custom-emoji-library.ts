@@ -1,6 +1,7 @@
-import { and, asc, eq, gt, sql } from "drizzle-orm";
+import { and, asc, eq, gt, sql, inArray } from "drizzle-orm";
 import { db, shopCustomEmojis, shopProducts, shopSettings, emojiImportSessions } from "@workspace/db";
 import type { CoinButtonIcon } from "@workspace/api-zod";
+import { parseMessageEmojis, removeMessageEmoji } from "@workspace/api-zod";
 import { activeConnection, requireOperator } from "./commerce-connection";
 import { CommerceError, telegramControl, TelegramRequestError } from "./commerce-providers";
 import { isProductEmoji } from "./product-emoji";
@@ -115,6 +116,15 @@ export async function assertOwnedCustomEmoji(owner: string, id: string | null | 
   if (!row) throw new CommerceError("Import this custom emoji into your own library before selecting it.");
 }
 
+export async function validateMessageEmojis(owner: string, messages: string[], query: Pick<typeof db, "select"> = db) {
+  const ids = [...new Set(messages.flatMap(message => parseMessageEmojis(message).entities.map(entity => entity.custom_emoji_id)))];
+  if (!ids.length) return;
+  const rows = await query.select({ id: shopCustomEmojis.customEmojiId }).from(shopCustomEmojis)
+    .where(and(eq(shopCustomEmojis.ownerId, owner), inArray(shopCustomEmojis.customEmojiId, ids)));
+  const owned = new Set(rows.map(row => row.id));
+  if (ids.some(id => !owned.has(id))) throw new CommerceError("Import each message emoji into your own library before saving.");
+}
+
 export async function removeCustomEmoji(owner: string | null, id: string) {
   if (!owner) throw new CommerceError("Sign in first.", 401);
   return db.transaction(async tx => {
@@ -123,10 +133,12 @@ export async function removeCustomEmoji(owner: string | null, id: string) {
       eq(shopProducts.ownerId, owner), eq(shopProducts.buttonCustomEmojiId, id)));
     const [settings] = await tx.select().from(shopSettings).where(eq(shopSettings.ownerId, owner));
     const icons = settings?.preferences.coinButtonIcons as Record<string, CoinButtonIcon> | undefined;
-    if (settings && icons && Object.values(icons).some(icon => icon.customEmojiId === id)) {
-      const coinButtonIcons = Object.fromEntries(Object.entries(icons).map(([coin, icon]) =>
+    if (settings) {
+      const coinButtonIcons = Object.fromEntries(Object.entries(icons ?? {}).map(([coin, icon]) =>
         [coin, icon.customEmojiId === id ? { ...icon, customEmojiId: null } : icon]));
-      await tx.update(shopSettings).set({ preferences: { ...settings.preferences, coinButtonIcons }, updatedAt: new Date() })
+      const messageFields = Object.fromEntries(["welcomeMessage", "supportMessage"].flatMap(key =>
+        typeof settings.preferences[key] === "string" ? [[key, removeMessageEmoji(settings.preferences[key] as string, id)]] : []));
+      await tx.update(shopSettings).set({ preferences: { ...settings.preferences, coinButtonIcons, ...messageFields }, updatedAt: new Date() })
         .where(eq(shopSettings.ownerId, owner));
     }
     const [row] = await tx.delete(shopCustomEmojis).where(and(eq(shopCustomEmojis.ownerId, owner),

@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { DATABASE_TABLES } from "../../../scripts/local-core.mjs";
 import { resolveSqlitePath } from "../../../scripts/sqlite-path.mjs";
+import { sqliteSchemaVersion } from "../../../scripts/init-sqlite.mjs";
 
 export async function inspectLocalDatabase(query, ownerId) {
   const tables = await query(`
@@ -65,6 +66,9 @@ async function main() {
       return { rows: database.prepare(sql).all(...params) };
     };
     const status = await inspectLocalDatabase(query, process.env.TELECART_OWNER_ID);
+    const version = Number(database.prepare("PRAGMA user_version").get().user_version);
+    status.needsMigration = version > 0 && version < sqliteSchemaVersion;
+    status.unsupportedSchema = version > sqliteSchemaVersion || (version === 0 && status.tableCount > 0);
     console.log(JSON.stringify(status));
   } catch {
     console.log(JSON.stringify({ errorCode: "SQLITE_OPEN_FAILED" }));

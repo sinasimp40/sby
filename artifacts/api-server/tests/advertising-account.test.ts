@@ -163,7 +163,7 @@ test("account sign-in, selected-group schedules and transfers are safe without r
         }), idempotencyKey: key, draft: message, permissionConfirmed: true,
       });
     };
-    const resetGlobalWait = () => pool.query("UPDATE advertising_accounts SET next_send_at=now() WHERE owner_id=$1", [owner]);
+    const resetGlobalWait = () => pool.query("UPDATE advertising_accounts SET next_send_at=now(),telegram_wait_until=now() WHERE owner_id=$1", [owner]);
     const explicitlyAuthorizeAgain = async () => {
       await beginAccountLogin(owner, { method: "phone", phone: "+15555550123" }, factory);
       const login = (await accountStatus(owner)).login!;

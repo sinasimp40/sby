@@ -179,7 +179,7 @@ export const createAccountDriver: AccountFactory = ({ apiId, apiHash, session = 
       if (dialog?.entity instanceof Api.Chat || dialog?.entity instanceof Api.Channel) entity = dialog.entity;
     }
     if (!entity) throw new AccountError("Could not resolve this group for the connected Telegram account. Check the account shown in Advertising, or use the group's public @username.");
-    if (entity.left || (entity instanceof Api.Chat && entity.deactivated)) throw new AccountError("This account is no longer a member of this group.");
+    if (entity.left || (entity instanceof Api.Chat && entity.deactivated)) throw new AccountError("This account is no longer a member of this group.", "permission", 0, "USER_NOT_PARTICIPANT");
     let admin = entity.creator || Boolean(entity.adminRights);
     let personalBan: Api.ChatBannedRights | undefined;
     if (entity instanceof Api.Channel) {
@@ -187,9 +187,9 @@ export const createAccountDriver: AccountFactory = ({ apiId, apiHash, session = 
       const p = result.participant;
       admin = p instanceof Api.ChannelParticipantCreator || p instanceof Api.ChannelParticipantAdmin;
       if (p instanceof Api.ChannelParticipantLeft || (p instanceof Api.ChannelParticipantBanned && p.left))
-        throw new AccountError("The account is not a member of this group.");
+        throw new AccountError("The account is not a member of this group.", "permission", 0, "USER_NOT_PARTICIPANT");
       if (p instanceof Api.ChannelParticipantBanned) personalBan = p.bannedRights;
-      if (entity.broadcast && !(entity.creator || entity.adminRights?.postMessages)) throw new AccountError("This account cannot post in this channel.");
+      if (entity.broadcast && !(entity.creator || entity.adminRights?.postMessages)) throw new AccountError("This account cannot post in this channel.", "permission", 0, "CHAT_ADMIN_REQUIRED");
     } else {
       const full = await client.invoke(new Api.messages.GetFullChat({ chatId: entity.id }));
       const me = await client.getMe();
@@ -206,7 +206,7 @@ export const createAccountDriver: AccountFactory = ({ apiId, apiHash, session = 
       (kind === "animation" && r?.sendGifs) || (kind === "video" && r?.sendVideos) ||
       (kind === "document" && r?.sendDocs) || (kind === "audio" && r?.sendAudios) ||
       (kind === "voice" && r?.sendVoices) || (kind === "sticker" && r?.sendStickers)))
-      throw new AccountError("This account lacks permission to send this message/media in the group.");
+      throw new AccountError("This account lacks permission to send this message/media in the group.", "permission", 0, "CHAT_WRITE_FORBIDDEN");
     const chatId = utils.getPeerId(entity).toString();
     resolvedGroups.set(chatId, entity);
     resolvedGroups.set(target, entity);

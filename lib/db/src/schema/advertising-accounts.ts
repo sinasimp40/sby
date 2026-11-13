@@ -1,5 +1,6 @@
 import { boolean, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "./columns";
 import { createInsertSchema } from "drizzle-zod";
+import { sql } from "drizzle-orm";
 
 export const advertisingAccounts = pgTable("advertising_accounts", {
   ownerId: text("owner_id").primaryKey(),
@@ -13,6 +14,7 @@ export const advertisingAccounts = pgTable("advertising_accounts", {
   checkedAt: timestamp("checked_at", { withTimezone: true }),
   lastError: text("last_error"),
   nextSendAt: timestamp("next_send_at", { withTimezone: true }).notNull().defaultNow(),
+  telegramWaitUntil: timestamp("telegram_wait_until", { withTimezone: true }).notNull().default(sql`'1970-01-01T00:00:00.000000Z'`),
   loginId: uuid("login_id"),
   loginEncrypted: text("login_encrypted"),
   loginExpiresAt: timestamp("login_expires_at", { withTimezone: true }),

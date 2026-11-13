@@ -8,11 +8,12 @@ import { Bot, Loader2, RotateCcw, ShoppingBag, LifeBuoy, Wallet, History, Chevro
 import { PageHeader, Panel, ErrorState, RowsSkeleton } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { useShopSettings } from "@/hooks/use-shop-settings";
 import { money } from "@/lib/format";
 import { IntegrationPanel } from "@/components/integration-panel";
+import { MessageEmojiEditor, MessageEmojiText } from "@/components/message-emoji-editor";
+import { parseMessageEmojis } from "@workspace/api-zod";
 
 const handle = z.string().max(32).regex(/^@?[A-Za-z0-9_]*$/, "Letters, numbers and underscores only");
 const label = z.string().trim().min(1, "Required").max(30);
@@ -23,7 +24,7 @@ const schema = z.object({
   supportMessage: z.string().max(2000),
   productsLabel: label, supportLabel: label, walletLabel: label, ordersLabel: label,
 }).superRefine((data, ctx) => {
-  if (data.welcomeImageUrl && data.welcomeMessage.length > 1024) {
+  if (data.welcomeImageUrl && parseMessageEmojis(data.welcomeMessage).text.length > 1024) {
     ctx.addIssue({ code: "custom", path: ["welcomeMessage"], message: "With an image, shorten the welcome text to 1,024 characters so it stays in one message." });
   }
 });
@@ -115,7 +116,7 @@ export default function BotPage() {
       })}
         <div className="mt-1.5 text-[11px] opacity-60">Tap a product to preview its options and quantity step.</div></div>
     ) : "No products are listed right now.");
-    if (k === "support") push(v.supportLabel, <div className="whitespace-pre-wrap">{v.supportMessage || "Need help? Contact us."}{v.supportUsername && <div className="mt-1 font-medium text-[#2a8bd0]">@{v.supportUsername.replace(/^@/, "")}</div>}</div>);
+    if (k === "support") push(v.supportLabel, <div className="whitespace-pre-wrap"><MessageEmojiText value={v.supportMessage || "Need help? Contact us."} />{v.supportUsername && <div className="mt-1 font-medium text-[#2a8bd0]">@{v.supportUsername.replace(/^@/, "")}</div>}</div>);
     if (k === "wallet") push(v.walletLabel, <div><div>Balance: <b className="font-mono">$0.00</b></div><div className="mt-1 text-[11px] opacity-70">Top-ups via NOWPayments will show a QR code, amount, address, network and expiry here once payments are connected.</div></div>);
     if (k === "orders") push(v.ordersLabel, "You have no orders yet.");
   };
@@ -137,9 +138,9 @@ export default function BotPage() {
               </Panel>
               <Panel title="Messages">
                 <div className="space-y-4">
-                  <FormField control={form.control} name="welcomeMessage" render={({ field }) => (<FormItem><FormLabel>Welcome message</FormLabel><FormControl><Textarea rows={5} {...field} data-testid="input-welcome-message" /></FormControl><FormDescription>Sent on /start, above the menu.</FormDescription><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="welcomeMessage" render={({ field }) => (<FormItem><FormLabel>Welcome message</FormLabel><FormControl><MessageEmojiEditor rows={5} {...field} disabled={saving} data-testid="input-welcome-message" /></FormControl><FormDescription>Sent on /start, above the menu.</FormDescription><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="welcomeImageUrl" render={({ field }) => (<FormItem><FormLabel>Welcome image or GIF link</FormLabel><FormControl><Input type="url" placeholder="https://example.com/welcome.jpg" {...field} data-testid="input-welcome-image-url" /></FormControl><FormDescription>Optional public HTTPS link ending in .jpg, .jpeg, .png, .webp or .gif. Image above text, with the menu attached—all one message. With an image, welcome text is limited to 1,024 characters. Clear the link to remove it.</FormDescription><FormMessage /></FormItem>)} />
-                  <FormField control={form.control} name="supportMessage" render={({ field }) => (<FormItem><FormLabel>Support reply</FormLabel><FormControl><Textarea rows={3} {...field} data-testid="input-support-message" /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="supportMessage" render={({ field }) => (<FormItem><FormLabel>Support reply</FormLabel><FormControl><MessageEmojiEditor rows={3} {...field} disabled={saving} data-testid="input-support-message" /></FormControl><FormMessage /></FormItem>)} />
                 </div>
               </Panel>
               <Panel title="Menu buttons" meta="2 × 2 reply keyboard">
@@ -182,7 +183,7 @@ export default function BotPage() {
                 <div className="mx-auto w-fit rounded-full bg-black/20 px-2.5 py-0.5 text-[11px] text-white">/start</div>
                 <div className="pop max-w-[85%] overflow-hidden rounded-2xl rounded-bl-md bg-white shadow-sm" data-testid="text-preview-welcome">
                   {!maintenance && <ProductMediaPreview url={v.welcomeImageUrl} name="Welcome image" className="rounded-none border-0" />}
-                  <div className="whitespace-pre-wrap px-3 py-2">{maintenance ? pauseNotice : v.welcomeMessage || "Write a welcome message"}</div>
+                  <div className="whitespace-pre-wrap px-3 py-2">{maintenance ? pauseNotice : <MessageEmojiText value={v.welcomeMessage || "Write a welcome message"} />}</div>
                 </div>
                 {chat.map((m) => (
                   <div key={m.id} className={`pop max-w-[85%] rounded-2xl px-3 py-2 shadow-sm ${m.from === "user" ? "ml-auto rounded-br-md bg-[#e1f7c9]" : "rounded-bl-md bg-white"}`}>{m.body}</div>

@@ -110,3 +110,15 @@ Message and emoji previews must not broaden account activity just to display art
 **Why:** The account has experienced security notifications and authorization resets. Additional media downloads and data-centre authorizations need a separate containment review.
 
 **How to apply:** Keep pack lookup explicitly requested and read-only, without installing packs or posting. Any future artwork preview must preserve the main session's containment guarantees; do not silently enable SDK reconnects or use the shop bot as a substitute.
+
+Automatically disable a campaign destination after confirmed removal, a ban, or a posting-permission denial. Require an explicit permission recheck and enable action before using it again.
+
+**Why:** The user asked to disable groups where the advertising account is blocked, kicked, or cannot send, so subsequent loops skip them.
+
+**How to apply:** Keep other authorized groups running. A network timeout, uncertain receipt, or Telegram flood wait is not proof of a group ban.
+
+A newly confirmed campaign start resets the merchant's old interval, not Telegram-required waits or ambiguous-send safeguards.
+
+**Why:** The user reported that Stop followed by Start still waited for the old campaign interval. Telegram restrictions must not become bypassable through restart.
+
+**How to apply:** Keep the two clocks durably separate. During upgrades from a single-clock installation, conservatively retain an outstanding old deadline once: its origin may have been a Telegram wait not recorded in posting history.

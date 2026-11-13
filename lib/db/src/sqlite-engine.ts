@@ -94,19 +94,22 @@ sqlite.function("date_add", (value, amount, unit) => {
 sqlite.function("iso_time", value => value === null ? null : canonicalTime(String(value)));
 
 const version = Number((sqlite.prepare("PRAGMA user_version").get() as { user_version: number }).user_version);
+const migrations = readdirSync(join(root, "lib/db/migrations")).filter(file => file.endsWith(".sql")).sort();
+if (!migrations.length) throw new Error("SQLite schema migrations are missing.");
+if (version < 0 || version > migrations.length) throw new Error("Unsupported SQLite database version. The database was left unchanged.");
 if (!version) {
   const tables = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all();
   if (tables.length) throw new Error("This file is not an initialized Telecart live database. Import portable shop.db ZIPs through the dashboard, not as the live database file.");
+}
+if (version < migrations.length) {
   sqlite.exec("BEGIN IMMEDIATE");
   try {
-    const migrations = readdirSync(join(root, "lib/db/migrations")).filter(file => file.endsWith(".sql")).sort();
-    if (!migrations.length) throw new Error("SQLite schema migrations are missing. No database was initialized.");
-    for (const file of migrations) {
+    for (const file of migrations.slice(version)) {
       sqlite.exec(readFileSync(join(root, "lib/db/migrations", file), "utf8"));
     }
-    sqlite.exec("PRAGMA user_version=1; COMMIT;");
+    sqlite.exec(`PRAGMA user_version=${migrations.length}; COMMIT;`);
   } catch (error) { sqlite.exec("ROLLBACK"); throw error; }
-} else if (version !== 1) throw new Error("Unsupported SQLite database version. The database was left unchanged.");
+}
 const actualTables = new Set(sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(row => row.name));
 for (const model of Object.values(schema)) {
   if (is(model, SQLiteTable) && !actualTables.has(getTableName(model)))

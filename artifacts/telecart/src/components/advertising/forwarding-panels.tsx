@@ -34,7 +34,7 @@ export function IntervalPanel({ value, unit, onChange }: { value: string; unit: 
           <div className="flex gap-1 rounded-md bg-muted p-1">{(["m", "h"] as const).map(u => <button key={u} type="button" onClick={() => onChange(value, u)} className={cn("rounded px-3 font-mono text-xs", unit === u ? "bg-ink text-white" : "text-muted-foreground hover:text-foreground")} data-testid={`button-shared-unit-${u}`}>{u === "m" ? "minutes" : "hours"}</button>)}</div>
         </div>
         {bad ? <p className="text-sm text-destructive" data-testid="error-shared-interval">Choose between 1 minute and 720 hours (30 days), in whole seconds.</p>
-          : <p className="text-xs text-muted-foreground">Group 1, wait {value && intervalOk(sec) ? fmtInterval(sec) : "..."}, group 2, wait, and so on. After the last group the queue starts again from the top.</p>}
+          : <p className="text-xs text-muted-foreground">Group 1, wait {value && intervalOk(sec) ? fmtInterval(sec) : "..."}, group 2, wait, and so on. After the last group the queue starts again from the top. A confirmed restart resets this interval, but Telegram-required waits still apply. Groups that lose membership or posting permission are automatically disabled.</p>}
       </div>
     </Panel>
   );

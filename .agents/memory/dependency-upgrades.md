@@ -20,3 +20,9 @@ Do not prune other operating systems' optional native dependencies to optimize R
 **Why:** Linux checks passed while the inherited workspace overrides explicitly removed Windows Rollup, esbuild, Tailwind Oxide and Lightning CSS bindings. Fixing only the first missing module would leave the next Windows failure in place.
 
 **How to apply:** Keep the dependency graph portable for the user's localhost installation. Test native package loading and actual client/CSS transforms, not just package-directory presence or an HTTP response serving index.html. Distinguish Linux results from execution on a real Windows runner.
+
+Drizzle Kit can misread an absolute migration output directory as a path prefixed with `./`.
+
+**Why:** Migration generation failed to load an existing snapshot even though the snapshot was present; passing the output directory relative to the current working directory resolved it without changing packages.
+
+**How to apply:** If generation reports a snapshot path containing `.//` followed by an absolute workspace path, verify the file exists and use a working-directory-relative output path before regenerating snapshots or replacing dependencies.
