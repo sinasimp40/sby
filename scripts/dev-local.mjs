@@ -1,55 +1,406 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import {
+  assertPortAvailable,
+  hasCompleteSchema,
+  isLoopbackDatabase,
+  LOCAL_API_PORT,
+  LOCAL_WEB_PORT,
+  makeChildEnvironment,
+  makeSystemEnvironment,
+  parseLocalEnv,
+  schemaAction,
+  shouldAskProcessingConsent,
+  stopOwnedChildren,
+  supportedNodeVersion,
+  validateLocalConfig,
+  waitForLocalServices,
+} from "./local-core.mjs";
+import { makeFirstRunConfig, saveFirstRunConfig } from "./local-setup.mjs";
 
-const required = ["DATABASE_URL", "SESSION_SECRET", "TELECART_OWNER_ID", "TELECART_ADMIN_EMAIL", "TELECART_ADMIN_INITIAL_PASSWORD"];
-const missing = required.filter(key => !process.env[key]);
-if (missing.length) {
-  console.error(`Complete .env.local first. Missing configuration names: ${missing.join(", ")}`);
-  process.exit(1);
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+export const projectRoot = resolve(scriptDir, "..");
+const envPath = join(projectRoot, ".env.local");
+const packageManager = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+
+function runPnpm(args, env, { capture = false } = {}) {
+  return spawnSync(packageManager, args, {
+    cwd: projectRoot,
+    env,
+    encoding: capture ? "utf8" : undefined,
+    stdio: capture ? ["ignore", "pipe", "pipe"] : "inherit",
+    shell: process.platform === "win32",
+    windowsHide: true,
+  });
 }
-const bin = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
-const env = {
-  ...process.env, NODE_ENV: "development", BASE_PATH: "/", TELECART_LOCAL_ONLY: "true",
-  TELECART_ADMIN_ORIGIN: "http://localhost:5173",
-  TELECART_LOCAL_API_PORT: "8080",
-};
-if (process.argv.includes("--setup")) {
-  const setup = spawn(bin, ["--filter", "@workspace/db", "run", "push"], { env, stdio: "inherit", shell: process.platform === "win32" });
-  setup.on("exit", code => process.exit(code ?? 1));
-} else {
-  // Avoid the Replit dev script's Unix `export` command on Windows.
-  const built = await new Promise(resolve => {
-    const build = spawn(bin, ["--filter", "@workspace/api-server", "run", "build"], {
-      env, stdio: "inherit", shell: process.platform === "win32",
-    });
-    build.on("error", () => resolve(false));
-    build.on("exit", code => resolve(code === 0));
-  });
-  if (!built) {
-    console.error("API build failed. Resolve the displayed error before starting the local shop.");
-    process.exit(1);
+
+function loadConfig() {
+  if (!existsSync(envPath)) return null;
+  let values;
+  try {
+    values = parseLocalEnv(readFileSync(envPath, "utf8"));
+  } catch (error) {
+    throw new Error(`${error.message} Fix the private .env.local file; it was not changed.`);
   }
-  const api = spawn(bin, ["--filter", "@workspace/api-server", "run", "start"], {
-    env: { ...env, PORT: "8080" }, stdio: "inherit", shell: process.platform === "win32", detached: process.platform !== "win32",
+  const config = Object.fromEntries([
+    "DATABASE_URL",
+    "SESSION_SECRET",
+    "TELECART_OWNER_ID",
+    "TELECART_ADMIN_EMAIL",
+    "TELECART_ADMIN_INITIAL_PASSWORD",
+  ].map(key => [key, values[key] ?? ""]));
+  const error = validateLocalConfig(config);
+  if (error) throw new Error(`${error} The launcher did not change .env.local.`);
+  return config;
+}
+
+async function ensureConfig() {
+  let config = loadConfig();
+  if (config) return config;
+  console.log("No local configuration file exists yet.");
+  const values = await makeFirstRunConfig();
+  await saveFirstRunConfig(envPath, values);
+  config = loadConfig();
+  if (!config) throw new Error("Could not load the new .env.local file. It has not been overwritten.");
+  console.log("Saved private local settings. Secrets were not printed.");
+  return config;
+}
+
+function checkPrerequisites(env) {
+  if (!supportedNodeVersion(process.versions.node)) {
+    throw new Error(`This project needs Node.js 22.16+ or 24+. You have Node.js ${process.versions.node}. Install a supported version; the launcher will not install system software.`);
+  }
+  const result = spawnSync(packageManager, ["--version"], {
+    cwd: projectRoot,
+    env,
+    encoding: "utf8",
+    shell: process.platform === "win32",
+    windowsHide: true,
   });
-  const web = spawn(bin, ["--filter", "@workspace/telecart", "exec", "vite", "--config", "vite.config.ts", "--host", "127.0.0.1"], {
-    env: { ...env, PORT: "5173" }, stdio: "inherit", shell: process.platform === "win32", detached: process.platform !== "win32",
+  if (result.error?.code === "ENOENT") {
+    throw new Error("pnpm was not found. Install Node.js and pnpm first; the launcher will not install system software.");
+  }
+  if (result.status !== 0) {
+    throw new Error("pnpm could not start. Verify your pnpm installation, then try again.");
+  }
+  console.log(`Using Node.js ${process.versions.node} and pnpm ${result.stdout.trim()}.`);
+}
+
+function dependenciesInstalled() {
+  const installMarkers = [
+    "node_modules/.pnpm/lock.yaml",
+    "artifacts/api-server/node_modules/pg",
+    "artifacts/api-server/node_modules/esbuild",
+    "artifacts/telecart/node_modules/vite",
+    "lib/db/node_modules/drizzle-kit",
+  ];
+  if (!installMarkers.every(path => existsSync(join(projectRoot, path)))) return false;
+  try {
+    return readFileSync(join(projectRoot, "node_modules", ".telecart-local-install"), "utf8").trim() === dependencyFingerprint();
+  } catch {
+    return false;
+  }
+}
+
+function dependencyFingerprint() {
+  const manifestFiles = ["package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml"];
+  const visit = directory => {
+    for (const entry of readdirSync(join(projectRoot, directory), { withFileTypes: true })) {
+      if (!entry.isDirectory() || ["node_modules", ".git", "dist", "build"].includes(entry.name)) continue;
+      const child = join(directory, entry.name);
+      if (existsSync(join(projectRoot, child, "package.json"))) manifestFiles.push(join(child, "package.json"));
+      visit(child);
+    }
+  };
+  for (const workspace of ["artifacts", "lib", "scripts"]) {
+    if (existsSync(join(projectRoot, workspace))) visit(workspace);
+  }
+  const hash = createHash("sha256");
+  for (const path of [...new Set(manifestFiles)].sort()) {
+    hash.update(path).update("\0").update(readFileSync(join(projectRoot, path))).update("\0");
+  }
+  return hash.digest("hex");
+}
+
+function prepareDependencies() {
+  if (dependenciesInstalled()) return;
+  console.log("Installing this project's locked dependencies with pnpm. No system software will be installed.");
+  const result = runPnpm(["install", "--frozen-lockfile"], makeSystemEnvironment(process.env));
+  if (result.error || result.status !== 0) {
+    throw new Error("Dependency setup failed. Review the pnpm output, install the project prerequisites, and run the launcher again.");
+  }
+  if (!dependenciesInstalled()) {
+    throw new Error("pnpm finished, but required workspace packages are still missing. Review the dependency output.");
+  }
+  writeFileSync(join(projectRoot, "node_modules", ".telecart-local-install"), `${dependencyFingerprint()}\n`, { mode: 0o600 });
+}
+
+function checkPorts() {
+  return Promise.all([LOCAL_API_PORT, LOCAL_WEB_PORT].map(port => assertPortAvailable(port)));
+}
+
+function makeDatabaseEnvironment(config) {
+  return {
+    ...makeSystemEnvironment(process.env),
+    NODE_ENV: "development",
+    DATABASE_URL: config.DATABASE_URL,
+    TELECART_OWNER_ID: config.TELECART_OWNER_ID,
+  };
+}
+
+function makeDashboardEnvironment() {
+  return {
+    ...makeSystemEnvironment(process.env),
+    NODE_ENV: "development",
+    BASE_PATH: "/",
+    TELECART_LOCAL_API_PORT: String(LOCAL_API_PORT),
+    TELECART_TELEGRAM_DISABLED: "true",
+  };
+}
+
+function checkDatabase(config, env) {
+  const checkScript = join(projectRoot, "artifacts", "api-server", "scripts", "check-local-db.mjs");
+  const result = spawnSync(process.execPath, [checkScript], {
+    cwd: projectRoot,
+    env,
+    encoding: "utf8",
+    windowsHide: true,
   });
+  let status;
+  try {
+    status = JSON.parse(result.stdout.trim());
+  } catch {
+    const message = result.stderr?.includes("DATABASE_URL is missing.")
+      ? "DATABASE_URL is missing from .env.local."
+      : "Could not connect to PostgreSQL. Start PostgreSQL and check the connection settings in .env.local. The URL was not displayed.";
+    throw new Error(message);
+  }
+  if (result.status !== 0 || !status || !Array.isArray(status.missingTables)) {
+    throw new Error("Could not connect to PostgreSQL. Start PostgreSQL and check the connection settings in .env.local. The URL was not displayed.");
+  }
+  if (config.DATABASE_URL !== env.DATABASE_URL) {
+    throw new Error("The local database configuration was not passed safely to the checker.");
+  }
+  return status;
+}
+
+async function requireRemoteDatabaseApproval() {
+  const answer = await askLine(
+    "This PostgreSQL server is outside this computer. Type USE REMOTE DATABASE to continue, or press Enter to stop: ",
+  );
+  if (answer !== "USE REMOTE DATABASE") throw new Error("Remote database use was cancelled. No database changes were made.");
+}
+
+async function prepareSchema(status, config, explicitSetup) {
+  const databaseEnv = makeDatabaseEnvironment(config);
+  const action = schemaAction(status, explicitSetup);
+  if (action === "ready") return;
+  if (action === "blocked") {
+    throw new Error(
+      `The database contains tables but is missing ${status.missingTables.length} required Telecart tables. The launcher did not change them. Back up and review the database, then run pnpm db:local and confirm each schema change.`,
+    );
+  }
+  if (action === "initialize_empty") {
+    console.log("This database has no tables in its selected schema.");
+    console.log("The one-time setup will create Telecart tables and does not drop existing rows.");
+    const answer = await askLine("Type CREATE TELECART TABLES to confirm, or press Enter to cancel: ");
+    if (answer !== "CREATE TELECART TABLES") throw new Error("Database initialization cancelled. No schema changes were made.");
+  } else {
+    console.warn("This database already contains the Telecart tables. Schema setup may change its structure.");
+    if (!hasCompleteSchema(status)) console.warn("Some required Telecart tables are missing.");
+    console.warn("Schema setup can change existing tables. Back up valuable data and review every change Drizzle displays.");
+    const answer = await askLine("Type APPLY SCHEMA CHANGES to continue, or press Enter to cancel: ");
+    if (answer !== "APPLY SCHEMA CHANGES") throw new Error("Database schema setup cancelled. The application schema was not changed.");
+  }
+
+  const result = runPnpm(["--filter", "@workspace/db", "run", "push"], databaseEnv);
+  if (result.error || result.status !== 0) {
+    throw new Error("Database setup did not finish. The app was not started. Review Drizzle's output and check the database before retrying.");
+  }
+  const verified = checkDatabase(config, databaseEnv);
+  if (!hasCompleteSchema(verified)) {
+    throw new Error("Database setup ended without all required Telecart tables. The app was not started.");
+  }
+  console.log("Telecart database schema is ready.");
+}
+
+async function approveSavedProcessing(status) {
+  if (!shouldAskProcessingConsent(status)) return;
+  console.warn("");
+  console.warn("This database has saved Telegram processing, advertising schedules, or payments that may resume.");
+  console.warn("Starting localhost can poll Telegram, send previously approved ads, and check existing payments.");
+  console.warn("Disable Telegram and stop schedules on the old copy first. This prompt does not enable a provider or compose a new message.");
+  const answer = await askLine("Type START LOCAL PROCESSING to approve this local copy, or press Enter to stop: ");
+  if (answer !== "START LOCAL PROCESSING") {
+    throw new Error("Local startup cancelled. No local server or background worker was started.");
+  }
+}
+
+export async function askLine(question) {
+  if (!process.stdin.isTTY || !process.stdout.isTTY) {
+    throw new Error("A confirmation needs an interactive terminal. Start the app from Windows Terminal or a shell window.");
+  }
+  const readline = (await import("node:readline")).createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise((resolve, reject) => {
+    readline.question(question, answer => {
+      readline.close();
+      resolve(answer.trim());
+    });
+    readline.once("SIGINT", () => {
+      readline.close();
+      reject(new Error("Operation cancelled. No database changes were made."));
+    });
+  });
+}
+
+function buildApi() {
+  const result = runPnpm(["--filter", "@workspace/api-server", "run", "build"], makeSystemEnvironment(process.env));
+  if (result.error || result.status !== 0) {
+    throw new Error("API build failed. Resolve the displayed build error before starting Telecart.");
+  }
+}
+
+function launchBrowser() {
+  const url = `http://localhost:${LOCAL_WEB_PORT}`;
+  const env = makeSystemEnvironment(process.env);
+  if (process.platform === "win32") {
+    const opener = spawn("explorer.exe", [url], {
+      cwd: projectRoot, env, detached: true, stdio: "ignore", windowsHide: true,
+    });
+    opener.on("error", () => console.log(`Open ${url} in your browser.`));
+    opener.unref();
+  } else {
+    const command = process.platform === "darwin" ? "open" : "xdg-open";
+    const opener = spawn(command, [url], { cwd: projectRoot, env, detached: true, stdio: "ignore" });
+    opener.on("error", () => console.log(`Open ${url} in your browser.`));
+    opener.unref();
+  }
+}
+
+function spawnService(label, args, env) {
+  const child = spawn(packageManager, args, {
+    cwd: projectRoot,
+    env,
+    stdio: "inherit",
+    shell: process.platform === "win32",
+    detached: process.platform !== "win32",
+    windowsHide: true,
+  });
+  child.label = label;
+  child.on("error", error => { child.startError = error; });
+  return child;
+}
+
+function supervise(children, onStopping) {
   let stopping = false;
-  const stop = code => {
+  let resolveExit;
+  const done = new Promise(resolve => { resolveExit = resolve; });
+  const finish = (code, message = "") => {
     if (stopping) return;
     stopping = true;
-    for (const child of [api, web]) {
-      if (!child.pid) continue;
-      if (process.platform === "win32") spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], { stdio: "ignore" });
-      else { try { process.kill(-child.pid, "SIGTERM"); } catch { /* already stopped */ } }
-    }
-    process.exitCode = code;
+    process.removeListener("SIGINT", onInterrupt);
+    process.removeListener("SIGTERM", onTerminate);
+    onStopping();
+    if (message) console.error(message);
+    void stopOwnedChildren(children).finally(() => resolveExit(code));
   };
-  api.on("error", () => { console.error("Could not start pnpm. Install Node.js and pnpm first."); stop(1); });
-  web.on("error", () => stop(1));
-  api.on("exit", code => stop(code ?? 1));
-  web.on("exit", code => stop(code ?? 1));
-  process.on("SIGINT", () => stop(0));
-  process.on("SIGTERM", () => stop(0));
-  console.log("Dashboard: http://localhost:5173 — configure provider keys and Telegram processing after signing in.");
+  const onInterrupt = () => finish(0);
+  const onTerminate = () => finish(0);
+  process.once("SIGINT", onInterrupt);
+  process.once("SIGTERM", onTerminate);
+  for (const child of children) {
+    child.on("error", () => finish(1, `${child.label} could not start.`));
+    child.once("exit", (code, signal) => {
+      if (!stopping) {
+        finish(code === 0 ? 1 : code ?? 1, `${child.label} stopped${signal ? ` (${signal})` : ""}. The other local service will be stopped too.`);
+      }
+    });
+  }
+  return { done, stop: finish };
+}
+
+export async function runLocalLauncher(argv = process.argv.slice(2)) {
+  if (!supportedNodeVersion(process.versions.node)) {
+    throw new Error(`This project needs Node.js 22.16+ or 24+. You have Node.js ${process.versions.node}. Install a supported version; the launcher will not install system software.`);
+  }
+  checkPrerequisites(makeSystemEnvironment(process.env));
+  let config = await ensureConfig();
+  const configError = validateLocalConfig(config);
+  if (configError) throw new Error(configError);
+
+  const env = makeChildEnvironment(process.env, config);
+  const databaseEnv = makeDatabaseEnvironment(config);
+  prepareDependencies();
+  const setupOnly = argv.includes("--setup");
+  if (!setupOnly) await checkPorts();
+
+  if (!isLoopbackDatabase(config.DATABASE_URL)) {
+    console.warn("The configured database is outside this computer. The launcher will not run schema changes silently.");
+    await requireRemoteDatabaseApproval();
+  }
+
+  let status = checkDatabase(config, databaseEnv);
+  await prepareSchema(status, config, setupOnly);
+  if (setupOnly) {
+    console.log("Schema setup finished. Daily startup will not apply schema changes.");
+    return 0;
+  }
+
+  status = checkDatabase(config, databaseEnv);
+  if (!hasCompleteSchema(status)) {
+    throw new Error("The database is not ready. No servers were started.");
+  }
+  await approveSavedProcessing(status);
+  return startLocalAppAfterBuild(env);
+}
+
+export async function startLocalAppAfterBuild(env, dependencies = {}) {
+  const build = dependencies.buildApi ?? buildApi;
+  const spawnChild = dependencies.spawnService ?? spawnService;
+  const waitForReady = dependencies.waitForServices ?? waitForLocalServices;
+  const openBrowser = dependencies.openBrowser ?? launchBrowser;
+  const superviseChildren = dependencies.supervise ?? supervise;
+  build();
+  const dashboardEnv = makeDashboardEnvironment();
+  const children = [
+    spawnChild("API server", ["--filter", "@workspace/api-server", "run", "start"], {
+      ...env, PORT: String(LOCAL_API_PORT),
+    }),
+    spawnChild("Dashboard", [
+      "--filter", "@workspace/telecart", "exec", "vite", "--config", "vite.config.ts", "--host", "127.0.0.1",
+    ], {
+      ...dashboardEnv, PORT: String(LOCAL_WEB_PORT),
+    }),
+  ];
+  const startupAbort = new AbortController();
+  const lifecycle = superviseChildren(children, () => startupAbort.abort());
+  try {
+    const ready = await Promise.race([
+      waitForReady({
+        apiUrl: `http://127.0.0.1:${LOCAL_API_PORT}/api/healthz`,
+        webUrl: `http://127.0.0.1:${LOCAL_WEB_PORT}/`,
+        children,
+        signal: startupAbort.signal,
+      }).then(() => true),
+      lifecycle.done.then(() => false),
+    ]);
+    if (!ready) return lifecycle.done;
+  } catch (error) {
+    lifecycle.stop(1, error instanceof Error ? error.message : "Local startup failed.");
+    return lifecycle.done;
+  }
+  console.log(`API and dashboard are ready. Opening http://localhost:${LOCAL_WEB_PORT}.`);
+  openBrowser();
+  return lifecycle.done;
+}
+
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
+if (isMain) {
+  runLocalLauncher().then(code => { process.exitCode = code; }).catch(error => {
+    console.error(error instanceof Error ? error.message : "Local startup failed.");
+    process.exitCode = 1;
+  });
 }

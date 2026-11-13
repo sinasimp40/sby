@@ -2,23 +2,23 @@
 
 ## One-time installation
 
-1. Install **Node.js 22.16+ or 24 LTS**, **pnpm**, and **PostgreSQL**. No Replit account or Clerk service is needed for a fresh local installation.
-2. Download/clone this whole project. Create a PostgreSQL database.
-3. Copy `.env.local.example` to `.env.local`. Enter your own PostgreSQL connection, admin email and a strong admin password. Generate a fresh `SESSION_SECRET` for a **new** shop with:
-   ```sh
-   node -e "console.log(require('node:crypto').randomBytes(48).toString('hex'))"
-   ```
-   Keep that secret private and stable. This is installation security, not a provider key. Do not paste secrets in chat.
-4. In the project directory run:
-   ```sh
-   pnpm install
-   pnpm db:local
-   pnpm dev:local
-   ```
-   `db:local` applies this app's schema to the database you configured. Use a new empty database for a fresh installation; review changes if reusing a database.
-5. Open **http://localhost:5173** (use this exact host/port), then sign in using the email and password in `.env.local`.
+1. Install **Node.js 22.16+ or 24+**, **pnpm**, and **PostgreSQL**. Start PostgreSQL and create a database in pgAdmin (for a new shop, make it empty). The launcher never installs system software or creates/drops a database.
+2. Download or clone the whole project onto your computer.
+3. On Windows, double-click **`start-local.bat`**. On macOS or Linux, open a terminal in the project folder and run **`./start-local.sh`**. The launchers work from any starting folder and install locked project dependencies when they are missing.
+4. The first launch privately asks for the PostgreSQL address, admin email, and admin password. Passwords and the database address are hidden while you type. A new installation gets a fresh `SESSION_SECRET`; attaching an existing PostgreSQL shop requires its original secret and owner ID. The launcher writes `.env.local` once and never replaces it. Keep this file private.
+5. If the selected database is empty, the launcher explains that it will create Telecart's tables and asks you to type **`CREATE TELECART TABLES`** before applying the schema. Existing databases are not migrated during routine launches. A database with unrelated or incomplete tables is left unchanged; back up and review it before using the explicit `pnpm db:local` command.
+6. If saved Telegram polling, advertising, or pending payments are present, the launcher describes the background work and asks you to type **`START LOCAL PROCESSING`** before starting. Disable Telegram on the old copy first; never run two receivers for one account or bot.
+7. The dashboard opens at **http://localhost:5173** only after both the API and website respond. Sign in using the email and password you entered privately. If either port (8080 or 5173) is already occupied, close the other local app yourself; the launcher never kills unrelated processes.
 
-The frontend and backend bind to your computer's loopback interface. The development runner is for local use, not a public production server. Closing it or sleeping/shutting down the computer stops the bot and payment checks. On Windows, use a terminal with Node and pnpm installed.
+### One-time setup versus daily startup
+
+- Install Node.js, pnpm and PostgreSQL once; start PostgreSQL and create your database.
+- First launch creates `.env.local`, installs project dependencies if needed, checks PostgreSQL, and asks before initializing an empty database or resuming saved processing.
+- For a deliberate schema change to an existing database, back it up and run **`pnpm db:local`** from the project folder. Confirm the prompt and review every schema change Drizzle displays. Daily startup never runs this command automatically.
+- After setup, double-click **`start-local.bat`** on Windows or run **`./start-local.sh`** to start the API and dashboard together.
+- Press Ctrl+C in the launcher window to stop the local services. Closing it or putting the computer to sleep stops shop processing and payment checks.
+
+If the launcher reports a PostgreSQL connection error, start PostgreSQL and verify the address, username, password and database name in `.env.local`. The connection URL is never printed. The local servers bind to loopback and are for development, not public hosting. No Replit secrets are copied into the local installation.
 
 ## Daily controls — all in the dashboard
 
