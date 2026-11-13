@@ -1,5 +1,7 @@
 # Run Telecart on your computer
 
+**SQLite location:** You can enter a folder (for example `C:\My Shop\data`) or a filename (`C:\My Shop\data\telecart.db`). A folder uses `telecart.db` inside it. An existing database file, including one without an extension, is kept as the selected file. If an earlier setup already saved a folder in `.env.local`, the launcher handles it automatically without rewriting settings. Do **not** delete `.env.local` to fix this error: its original `SESSION_SECRET` is needed for existing encrypted data.
+
 ## One-time installation
 
 1. Install **Node.js 22.16+ or 24+** and **pnpm**. **PostgreSQL is no longer required.** SQLite is built into the supported Node.js runtime; no database service or native module compilation is needed.

@@ -6,17 +6,21 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { assertPortAvailable, makeChildEnvironment, LOCAL_API_PORT, LOCAL_WEB_PORT } from "../local-core.mjs";
 import { initializeSqlite } from "../init-sqlite.mjs";
-import { startLocalAppAfterBuild } from "../dev-local.mjs";
+import { loadConfig, startLocalAppAfterBuild } from "../dev-local.mjs";
+import { saveFirstRunConfig } from "../local-setup.mjs";
 const directory = mkdtempSync(join(tmpdir(), "Telecart real launcher "));
 try {
   await Promise.all([LOCAL_API_PORT, LOCAL_WEB_PORT].map(port => assertPortAvailable(port)));
-  const path = join(directory, "shop database.db");
-  initializeSqlite(path);
-  const config = {
-    TELECART_SQLITE_PATH: path, SESSION_SECRET: "TEST_ONLY_LAUNCHER_SECRET_NOT_A_CREDENTIAL",
+  const savedConfig = {
+    TELECART_SQLITE_PATH: directory, SESSION_SECRET: "TEST_ONLY_LAUNCHER_SECRET_NOT_A_CREDENTIAL",
     TELECART_OWNER_ID: "TEST_ONLY_LOCAL_OWNER", TELECART_ADMIN_EMAIL: "test@example.invalid",
     TELECART_ADMIN_INITIAL_PASSWORD: "TEST_ONLY_LOCAL_PASSWORD_NOT_A_CREDENTIAL",
   };
+  const configPath = join(directory, ".env.local");
+  await saveFirstRunConfig(configPath, savedConfig);
+  const config = loadConfig(configPath);
+  assert.equal(config.TELECART_SQLITE_PATH, join(directory, "telecart.db"));
+  initializeSqlite(config.TELECART_SQLITE_PATH);
   let ready = false;
   const code = await startLocalAppAfterBuild(makeChildEnvironment(process.env, config), {
     openBrowser: () => { ready = true; process.emit("SIGINT"); },

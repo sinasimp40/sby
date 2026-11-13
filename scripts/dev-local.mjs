@@ -20,6 +20,7 @@ import {
   waitForLocalServices,
 } from "./local-core.mjs";
 import { makeFirstRunConfig, saveFirstRunConfig } from "./local-setup.mjs";
+import { normalizeSqlitePath } from "./sqlite-path.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 export const projectRoot = resolve(scriptDir, "..");
@@ -38,11 +39,11 @@ function runPnpm(args, env, { capture = false } = {}) {
   });
 }
 
-function loadConfig() {
-  if (!existsSync(envPath)) return null;
+export function loadConfig(configPath = envPath) {
+  if (!existsSync(configPath)) return null;
   let values;
   try {
-    values = parseLocalEnv(readFileSync(envPath, "utf8"));
+    values = parseLocalEnv(readFileSync(configPath, "utf8"));
   } catch (error) {
     throw new Error(`${error.message} Fix the private .env.local file; it was not changed.`);
   }
@@ -58,6 +59,11 @@ function loadConfig() {
   }
   const error = validateLocalConfig(config);
   if (error) throw new Error(`${error} The launcher did not change .env.local.`);
+  const normalizedPath = normalizeSqlitePath(config.TELECART_SQLITE_PATH);
+  if (normalizedPath !== config.TELECART_SQLITE_PATH) {
+    console.log("SQLite location normalized: a folder uses telecart.db inside it; surrounding path quotes are removed. Saved settings and secrets were not changed.");
+    config.TELECART_SQLITE_PATH = normalizedPath;
+  }
   return config;
 }
 
@@ -185,6 +191,9 @@ function checkDatabase(config, env) {
     throw new Error(message);
   }
   if (result.status !== 0 || !status || !Array.isArray(status.missingTables)) {
+    if (status?.errorCode === "SQLITE_OPEN_FAILED") {
+      throw new Error("Could not read the SQLite database. Choose a writable local folder or a valid SQLite file; check permissions. Saved settings and data were not changed.");
+    }
     throw new Error("Could not inspect the SQLite database. Check the file path and permissions; no servers were started.");
   }
   if (config.TELECART_SQLITE_PATH !== env.TELECART_SQLITE_PATH) {

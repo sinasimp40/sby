@@ -1,8 +1,9 @@
 import { DatabaseSync } from "node:sqlite";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { pathToFileURL } from "node:url";
 import { DATABASE_TABLES } from "../../../scripts/local-core.mjs";
+import { resolveSqlitePath } from "../../../scripts/sqlite-path.mjs";
 
 export async function inspectLocalDatabase(query, ownerId) {
   const tables = await query(`
@@ -43,19 +44,21 @@ export async function inspectLocalDatabase(query, ownerId) {
 }
 
 async function main() {
-  const path = process.env.TELECART_SQLITE_PATH;
-  if (!path) {
+  const configuredPath = process.env.TELECART_SQLITE_PATH;
+  if (!configuredPath) {
     console.error("TELECART_SQLITE_PATH is missing.");
     process.exitCode = 1;
     return;
   }
-  if (!existsSync(path)) {
-    console.log(JSON.stringify({ tableCount: 0, missingTables: DATABASE_TABLES,
-      telegramEnabled: false, shopBotConnected: false, advertisingScheduled: false, pendingPayments: false }));
-    return;
-  }
-  const database = new DatabaseSync(path, { readOnly: true });
+  let database;
   try {
+    const path = resolveSqlitePath(configuredPath);
+    if (!existsSync(path)) {
+      console.log(JSON.stringify({ tableCount: 0, missingTables: DATABASE_TABLES,
+        telegramEnabled: false, shopBotConnected: false, advertisingScheduled: false, pendingPayments: false }));
+      return;
+    }
+    database = new DatabaseSync(path, { readOnly: true });
     const query = async (source, values = []) => {
       const params = [];
       const sql = source.replace(/\$(\d+)/g, (_, n) => { params.push(values[Number(n) - 1]); return "?"; });
@@ -64,10 +67,10 @@ async function main() {
     const status = await inspectLocalDatabase(query, process.env.TELECART_OWNER_ID);
     console.log(JSON.stringify(status));
   } catch {
-    console.error("Could not read the configured SQLite file. Check the path and permissions.");
+    console.log(JSON.stringify({ errorCode: "SQLITE_OPEN_FAILED" }));
     process.exitCode = 1;
   } finally {
-    database.close();
+    database?.close();
   }
 }
 

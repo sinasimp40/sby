@@ -3,10 +3,11 @@ import { randomUUID } from "node:crypto";
 import { mkdirSync, readFileSync, readdirSync, existsSync } from "node:fs";
 import { dirname, resolve, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { resolveSqlitePath } from "./sqlite-path.mjs";
 
 export const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export function initializeSqlite(path) {
-  const file = resolve(root, path || "data/telecart.db");
+  const file = resolveSqlitePath(path);
   if (existsSync(`${file}.lock`)) {
     const current = new DatabaseSync(file, { readOnly: true });
     try {
