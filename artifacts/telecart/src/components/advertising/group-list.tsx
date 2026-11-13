@@ -2,6 +2,13 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import type { AdvertisingGroup } from "@workspace/api-client-react";
 
 const names = new Intl.Collator(undefined, { sensitivity: "base", numeric: true });
+/** Prune missing destinations without changing the user's remaining choices. */
+export function retainedGroupSelection(groups: Pick<AdvertisingGroup, "id">[], selected: Set<string>) {
+  const present = new Set(groups.map(group => group.id));
+  if ([...selected].every(id => present.has(id))) return selected;
+  return new Set([...selected].filter(id => present.has(id)));
+}
+
 export function alphabeticalGroups(groups: AdvertisingGroup[]) {
   return [...groups].sort((a, b) =>
     names.compare((a.title || a.target).trim(), (b.title || b.target).trim()) ||

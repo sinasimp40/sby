@@ -7,10 +7,10 @@ import {
   getGetAdvertisingCampaignQueryKey, getGetAdvertisingWorkspaceQueryKey, useCancelAdvertisingCampaign,
   type AdvertisingWorkspace, type AdvertisingGroup, type AdvertisingImportRow, type AdvertisingDraft,
 } from "@workspace/api-client-react";
-import { Loader2, FileUp, Search, Trash2, Pencil, ShieldCheck, Send, Ban, Megaphone, Radar, X, Timer, Link2, Bold, Italic, Unlink, Sparkles } from "lucide-react";
+import { Loader2, FileUp, Search, Trash2, Pencil, ShieldCheck, Send, Ban, Megaphone, Radar, X, Timer, Link2, Bold, Italic, Unlink, Sparkles, RefreshCw } from "lucide-react";
 import { adjustForEdit, covered, entitiesProblem, insertEmoji, linkAt, normalize, safeHttps, segments, setLink, snapSelection, toggleStyle, type Entity } from "@/lib/ad-entities";
 import { EmojiSetPicker } from "@/components/advertising/emoji-set-picker";
-import { alphabeticalGroups, ScrollableGroupList } from "@/components/advertising/group-list";
+import { alphabeticalGroups, retainedGroupSelection, ScrollableGroupList } from "@/components/advertising/group-list";
 import { Panel, EmptyState, ErrorState, RowsSkeleton } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -277,7 +277,8 @@ export function ImportPanel({ ws }: { ws: AdvertisingWorkspace }) {
 }
 
 /* ---------------- Group list ---------------- */
-export function GroupsPanel({ ws, selected, setSelected, sequential = false }: { ws: AdvertisingWorkspace; selected: Set<string>; setSelected: (s: Set<string>) => void; sequential?: boolean }) {
+export function GroupsPanel({ ws, selected: savedSelected, setSelected, sequential = false, onRefresh, refreshing = false }: { ws: AdvertisingWorkspace; selected: Set<string>; setSelected: (s: Set<string>) => void; sequential?: boolean; onRefresh?: () => void; refreshing?: boolean }) {
+  const selected = useMemo(() => retainedGroupSelection(ws.groups, savedSelected), [ws.groups, savedSelected]);
   const orderedGroups = useMemo(() => alphabeticalGroups(ws.groups), [ws.groups]);
   const queuePos = useMemo(() => { const m = new Map<string, number>(); let i = 0; for (const g of orderedGroups) if (selected.has(g.id) && g.enabled && g.status === "ready" && g.chatId) m.set(g.id, ++i); return m; }, [orderedGroups, selected]);
   const sync = useWorkspaceSync();
@@ -320,7 +321,11 @@ export function GroupsPanel({ ws, selected, setSelected, sequential = false }: {
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <Checkbox checked={list.length > 0 && list.every(g => selected.has(g.id))} onCheckedChange={v => { const n = new Set(selected); list.forEach(g => v === true ? n.add(g.id) : n.delete(g.id)); setSelected(n); }} data-testid="checkbox-select-all" />
           <span data-testid="text-selected-count">{selected.size} selected</span>
-          <Button size="sm" variant="outline" className="ml-auto" disabled={!selected.size || check.isPending || !ws.account.connected} onClick={checkPerms} data-testid="button-check-permissions">{check.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="mr-1 h-3.5 w-3.5" />}{progress ? `Checking ${progress}` : "Check permissions"}</Button>
+          {onRefresh && <Button size="sm" variant="outline" className="ml-auto" disabled={refreshing} onClick={onRefresh}
+            title="Refresh saved groups and membership results; this does not rediscover or rejoin groups." data-testid="button-refresh-groups">
+            <RefreshCw className={cn("mr-1 h-3.5 w-3.5", refreshing && "animate-spin")} />Refresh list
+          </Button>}
+          <Button size="sm" variant="outline" className={onRefresh ? "" : "ml-auto"} disabled={!selected.size || check.isPending || !ws.account.connected} onClick={checkPerms} data-testid="button-check-permissions">{check.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="mr-1 h-3.5 w-3.5" />}{progress ? `Checking ${progress}` : "Check permissions"}</Button>
         </div>
         {sequential && <p className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs leading-relaxed text-muted-foreground" data-testid="text-sequential-explainer">New queues follow this alphabetical list from top to bottom. Numbers show each selected ready group's place in the next queue. The shared delay applies after each batch; running campaigns keep their confirmed order.</p>}
         {ws.groups.length === 0 ? <EmptyState icon={Megaphone} title="No groups yet" body="Paste links, import a .txt file, or discover groups your account has already joined." /> :

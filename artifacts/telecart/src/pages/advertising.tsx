@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useGetAdvertisingWorkspace, getGetAdvertisingWorkspaceQueryKey, type AdvertisingSavedMessage } from "@workspace/api-client-react";
 import { Play } from "lucide-react";
 import { PageHeader, ErrorState, RowsSkeleton } from "@/components/shared";
@@ -11,9 +11,11 @@ import { SavedMessagePicker, SavedMessageCard } from "@/components/advertising/s
 import { ForwardingStatus, ForwardStartDialog, IntervalPanel, GroupsPerIntervalPanel, groupsPerIntervalOk, intervalOk, queueGroups, splitInterval, toSeconds, type IntervalUnit } from "@/components/advertising/forwarding-panels";
 import { MembershipPanel } from "@/components/advertising/membership-panel";
 import { ResumePanel } from "@/components/advertising/resume-panel";
+import { retainedGroupSelection } from "@/components/advertising/group-list";
 
 export default function AdvertisingPage() {
-  const ws = useGetAdvertisingWorkspace({ query: { queryKey: getGetAdvertisingWorkspaceQueryKey(), refetchInterval: 5000 } });
+  const ws = useGetAdvertisingWorkspace({ query: { queryKey: getGetAdvertisingWorkspaceQueryKey(), refetchInterval: 5000,
+    refetchOnWindowFocus: true, refetchOnReconnect: true } });
   const [source, setSource] = useState<AdvertisingSavedMessage | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [ivValue, setIvValue] = useState("30");
@@ -27,6 +29,7 @@ export default function AdvertisingPage() {
   // same saved account recovers; readiness separately blocks reads and Start.
   const accountId = ws.data?.account.accountId ?? null;
   const fwd = ws.data?.forwarding;
+  const activeSelected = useMemo(() => retainedGroupSelection(ws.data?.groups ?? [], selected), [ws.data?.groups, selected]);
 
   // Identity binding: clear choices whenever the connected account changes; restore prior plan once per account.
   useEffect(() => {
@@ -43,6 +46,14 @@ export default function AdvertisingPage() {
     touched.current = true;
   }, [ws.data, accountId, fwd]);
 
+  // Worker-side removal changes the workspace, not local checkbox state.
+  // Prune only after a workspace exists, and do not mark the form dirty or
+  // reset source/interval choices. Render from activeSelected immediately.
+  useEffect(() => {
+    const groups = ws.data?.groups;
+    if (groups) setSelected(previous => retainedGroupSelection(groups, previous));
+  }, [ws.data?.groups]);
+
   if (ws.isLoading) return <div><PageHeader eyebrow="Growth" title="Advertising" /><RowsSkeleton rows={8} /></div>;
   if (ws.isError || !ws.data) return <div><PageHeader eyebrow="Growth" title="Advertising" /><ErrorState message={errMsg(ws.error) || "Failed to load advertising"} onRetry={() => ws.refetch()} /></div>;
   const w = ws.data;
@@ -52,8 +63,8 @@ export default function AdvertisingPage() {
   const touch = () => { touched.current = true; };
   const intervalSeconds = toSeconds(ivValue, ivUnit);
   const groupsPerInterval = Number(batchValue);
-  const queue = queueGroups(w, selected);
-  const skipped = selected.size - queue.length;
+  const queue = queueGroups(w, activeSelected);
+  const skipped = activeSelected.size - queue.length;
   const reason = blocked || (!source ? "Choose a source message." : !source.canForward ? "This message cannot be forwarded." : source.accountId !== w.account.accountId ? "Source belongs to a different account. Load Saved Messages again." : !queue.length ? "Select at least one ready, enabled group." : !intervalOk(intervalSeconds) ? "Set a delay between 1 minute and 30 days." : !groupsPerIntervalOk(groupsPerInterval) ? "Choose 1 to 500 groups per interval." : "");
 
   return (
@@ -69,7 +80,8 @@ export default function AdvertisingPage() {
           <GroupsPerIntervalPanel value={batchValue} onChange={v => { touch(); setBatchValue(v); }} />
           <ImportPanel ws={w} />
           <MembershipPanel key={`membership-${accountId ?? "no-account"}`} ws={w} />
-          <GroupsPanel ws={w} selected={selected} setSelected={s => { touch(); setSelected(s); }} sequential />
+          <GroupsPanel ws={w} selected={activeSelected} setSelected={s => { touch(); setSelected(s); }} sequential
+            onRefresh={() => { void ws.refetch(); }} refreshing={ws.isFetching} />
           <RunsPanel ws={w} />
           {w.campaigns.length > 0 && <HistoryPanel ws={w} selectedId={campaignId} setSelectedId={setCampaignId} />}
         </div>
@@ -88,7 +100,7 @@ export default function AdvertisingPage() {
           </div>
         </aside>
       </div>
-      <ForwardStartDialog open={startOpen} onOpenChange={setStartOpen} ws={w} source={source} selected={selected} intervalSeconds={intervalSeconds} groupsPerInterval={groupsPerInterval} />
+      <ForwardStartDialog open={startOpen} onOpenChange={setStartOpen} ws={w} source={source} selected={activeSelected} intervalSeconds={intervalSeconds} groupsPerInterval={groupsPerInterval} />
     </div>
   );
 }

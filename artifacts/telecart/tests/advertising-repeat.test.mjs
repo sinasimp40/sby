@@ -22,7 +22,7 @@ test("groups-per-interval controls render one-copy semantics and bounded group c
   });
   try {
     const { GroupsPerIntervalPanel, groupsPerIntervalOk, queueGroups } = await vite.ssrLoadModule("/src/components/advertising/forwarding-panels.tsx");
-    const { alphabeticalGroups, ScrollableGroupList, groupListViewportHeight } = await vite.ssrLoadModule("/src/components/advertising/group-list.tsx");
+    const { alphabeticalGroups, retainedGroupSelection, ScrollableGroupList, groupListViewportHeight } = await vite.ssrLoadModule("/src/components/advertising/group-list.tsx");
     const { MembershipPanel } = await vite.ssrLoadModule("/src/components/advertising/membership-panel.tsx");
     const membershipHtml = renderToStaticMarkup(createElement(QueryClientProvider, { client: new QueryClient() },
       createElement(MembershipPanel, { ws: { account: { connected: false, accountId: null, login: null }, membershipJobs: [] } })));
@@ -44,6 +44,29 @@ test("groups-per-interval controls render one-copy semantics and bounded group c
     assert.deepEqual(alphabeticalGroups(groups).map(g => g.title || g.target), ["Alpha", "beta 2", "beta 10", "Charlie", "Zulu"]);
     assert.deepEqual(groups.map(g => g.id), original, "sorting must not mutate the cached workspace");
     assert.deepEqual(queueGroups({ groups }, new Set(original)).map(g => g.id), alphabeticalGroups(groups).map(g => g.id));
+    const staleSelected = new Set([...original, "TEST_ONLY_removed"]);
+    const retained = retainedGroupSelection(groups, staleSelected);
+    assert.deepEqual([...retained], original);
+    assert.ok(staleSelected.has("TEST_ONLY_removed"), "pruning must not mutate prior selection state");
+    assert.equal(retainedGroupSelection(groups, retained), retained, "unchanged selections must retain their identity");
+    const afterLeave = groups.slice(1);
+    const afterPoll = retainedGroupSelection(afterLeave, retained);
+    assert.equal(afterPoll.size, afterLeave.length);
+    assert.equal(afterPoll.has(groups[0].id), false);
+    assert.equal(retainedGroupSelection([...afterLeave, { id: "newly-discovered" }], afterPoll).has("newly-discovered"), false,
+      "a refresh must never select newly discovered destinations automatically");
+    assert.equal(retainedGroupSelection([], afterPoll).size, 0);
+    const { GroupsPanel } = await vite.ssrLoadModule("/src/components/advertising-panels.tsx");
+    const renderGroups = (visible, refreshing = false) => renderToStaticMarkup(createElement(QueryClientProvider, { client: new QueryClient() },
+      createElement(GroupsPanel, { ws: { groups: visible, account: { connected: false } }, selected: staleSelected,
+        setSelected: () => {}, sequential: true, onRefresh: () => {}, refreshing })));
+    const groupHtml = renderGroups(groups);
+    assert.match(groupHtml, /data-testid="text-selected-count">5 selected/);
+    assert.match(groupHtml, new RegExp(`data-testid="row-group-${groups[0].id}"`));
+    const refreshedHtml = renderGroups(afterLeave, true);
+    assert.match(refreshedHtml, /data-testid="text-selected-count">4 selected/);
+    assert.doesNotMatch(refreshedHtml, new RegExp(`data-testid="row-group-${groups[0].id}"`));
+    assert.match(refreshedHtml, /<button[^>]*disabled=""[^>]*data-testid="button-refresh-groups"/);
     let scrollTop = 0;
     let rowHeight = 81;
     const rows = Array.from({ length: 12 }, (_, i) => ({ getBoundingClientRect: () => ({
