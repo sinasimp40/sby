@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web"]
+modules = ["web", "nodejs-24"]
 
 [deployment]
 router = "application"
@@ -28,9 +28,9 @@ TELECART_PUBLIC_URL = "https://sales-bot-dashboard.replit.app"
 [userenv.development]
 TELECART_ADMIN_EMAIL = "admin@admin.com"
 TELECART_ALLOW_WORKSPACE_TESTING = "true"
-TELECART_PUBLIC_URL = "https://5277f05f-8633-4263-bc6c-d85e7c8543ec-00-ic6814nzmlz1.sisko.replit.dev"
+TELECART_PUBLIC_URL = "https://a9fdd597-eec3-4e2e-83fc-50bd06e95929-00-2fnsq8tir17yb.sisko.replit.dev"
 TELECART_TELEGRAM_DISABLED = "true"
-TELECART_ADMIN_ORIGIN = "https://5277f05f-8633-4263-bc6c-d85e7c8543ec-00-ic6814nzmlz1.sisko.replit.dev"
+TELECART_ADMIN_ORIGIN = "https://a9fdd597-eec3-4e2e-83fc-50bd06e95929-00-2fnsq8tir17yb.sisko.replit.dev"
 TELECART_OWNER_ID = "local-8f1ba325-02da-4c00-a6b1-6263fa3c50c2"
 TELECART_SQLITE_PATH = "data/telecart.db"
 
