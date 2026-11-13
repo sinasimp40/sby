@@ -27,11 +27,11 @@ API ID/hash setup is one-time; later logins should ask only for phone plus code 
 
 **How to apply:** Preserve encrypted app credentials across normal account disconnects and cancelled logins. Provide an explicit confirmed Forget setup action that stops advertising and removes both app credentials and sessions. Never export these credentials.
 
-A group link does not grant membership or posting permission. Do not automatically join groups or message personal contacts.
+A group link does not grant membership or posting permission. The user now explicitly requests joining groups from uploaded `.txt` lists; joining must be a separate reviewed membership action, not implicit permission to send advertisements or contact individuals.
 
-**Why:** The requested import is a list of destinations, not permission to join or advertise. Assuming otherwise would mislead the merchant and risk unsolicited posts.
+**Why:** The user expanded the original destination-only import request to add account joining. Their original import request alone did not authorize membership changes.
 
-**How to apply:** Segregate and deduplicate before saving, discover only already-joined groups/channels, require permission confirmation, and verify membership/posting rights before sends. Keep unresolved invite links out of active schedules.
+**How to apply:** Segregate and deduplicate, preview and confirm selected joins, respect waits and pending approval, and verify posting rights separately. Discovery remains read-only. Never start advertising just because a group was joined.
 
 Absence from a bounded chat list is not proof that an account has not joined a group.
 
@@ -111,11 +111,11 @@ Message and emoji previews must not broaden account activity just to display art
 
 **How to apply:** Keep pack lookup explicitly requested and read-only, without installing packs or posting. Any future artwork preview must preserve the main session's containment guarantees; do not silently enable SDK reconnects or use the shop bot as a substitute.
 
-Automatically disable a campaign destination after confirmed removal, a ban, or a posting-permission denial. Require an explicit permission recheck and enable action before using it again.
+The user expanded automatic disabling to require leaving and removing destinations after all definite sending failures, permission-check failures, and UNCERTAIN attempted-send results. Successful groups must stay untouched.
 
-**Why:** The user asked to disable groups where the advertising account is blocked, kicked, or cannot send, so subsequent loops skip them.
+**Why:** The user chose “All definite sending failures,” then explicitly added: “remove also and leave the group for uncertain result.”
 
-**How to apply:** Keep other authorized groups running. A network timeout, uncertain receipt, or Telegram flood wait is not proof of a group ban.
+**How to apply:** For an uncertain attempted send, remove and queue leaving only that destination, preserve the uncertain evidence, and never retry the post. Leaving does not undo a message Telegram may have accepted. Keep successful groups untouched. Connection failures outside attempted sends, account-wide restrictions, and Telegram waits must not trigger mass leaving. Do not silently rediscover/rejoin removed destinations.
 
 A newly confirmed campaign start resets the merchant's old interval, not Telegram-required waits or ambiguous-send safeguards.
 
