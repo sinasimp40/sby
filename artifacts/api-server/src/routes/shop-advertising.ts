@@ -96,6 +96,7 @@ router.patch("/advertising/groups/:id", run(async req => {
   await withAdvertisingLock(owner(req), async client => {
     const group = (await client.query("SELECT * FROM advertising_groups WHERE owner_id=$1 AND id=$2", [owner(req), groupId])).rows[0];
     if (!group) throw new CommerceError("Group not found.", 404);
+    if (group.status === "removed") throw new CommerceError("This destination was removed. Use the reviewed membership import to restore it.", 409);
     if (parsed) {
       const exists = await client.query("SELECT 1 FROM advertising_groups WHERE owner_id=$1 AND target=$2 AND id<>$3", [owner(req), parsed.target, groupId]);
       if (exists.rowCount) throw new CommerceError("That target is already saved.", 409);
@@ -115,6 +116,8 @@ router.patch("/advertising/groups/:id", run(async req => {
 }));
 router.delete("/advertising/groups/:id", run(async req => {
   await withAdvertisingLock(owner(req), async client => {
+    const existing = (await client.query("SELECT status FROM advertising_groups WHERE owner_id=$1 AND id=$2", [owner(req), id(req)])).rows[0];
+    if (existing?.status === "removed") throw new CommerceError("Removed destinations are retained to prevent accidental rediscovery. Restore through membership import.", 409);
     const result = await client.query("DELETE FROM advertising_groups WHERE owner_id=$1 AND id=$2", [owner(req), id(req)]);
     if (!result.rowCount) throw new CommerceError("Group not found.", 404);
     await stopAccountSchedules(owner(req), client, [id(req)], "Group removed.");

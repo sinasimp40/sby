@@ -29,6 +29,20 @@
       "when": 1794556655006,
       "tag": "0003_flimsy_lizard",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1794572429811,
+      "tag": "0004_colossal_wonder_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1794574001747,
+      "tag": "0005_public_serpent_society",
+      "breakpoints": true
     }
   ]
 }

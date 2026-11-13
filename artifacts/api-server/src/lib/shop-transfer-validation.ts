@@ -137,7 +137,7 @@ export function validateShopRelationships(data: TransferData, ownerId: string) {
     for (const group of data.advertisingGroups) {
       const parsed = parseAdvertisingTarget(String(group.target));
       if (parsed.target !== group.target || parsed.kind !== group.kind ||
-        !["pending", "ready", "needs_setup", "duplicate", "error"].includes(String(group.status)) ||
+        !["pending", "ready", "needs_setup", "duplicate", "error", "removed"].includes(String(group.status)) ||
         (group.chatId !== null && !/^-[1-9]\d{5,15}$/.test(String(group.chatId))) ||
         (group.status === "ready" && group.chatId === null)) throw new Error();
     }

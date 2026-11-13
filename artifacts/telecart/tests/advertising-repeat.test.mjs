@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createServer } from "vite";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 test("groups-per-interval controls render one-copy semantics and bounded group counts", async () => {
   const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -22,6 +23,20 @@ test("groups-per-interval controls render one-copy semantics and bounded group c
   try {
     const { GroupsPerIntervalPanel, groupsPerIntervalOk, queueGroups } = await vite.ssrLoadModule("/src/components/advertising/forwarding-panels.tsx");
     const { alphabeticalGroups, ScrollableGroupList, groupListViewportHeight } = await vite.ssrLoadModule("/src/components/advertising/group-list.tsx");
+    const { MembershipPanel } = await vite.ssrLoadModule("/src/components/advertising/membership-panel.tsx");
+    const membershipHtml = renderToStaticMarkup(createElement(QueryClientProvider, { client: new QueryClient() },
+      createElement(MembershipPanel, { ws: { account: { connected: false, accountId: null, login: null }, membershipJobs: [] } })));
+    assert.match(membershipHtml, /Join groups from .txt/);
+    assert.match(membershipHtml, /UNCERTAIN posts remove that destination and queue leaving/);
+    assert.match(membershipHtml, /<button[^>]*disabled=""[^>]*data-testid="button-membership-preview"/);
+    assert.doesNotMatch(membershipHtml, /data-testid="button-membership-start"/, "no join action exists before preview and confirmation");
+    const { ResumePanel } = await vite.ssrLoadModule("/src/components/advertising/resume-panel.tsx");
+    const resumeHtml = renderToStaticMarkup(createElement(QueryClientProvider, { client: new QueryClient() },
+      createElement(ResumePanel, { ws: { account: { connected: true, accountId: "900000009", login: null },
+        groups: [], forwarding: { source: {} }, resume: { planId: "TEST_ONLY", available: false,
+          groupIds: [], heldGroupIds: [], groupsSentInInterval: 1, groupsPerInterval: 3, reason: "Campaign is already running." } } })));
+    assert.match(resumeHtml, /Campaign is already running/);
+    assert.match(resumeHtml, /<button[^>]*disabled=""[^>]*data-testid="button-open-resume"/);
     const groups = ["Zulu", "beta 10", "Alpha", "beta 2", ""].map((title, i) => ({
       id: String(i), title, target: title || "Charlie", enabled: true, status: "ready", chatId: `-${i + 1}`,
     }));

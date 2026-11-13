@@ -6,6 +6,8 @@ import {
   SaveAdvertisingAppCredentialsBody,
   LoadAdvertisingEmojiSetBody, LoadAdvertisingEmojiSetResponse,
   LoadAdvertisingSavedMessagesBody, LoadAdvertisingSavedMessagesResponse, StartAdvertisingForwardLoopBody,
+  PreviewAdvertisingMembershipBody, PreviewAdvertisingMembershipResponse, StartAdvertisingMembershipBody,
+  ResumeAdvertisingCampaignBody,
 } from "@workspace/api-zod";
 import { getShopAuth } from "../lib/admin-auth";
 import { CommerceError } from "../lib/commerce-providers";
@@ -17,6 +19,8 @@ import { withAccountDriver } from "../lib/advertising-account-auth";
 import { emojiPackName } from "../lib/advertising-account-emoji";
 import { AccountError } from "../lib/advertising-account-errors";
 import { loadOwnerSavedMessages, startForwardLoop } from "../lib/advertising-forward-loop";
+import { previewMembership, startMembership, stopMembership } from "../lib/advertising-membership-store";
+import { resumeForwardCampaign } from "../lib/advertising-resume";
 
 const router: IRouter = Router();
 router.post("/advertising/account/emoji-set", async (req: Request, res: Response): Promise<void> => {
@@ -51,6 +55,11 @@ const run = (fn: (owner: string, req: Request) => Promise<unknown>) => jsonRun(a
 });
 router.post("/advertising/account/saved-messages", jsonRun(async (owner, req) =>
   LoadAdvertisingSavedMessagesResponse.parse(await loadOwnerSavedMessages(owner, LoadAdvertisingSavedMessagesBody.parse(req.body)))));
+router.post("/advertising/membership/preview", jsonRun(async (owner, req) =>
+  PreviewAdvertisingMembershipResponse.parse(await previewMembership(owner, PreviewAdvertisingMembershipBody.parse(req.body).text))));
+router.post("/advertising/membership/start", run((owner, req) => startMembership(owner, StartAdvertisingMembershipBody.parse(req.body))));
+router.post("/advertising/membership/stop", run(owner => stopMembership(owner)));
+router.post("/advertising/forwarding/resume", run((owner, req) => resumeForwardCampaign(owner, ResumeAdvertisingCampaignBody.parse(req.body))));
 router.post("/advertising/forwarding/start", run((owner, req) => startForwardLoop(owner, StartAdvertisingForwardLoopBody.parse(req.body))));
 router.post("/advertising/account/login", run((owner, req) => beginAccountLogin(owner, BeginAdvertisingAccountLoginBody.parse(req.body))));
 router.put("/advertising/account/app", run((owner, req) => saveAccountApp(owner, SaveAdvertisingAppCredentialsBody.parse(req.body))));

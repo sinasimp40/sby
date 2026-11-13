@@ -7,7 +7,7 @@ export const LOCAL_API_PORT = 8080;
 export const DATABASE_TABLES = [
   "admin_sessions", "admin_login_limits", "advertising_account_commands", "advertising_account_runs",
   "advertising_accounts", "advertising_bots", "advertising_campaigns", "advertising_deliveries",
-  "advertising_groups", "advertising_schedules", "bot_connections", "bot_customers", "bot_runtime_settings",
+  "advertising_groups", "advertising_schedules", "advertising_membership_jobs", "advertising_checkpoints", "bot_connections", "bot_customers", "bot_runtime_settings",
   "bot_updates", "emoji_import_sessions", "provider_credentials", "shop_activity", "shop_custom_emojis",
   "shop_inventory", "shop_payments", "shop_products", "shop_records", "shop_settings", "wallet_entries",
 ];

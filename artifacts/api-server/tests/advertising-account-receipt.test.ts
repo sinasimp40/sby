@@ -13,7 +13,7 @@ const sent = (id = 42) => new Api.UpdateShortSentMessage({ id, pts: 1, ptsCount:
 const message = (peerId: Api.TypePeer = new Api.PeerChannel({ channelId: channel.id }), id = 42) =>
   new Api.Message({ id, peerId, date: 0, message: "TEST_ONLY", out: true });
 const updates = (mapping: Api.UpdateMessageID[]) => new Api.Updates({ updates: mapping, users: [], chats: [], date: 0, seq: 0 });
-const unconfirmed = (error: unknown) => error instanceof AccountError && error.telegramCode === "POST_NOT_CONFIRMED" && error.kind === "network";
+const unconfirmed = (error: unknown) => error instanceof AccountError && error.telegramCode === "POST_NOT_CONFIRMED" && error.kind === "uncertain";
 function reader(messages: Api.TypeMessage[], requests: unknown[] = []) {
   return { invoke: async (request: unknown) => { requests.push(request); return new Api.messages.Messages({ messages, chats: [], users: [] }); } } as unknown as Pick<TelegramClient, "invoke">;
 }
@@ -109,6 +109,8 @@ test("the real driver verifies text, photo and GIF sends, and rejects an empty R
       await assert.rejects(driver.send("-100123", { text: "TEST_ONLY", imageUrl: null, buttonUrl: null, buttonText: "Visit" }, "987654321"), unconfirmed);
       assert.equal(requests.filter(r => r instanceof Api.channels.GetMessages).length, 3);
       assert.equal(requests.filter(r => r instanceof Api.messages.SendMessage).length, 2, "no retry");
+      assert.equal((await driver.inspect("@TEST_ONLY")).chatId, "-100123",
+        "missing receipt evidence must not mark a healthy client authorization fatal");
     } finally { await driver.disconnect(); }
   } finally {
     TelegramClient.prototype.getEntity = original.getEntity;

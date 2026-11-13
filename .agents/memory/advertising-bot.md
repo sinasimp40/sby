@@ -111,14 +111,26 @@ Message and emoji previews must not broaden account activity just to display art
 
 **How to apply:** Keep pack lookup explicitly requested and read-only, without installing packs or posting. Any future artwork preview must preserve the main session's containment guarantees; do not silently enable SDK reconnects or use the shop bot as a substitute.
 
-The user expanded automatic disabling to require leaving and removing destinations after all definite sending failures, permission-check failures, and UNCERTAIN attempted-send results. Successful groups must stay untouched.
+The user requires leaving and removing destinations after all definite sending failures, permission-check failures, and UNCERTAIN posting results. Successful groups must stay untouched.
 
-**Why:** The user chose “All definite sending failures,” then explicitly added: “remove also and leave the group for uncertain result.”
+**Why:** The user changed the earlier exclusion and explicitly said “post activity uncertain result make it remove in the list and leave the account on that uncertain group.”
 
-**How to apply:** For an uncertain attempted send, remove and queue leaving only that destination, preserve the uncertain evidence, and never retry the post. Leaving does not undo a message Telegram may have accepted. Keep successful groups untouched. Connection failures outside attempted sends, account-wide restrictions, and Telegram waits must not trigger mass leaving. Do not silently rediscover/rejoin removed destinations.
+**How to apply:** Preserve uncertain evidence and never retry an uncertain post automatically. Remove affected destinations locally and queue leaving through the verified-account membership worker, including attributable historical uncertain posts without newer successes. Keep successful groups untouched. Account-wide restrictions, connection errors without an uncertain post, and Telegram waits must not trigger mass leaving. Do not silently rediscover/rejoin removed destinations.
+
+Portable transfers must preserve removed-destination suppression without resuming remote join/leave actions.
+
+**Why:** A destination imported onto another installation has no verified personal-account authorization. Copying executable membership work could change the wrong account's memberships.
+
+**How to apply:** Require fresh account verification and explicit review before any new membership operation after import. Preserve posting history and removed destinations even when installation-local action queues are excluded.
 
 A newly confirmed campaign start resets the merchant's old interval, not Telegram-required waits or ambiguous-send safeguards.
 
 **Why:** The user reported that Stop followed by Start still waited for the old campaign interval. Telegram restrictions must not become bypassable through restart.
 
 **How to apply:** Keep the two clocks durably separate. During upgrades from a single-clock installation, conservatively retain an outstanding old deadline once: its origin may have been a Telegram wait not recorded in posting history.
+
+Resume and Start new campaign are distinct actions: Resume retains the saved cycle position, partial interval progress and waits for the original Telegram account and unchanged Saved Message.
+
+**Why:** The user explicitly requested “Add safe campaign resume” because restarting after errors or sign-in returned their campaign to the beginning.
+
+**How to apply:** Require explicit same-account resume confirmation. Keep uncertain destinations excluded independently of short-lived posting history, with removal/leaving handled by the membership policy above; recheck posting rights before sending after sign-in, and never resume portable imports. Missing delivery evidence alone must not invalidate a healthy authorization; actual transport/security failures still use existing connection containment. Never fabricate a checkpoint for older stopped campaigns whose priorities were already erased.

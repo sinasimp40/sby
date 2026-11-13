@@ -165,6 +165,9 @@ test("account sign-in, selected-group schedules and transfers are safe without r
     };
     const resetGlobalWait = () => pool.query("UPDATE advertising_accounts SET next_send_at=now(),telegram_wait_until=now() WHERE owner_id=$1", [owner]);
     const explicitlyAuthorizeAgain = async () => {
+      // Independent cases restore synthetic group fixtures explicitly. Real
+      // sign-in must never restore removed destinations by itself.
+      await pool.query("UPDATE advertising_groups SET status='pending',enabled=true WHERE owner_id=$1 AND status='removed'", [owner]);
       await beginAccountLogin(owner, { method: "phone", phone: "+15555550123" }, factory);
       const login = (await accountStatus(owner)).login!;
       await advanceAccountLogin(owner, { loginId: login.id, code: "12345" }, false, factory);
@@ -224,7 +227,7 @@ test("account sign-in, selected-group schedules and transfers are safe without r
       const afterUnknown = posts.length;
       await resetGlobalWait(); await processAccountSchedules(owner, factory);
       const current = (await request()).data;
-      assert.equal(current.groups.find((item: { id: string }) => item.id === group.id).running, false);
+      assert.equal(current.groups.some((item: { id: string }) => item.id === group.id), false);
       assert.equal(current.accountRuns[0].status, "uncertain"); assert.equal(posts.length, afterUnknown);
       assert.equal(current.account.connected, false, "uncertain network outcomes stop the account instead of reconnecting");
       assert.equal((await start([group.id])).status, 400);
@@ -249,14 +252,14 @@ test("account sign-in, selected-group schedules and transfers are safe without r
       assert.equal((await pool.query("SELECT running FROM advertising_schedules WHERE group_id=$1", [failed.group_id])).rows[0].running, false);
       await stopSelectedAccountSchedules(owner);
     });
-    await t.test("a completed send without a receipt is uncertain, stops the account and never repeats", async () => {
+    await t.test("a completed send without a receipt removes the group without logging out a healthy account", async () => {
       sendMode = "missing_receipt";
       await start([groups[0]!.id]); await resetGlobalWait();
       await processAccountSchedules(owner, factory);
       const current = (await request()).data;
       assert.equal(current.accountRuns[0].status, "uncertain");
-      assert.equal(current.account.connected, false);
-      assert.match(current.account.error, /POST_NOT_CONFIRMED/);
+      assert.equal(current.account.connected, true);
+      assert.equal(current.account.error, null);
       const before = posts.length;
       await resetGlobalWait(); await processAccountSchedules(owner, factory);
       assert.equal(posts.length, before);
@@ -267,14 +270,18 @@ test("account sign-in, selected-group schedules and transfers are safe without r
       const group = groups[1]!;
       await start([group.id]);
       const schedule = (await pool.query("SELECT * FROM advertising_schedules WHERE owner_id=$1 AND group_id=$2", [owner, group.id])).rows[0];
+      // Make this interrupted attempt the latest outcome for this synthetic
+      // group; a later verified success must protect historical destinations.
+      await pool.query("UPDATE advertising_account_runs SET started_at=now()-interval '3 minutes' WHERE owner_id=$1 AND group_id=$2", [owner, group.id]);
       await pool.query(`INSERT INTO advertising_account_runs(owner_id,group_id,target,chat_id,account_generation,revision,scheduled_for,draft,random_id,started_at)
         VALUES($1,$2,'TEST_ONLY crash',$3,$4,$5,$6,$7::jsonb,'123456',now()-interval '2 minutes')`,
         [owner, group.id, group.chatId, schedule.account_generation, schedule.revision, schedule.next_send_at, JSON.stringify(draft)]);
       const before = posts.length; await processAccountSchedules(owner, factory);
-      assert.equal(posts.length, before); assert.equal((await request()).data.groups.find((item: { id: string }) => item.id === group.id).running, false);
+      assert.equal(posts.length, before); assert.equal((await request()).data.groups.some((item: { id: string }) => item.id === group.id), false);
       const otherId = randomUUID();
       await pool.query("INSERT INTO advertising_groups(id,owner_id,target,kind) VALUES($1,$2,'-100999999999','chat_id')", [otherId, foreign]);
       assert.equal((await start([otherId])).status, 400);
+      await pool.query("UPDATE advertising_groups SET status='ready',enabled=true WHERE owner_id=$1 AND id=$2", [owner, group.id]);
       await start([group.id]); await request(`/groups/${group.id}`, "PATCH", { enabled: false });
       await resetGlobalWait(); await processAccountSchedules(owner, factory); assert.equal(posts.length, before);
       await request(`/groups/${group.id}`, "PATCH", { enabled: true });

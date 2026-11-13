@@ -47,6 +47,9 @@ import type {
   AdvertisingGroupsInput,
   AdvertisingImportInput,
   AdvertisingImportPreview,
+  AdvertisingMembershipInput,
+  AdvertisingMembershipPreview,
+  AdvertisingResumeInput,
   AdvertisingSavedMessagesInput,
   AdvertisingSavedMessagesPage,
   AdvertisingScheduleSelection,
@@ -1676,6 +1679,320 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getDiscoverAdvertisingGroupsMutationOptions(options), queryClient);
+    }
+
+export const getPreviewAdvertisingMembershipUrl = () => {
+
+
+
+
+  return `/api/shop/advertising/membership/preview`
+}
+
+export const previewAdvertisingMembership = async (advertisingImportInput: AdvertisingImportInput, options?: Parameters<typeof customFetch>[1]): Promise<AdvertisingMembershipPreview> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdvertisingMembershipPreview>(getPreviewAdvertisingMembershipUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(advertisingImportInput)
+  }
+);}
+
+
+
+
+
+export const getPreviewAdvertisingMembershipMutationKey = () => ['previewAdvertisingMembership'] as const;
+
+export const getPreviewAdvertisingMembershipMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewAdvertisingMembership>>, TError,PreviewAdvertisingMembershipMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewAdvertisingMembership>>, TError,PreviewAdvertisingMembershipMutationVariables, TContext> => {
+
+const mutationKey = getPreviewAdvertisingMembershipMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewAdvertisingMembership>>, PreviewAdvertisingMembershipMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  previewAdvertisingMembership(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewAdvertisingMembershipMutationResult = NonNullable<Awaited<ReturnType<typeof previewAdvertisingMembership>>>
+    export type PreviewAdvertisingMembershipMutationBody = BodyType<AdvertisingImportInput>
+    export type PreviewAdvertisingMembershipMutationError = ErrorType<unknown>
+    export type PreviewAdvertisingMembershipMutationVariables = {data: BodyType<AdvertisingImportInput>}
+
+    export const usePreviewAdvertisingMembership = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewAdvertisingMembership>>, TError,PreviewAdvertisingMembershipMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof previewAdvertisingMembership>>,
+        TError,
+        PreviewAdvertisingMembershipMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPreviewAdvertisingMembershipMutationOptions(options), queryClient);
+    }
+
+export const getStartAdvertisingMembershipUrl = () => {
+
+
+
+
+  return `/api/shop/advertising/membership/start`
+}
+
+export const startAdvertisingMembership = async (advertisingMembershipInput: AdvertisingMembershipInput, options?: Parameters<typeof customFetch>[1]): Promise<AdvertisingWorkspace> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdvertisingWorkspace>(getStartAdvertisingMembershipUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(advertisingMembershipInput)
+  }
+);}
+
+
+
+
+
+export const getStartAdvertisingMembershipMutationKey = () => ['startAdvertisingMembership'] as const;
+
+export const getStartAdvertisingMembershipMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startAdvertisingMembership>>, TError,StartAdvertisingMembershipMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startAdvertisingMembership>>, TError,StartAdvertisingMembershipMutationVariables, TContext> => {
+
+const mutationKey = getStartAdvertisingMembershipMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startAdvertisingMembership>>, StartAdvertisingMembershipMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  startAdvertisingMembership(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartAdvertisingMembershipMutationResult = NonNullable<Awaited<ReturnType<typeof startAdvertisingMembership>>>
+    export type StartAdvertisingMembershipMutationBody = BodyType<AdvertisingMembershipInput>
+    export type StartAdvertisingMembershipMutationError = ErrorType<unknown>
+    export type StartAdvertisingMembershipMutationVariables = {data: BodyType<AdvertisingMembershipInput>}
+
+    export const useStartAdvertisingMembership = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startAdvertisingMembership>>, TError,StartAdvertisingMembershipMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof startAdvertisingMembership>>,
+        TError,
+        StartAdvertisingMembershipMutationVariables,
+        TContext
+      > => {
+      return useMutation(getStartAdvertisingMembershipMutationOptions(options), queryClient);
+    }
+
+export const getStopAdvertisingMembershipUrl = () => {
+
+
+
+
+  return `/api/shop/advertising/membership/stop`
+}
+
+export const stopAdvertisingMembership = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdvertisingWorkspace> => {
+
+  return customFetch<AdvertisingWorkspace>(getStopAdvertisingMembershipUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getStopAdvertisingMembershipMutationKey = () => ['stopAdvertisingMembership'] as const;
+
+export const getStopAdvertisingMembershipMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof stopAdvertisingMembership>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof stopAdvertisingMembership>>, TError,void, TContext> => {
+
+const mutationKey = getStopAdvertisingMembershipMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof stopAdvertisingMembership>>, void> = () => {
+
+
+          return  stopAdvertisingMembership(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StopAdvertisingMembershipMutationResult = NonNullable<Awaited<ReturnType<typeof stopAdvertisingMembership>>>
+
+    export type StopAdvertisingMembershipMutationError = ErrorType<unknown>
+
+
+    export const useStopAdvertisingMembership = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof stopAdvertisingMembership>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof stopAdvertisingMembership>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getStopAdvertisingMembershipMutationOptions(options), queryClient);
+    }
+
+export const getResumeAdvertisingCampaignUrl = () => {
+
+
+
+
+  return `/api/shop/advertising/forwarding/resume`
+}
+
+export const resumeAdvertisingCampaign = async (advertisingResumeInput: AdvertisingResumeInput, options?: Parameters<typeof customFetch>[1]): Promise<AdvertisingWorkspace> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AdvertisingWorkspace>(getResumeAdvertisingCampaignUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(advertisingResumeInput)
+  }
+);}
+
+
+
+
+
+export const getResumeAdvertisingCampaignMutationKey = () => ['resumeAdvertisingCampaign'] as const;
+
+export const getResumeAdvertisingCampaignMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resumeAdvertisingCampaign>>, TError,ResumeAdvertisingCampaignMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resumeAdvertisingCampaign>>, TError,ResumeAdvertisingCampaignMutationVariables, TContext> => {
+
+const mutationKey = getResumeAdvertisingCampaignMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resumeAdvertisingCampaign>>, ResumeAdvertisingCampaignMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  resumeAdvertisingCampaign(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResumeAdvertisingCampaignMutationResult = NonNullable<Awaited<ReturnType<typeof resumeAdvertisingCampaign>>>
+    export type ResumeAdvertisingCampaignMutationBody = BodyType<AdvertisingResumeInput>
+    export type ResumeAdvertisingCampaignMutationError = ErrorType<unknown>
+    export type ResumeAdvertisingCampaignMutationVariables = {data: BodyType<AdvertisingResumeInput>}
+
+    export const useResumeAdvertisingCampaign = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resumeAdvertisingCampaign>>, TError,ResumeAdvertisingCampaignMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof resumeAdvertisingCampaign>>,
+        TError,
+        ResumeAdvertisingCampaignMutationVariables,
+        TContext
+      > => {
+      return useMutation(getResumeAdvertisingCampaignMutationOptions(options), queryClient);
     }
 
 export const getPreviewAdvertisingGroupsUrl = () => {

@@ -8,6 +8,7 @@ import { AccountError } from "./advertising-account-errors";
 import { assertTransferReviewed } from "./shop-transfer-safety";
 import { validateForwardSnapshot } from "./advertising-saved-messages";
 import { resetCampaignInterval } from "./advertising-campaign-timing";
+import { captureCheckpoint } from "./advertising-checkpoint-store";
 
 export async function loadOwnerSavedMessages(owner: string, input: AdvertisingSavedMessagesInput, factory: AccountFactory = createAccountDriver) {
   return withAdvertisingLock(owner, client => withAccountDriver(owner, client, async driver => {
@@ -66,6 +67,7 @@ export async function startForwardLoop(owner: string, input: AdvertisingForwardS
       }
       await client.query("UPDATE advertising_accounts SET groups_sent_in_interval=0,last_forward_order=-1 WHERE owner_id=$1", [owner]);
       await resetCampaignInterval(owner, client);
+      await captureCheckpoint(owner, client);
       await client.query("INSERT INTO advertising_account_commands(owner_id,request_key,payload_hash) VALUES($1,$2,$3)", [owner, input.idempotencyKey, payloadHash]);
       await client.query("COMMIT");
     } catch (error) { await client.query("ROLLBACK"); throw error; }

@@ -11,11 +11,13 @@ import { connectedAccountSession, closeAccountSession, loginConnectionKey, accou
   promoteAccountSession, setAccountSessionFailureHandler } from "./advertising-account-session";
 import { isSessionStopped, isTransportFailure, sessionStopped, stoppedAccountError, reportAccountError, type AccountOperation } from "./advertising-account-errors";
 import { queueNetworkRecovery, recoveryState, recoverAccountConnection } from "./advertising-account-recovery";
+import { captureCheckpoint } from "./advertising-checkpoint-store";
 
 export type PendingAccountLogin = { id: string; method: "qr" | "phone"; step: "qr" | "code" | "password"; apiId: number; apiHash: string; session: string; phone?: string; hash?: string; qrUrl?: string; expires: number };
 const seal = (value: string, owner: string) => encryptProviderSecret(value, owner, "advertising-account");
 const open = (value: string, owner: string) => decryptProviderSecret(value, owner, "advertising-account");
-export async function stopAccountSchedules(owner: string, client: AdvertisingClient, ids?: string[], note = "Stopped by the merchant.") {
+export async function stopAccountSchedules(owner: string, client: AdvertisingClient, ids?: string[], note = "Stopped by the merchant.", excludeFromResume = false) {
+  await captureCheckpoint(owner, client, ids ?? "all", excludeFromResume ? ids : []);
   await client.query(`UPDATE advertising_schedules SET running=false,next_send_at=NULL,revision=revision+1,last_status='stopped',note=$2
     WHERE owner_id=$1 ${ids ? "AND group_id=ANY($3::uuid[])" : ""}`, ids ? [owner, note, ids] : [owner, note]);
   await client.query(`UPDATE advertising_account_runs SET status='uncertain',note='Interrupted posting. Check the group before starting again.'
@@ -27,7 +29,7 @@ export async function initializeAccountAdvertising(owner: string) {
     if (exists) return;
     await stopAdvertising(owner, client);
     await client.query("UPDATE advertising_bots SET token_encrypted=NULL,bot_id=NULL,checked_at=NULL,last_error=NULL WHERE owner_id=$1", [owner]);
-    await client.query("UPDATE advertising_groups SET status='pending',account_generation=NULL,checked_at=NULL,note='Connect your Telegram account and check membership/posting permission.' WHERE owner_id=$1", [owner]);
+    await client.query("UPDATE advertising_groups SET status='pending',account_generation=NULL,checked_at=NULL,note='Connect your Telegram account and check membership/posting permission.' WHERE owner_id=$1 AND status<>'removed'", [owner]);
     await client.query("INSERT INTO advertising_accounts(owner_id) VALUES($1) ON CONFLICT DO NOTHING", [owner]);
   });
 }
@@ -103,7 +105,7 @@ async function finishLogin(owner: string, pending: PendingAccountLogin, driver: 
     [owner, pending.apiId, seal(pending.apiHash, owner), seal(driver.session(), owner), me.id, me.username, me.displayName])).rows[0];
   promoteAccountSession(owner, pending.id, saved.generation, driver);
   setAccountSessionFailureHandler(owner, accountConnectionKey(saved.generation), watchAccount(owner, saved.generation));
-  await client.query("UPDATE advertising_groups SET status='pending',account_generation=NULL,checked_at=NULL,note='Verify this account is a member and may post before starting.' WHERE owner_id=$1", [owner]);
+  await client.query("UPDATE advertising_groups SET status='pending',account_generation=NULL,checked_at=NULL,note='Verify this account is a member and may post before starting.' WHERE owner_id=$1 AND status<>'removed'", [owner]);
   if (previous?.api_id && previous.api_hash_encrypted && previous.session_encrypted && open(previous.session_encrypted, owner) !== driver.session()) {
     let old: AccountDriver | undefined;
     try {
@@ -277,6 +279,6 @@ export async function disconnectAccount(owner: string, factory: AccountFactory =
     await client.query(`UPDATE advertising_accounts SET api_id=CASE WHEN $3 THEN NULL ELSE api_id END,
       api_hash_encrypted=CASE WHEN $3 THEN NULL ELSE api_hash_encrypted END,session_encrypted=NULL,account_id=NULL,username='',
       display_name='',generation=generation+1,checked_at=NULL,last_error=$2,login_id=NULL,login_encrypted=NULL,login_expires_at=NULL WHERE owner_id=$1`, [owner, warning, forgetApp]);
-    await client.query("UPDATE advertising_groups SET account_generation=NULL,status='pending',checked_at=NULL WHERE owner_id=$1", [owner]);
+    await client.query("UPDATE advertising_groups SET account_generation=NULL,status='pending',checked_at=NULL WHERE owner_id=$1 AND status<>'removed'", [owner]);
   });
 }

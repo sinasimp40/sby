@@ -22,6 +22,9 @@ const codes = new Set([
   "NETWORK_RECOVERY_EXHAUSTED", "TRANSPORT_UNAVAILABLE",
   "CUSTOM_EMOJI_INVALID", "PREMIUM_ACCOUNT_REQUIRED", "STICKERSET_INVALID",
   "SAVED_MESSAGE_MISSING", "SAVED_MESSAGE_CHANGED", "CHAT_FORWARDS_RESTRICTED", "MESSAGE_ID_INVALID",
+  "INVITE_HASH_INVALID", "INVITE_HASH_EXPIRED", "INVITE_HASH_EMPTY", "CHANNELS_TOO_MUCH",
+  "USERS_TOO_MUCH", "USER_CHANNELS_TOO_MUCH", "CHANNEL_INVALID", "CHAT_ID_INVALID",
+  "USER_CREATOR", "INVITE_REQUEST_SENT",
 ]);
 export function diagnosticCode(value: unknown): string {
   if (typeof value !== "string") return "UNKNOWN";
@@ -30,8 +33,11 @@ export function diagnosticCode(value: unknown): string {
   return "UNKNOWN"; // Never copy arbitrary RPC text, exceptions, payloads or stacks.
 }
 export class AccountError extends CommerceError {
-  constructor(message: string, public kind = "validation", public waitSeconds = 0, public telegramCode = "UNKNOWN") {
+  constructor(message: string, public kind = "validation", public waitSeconds = 0, public telegramCode = "UNKNOWN", public definite = false) {
     super(message, kind === "network" ? 502 : 400);
+    // Missing delivery evidence alone does not invalidate a healthy session.
+    // Actual transport and security failures retain existing containment.
+    if (telegramCode === "POST_NOT_CONFIRMED" && kind === "network") this.kind = "uncertain";
     this.telegramCode = diagnosticCode(telegramCode);
   }
 }
@@ -39,7 +45,7 @@ export function safeAccountError(error: unknown): AccountError {
   if (error instanceof AccountError) return error;
   const e = error as { errorMessage?: string; seconds?: number; code?: string } | null;
   const code = typeof e?.errorMessage === "string" ? e.errorMessage : "";
-  const make = (message: string, kind = "validation", wait = 0) => new AccountError(message, kind, wait, diagnosticCode(code));
+  const make = (message: string, kind = "validation", wait = 0) => new AccountError(message, kind, wait, diagnosticCode(code), Boolean(code));
   if (!code && ["ETIMEDOUT", "ECONNRESET", "ECONNREFUSED", "ENETUNREACH", "EHOSTUNREACH", "EPIPE"].includes(e?.code ?? ""))
     return new AccountError("The Telegram network connection was interrupted.", "network", 0, "TRANSPORT_UNAVAILABLE");
   if (/^(FLOOD|SLOWMODE)/.test(code)) return make("Telegram requested a waiting period. Posting will wait; do not try to bypass this limit.", "rate_limit", Math.max(1, Math.ceil(Number(e?.seconds) || 60)));
@@ -52,6 +58,10 @@ export function safeAccountError(error: unknown): AccountError {
   if (["API_ID_INVALID", "API_ID_PUBLISHED_FLOOD"].includes(code)) return make("Telegram rejected these API app credentials. Check your API ID and API hash.");
   if (code === "PHONE_NUMBER_INVALID") return make("Use your phone number in international +country-code format.");
   if (code === "STICKERSET_INVALID") return make("Telegram could not find that emoji pack. Check its addemoji link.");
+  if (["INVITE_HASH_INVALID", "INVITE_HASH_EXPIRED", "INVITE_HASH_EMPTY"].includes(code)) return make("This invitation is invalid or expired. Ask for a new invitation.");
+  if (["CHANNELS_TOO_MUCH", "USER_CHANNELS_TOO_MUCH"].includes(code)) return make("Telegram says this account has reached its group/channel membership limit.", "membership_limit");
+  if (code === "USERS_TOO_MUCH") return make("This group is full.");
+  if (code === "USER_CREATOR") return make("Telegram does not allow the creator to leave this group without transferring ownership.");
   if (code === "CHAT_FORWARDS_RESTRICTED") return make("Telegram does not allow forwarding this protected message. Choose another saved message.");
   if (code === "MESSAGE_ID_INVALID") return make("Telegram could not find the selected saved message. Load Saved Messages and choose it again.");
   if (code === "PREMIUM_ACCOUNT_REQUIRED") return make("Telegram requires Premium on this account for the selected content. Choose another saved message or check the account's eligibility.");
@@ -65,7 +75,7 @@ export function safeAccountError(error: unknown): AccountError {
 }
 export type AccountOperation = "connect" | "identity" | "send_code" | "verify_code" | "verify_password" | "qr_login" |
   "groups" | "inspect_group" | "send" | "logout" | "account_operation" | "discover_groups" | "check_groups" |
-  "check_account" | "post_ad" | "begin_login" | "verify_login" | "qr_poll" | "lease_lost" | "background" | "recover_connection" | "emoji_set" | "saved_messages";
+  "check_account" | "post_ad" | "begin_login" | "verify_login" | "qr_poll" | "lease_lost" | "background" | "recover_connection" | "emoji_set" | "saved_messages" | "membership" | "join_group" | "leave_group";
 export const isTransportFailure = (error: AccountError) => error.kind === "network" &&
   ["CONNECTION_LOST", "REQUEST_TIMEOUT", "TRANSPORT_UNAVAILABLE"].includes(error.telegramCode);
 export function reportAccountError(operation: AccountOperation, error: unknown): AccountError {

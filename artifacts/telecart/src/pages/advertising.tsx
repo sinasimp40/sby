@@ -9,6 +9,8 @@ import { AccountPanel } from "@/components/advertising/account-panel";
 import { RunsPanel } from "@/components/advertising/schedule-panels";
 import { SavedMessagePicker, SavedMessageCard } from "@/components/advertising/saved-message-picker";
 import { ForwardingStatus, ForwardStartDialog, IntervalPanel, GroupsPerIntervalPanel, groupsPerIntervalOk, intervalOk, queueGroups, splitInterval, toSeconds, type IntervalUnit } from "@/components/advertising/forwarding-panels";
+import { MembershipPanel } from "@/components/advertising/membership-panel";
+import { ResumePanel } from "@/components/advertising/resume-panel";
 
 export default function AdvertisingPage() {
   const ws = useGetAdvertisingWorkspace({ query: { queryKey: getGetAdvertisingWorkspaceQueryKey(), refetchInterval: 5000 } });
@@ -58,6 +60,7 @@ export default function AdvertisingPage() {
     <div>
       <PageHeader eyebrow="Growth" title="Advertising" description="Forward one message from your Saved Messages through your groups, one at a time with a shared delay. Nothing starts until you confirm, and it never touches orders, payments or the shop bot." />
       <ForwardingStatus ws={w} />
+      <ResumePanel key={`resume-${accountId ?? "none"}`} ws={w} />
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <div className="min-w-0 space-y-5">
           <AccountPanel ws={w} />
@@ -65,6 +68,7 @@ export default function AdvertisingPage() {
           <IntervalPanel value={ivValue} unit={ivUnit} onChange={(v, u) => { touch(); setIvValue(v); setIvUnit(u); }} />
           <GroupsPerIntervalPanel value={batchValue} onChange={v => { touch(); setBatchValue(v); }} />
           <ImportPanel ws={w} />
+          <MembershipPanel key={`membership-${accountId ?? "no-account"}`} ws={w} />
           <GroupsPanel ws={w} selected={selected} setSelected={s => { touch(); setSelected(s); }} sequential />
           <RunsPanel ws={w} />
           {w.campaigns.length > 0 && <HistoryPanel ws={w} selectedId={campaignId} setSelectedId={setCampaignId} />}
@@ -79,7 +83,7 @@ export default function AdvertisingPage() {
               <div><dt className="text-muted-foreground">Groups per interval</dt><dd className="font-mono text-base font-semibold" data-testid="text-batch-summary">{groupsPerIntervalOk(groupsPerInterval) ? groupsPerInterval : "-"}</dd></div>
             </dl>
             {skipped > 0 && <p className="mt-2 text-xs text-signal" data-testid="text-skipped-groups">{skipped} selected {skipped === 1 ? "group is" : "groups are"} not ready or disabled and will be left out.</p>}
-            <Button className="mt-4 w-full" disabled={!!reason} onClick={() => setStartOpen(true)} data-testid="button-open-start"><Play className="mr-1.5 h-4 w-4" />Review and start</Button>
+            <Button className="mt-4 w-full" disabled={!!reason} onClick={() => setStartOpen(true)} data-testid="button-open-start"><Play className="mr-1.5 h-4 w-4" />Start new campaign</Button>
             {reason && <p className="mt-2 text-center text-xs text-muted-foreground" data-testid="text-start-blocked">{reason}</p>}
           </div>
         </aside>

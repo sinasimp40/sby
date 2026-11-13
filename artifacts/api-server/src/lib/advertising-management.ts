@@ -30,7 +30,7 @@ export async function connectAdvertising(owner: string, token: string, call: Adv
       if (other.rowCount) throw new CommerceError("This advertising bot is already connected to another shop.", 409);
       if (existing?.bot_id !== String(me.id)) {
         await stopAdvertising(owner, client);
-        await client.query("UPDATE advertising_groups SET status='pending',checked_at=NULL,note='Advertising bot changed. Recheck posting permissions.' WHERE owner_id=$1", [owner]);
+        await client.query("UPDATE advertising_groups SET status='pending',checked_at=NULL,note='Advertising bot changed. Recheck posting permissions.' WHERE owner_id=$1 AND status<>'removed'", [owner]);
       }
       await client.query(`INSERT INTO advertising_bots(owner_id,bot_id,username,token_encrypted,checked_at)
         VALUES($1,$2,$3,$4,now()) ON CONFLICT(owner_id) DO UPDATE SET bot_id=EXCLUDED.bot_id,username=EXCLUDED.username,
@@ -69,6 +69,7 @@ export async function checkAdvertisingTargets(owner: string, ids: string[], call
     const groups = (await client.query("SELECT * FROM advertising_groups WHERE owner_id=$1 AND id=ANY($2::uuid[])", [owner, ids])).rows;
     if (groups.length !== ids.length) throw new CommerceError("One or more selected groups were not found.", 404);
     for (const group of groups) {
+      if (group.status === "removed") throw new CommerceError("This destination was removed. Restore it through the reviewed membership import.");
       if (group.kind === "private_invite") {
         await client.query("UPDATE advertising_groups SET status='needs_setup',note=$3,checked_at=now() WHERE owner_id=$1 AND id=$2",
           [owner, group.id, "Add the bot manually, then use Find groups or edit this target to the group's negative chat ID."]);
@@ -104,7 +105,7 @@ export async function discoverAdvertisingTargets(owner: string, call: Advertisin
       const event = update.my_chat_member, chat = event?.chat;
       if (!chat || !["group", "supergroup", "channel"].includes(chat.type)) continue;
       if (["left", "kicked"].includes(event?.new_chat_member?.status ?? "")) {
-        await client.query("UPDATE advertising_groups SET status='needs_setup',note='Bot is no longer a member of this chat.' WHERE owner_id=$1 AND (chat_id=$2 OR target=$2)", [owner, String(chat.id)]);
+        await client.query("UPDATE advertising_groups SET status='needs_setup',note='Bot is no longer a member of this chat.' WHERE owner_id=$1 AND status<>'removed' AND (chat_id=$2 OR target=$2)", [owner, String(chat.id)]);
         continue;
       }
       if (count + added >= 1000) throw new CommerceError("Group limit reached. Remove unused groups before discovering more.");

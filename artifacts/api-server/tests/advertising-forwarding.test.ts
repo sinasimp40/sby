@@ -17,6 +17,8 @@ import { queueNetworkRecovery, recoverAccountConnection } from "../src/lib/adver
 import { exportShopTransfer, previewShopTransfer, importShopTransfer } from "../src/lib/shop-transfer";
 import { withAdvertisingLock } from "../src/lib/advertising-store";
 import { parseAdvertisingTarget } from "../src/lib/advertising-targets";
+import { resumeForwardCampaign } from "../src/lib/advertising-resume";
+import { readCheckpoint, resumeSummary } from "../src/lib/advertising-checkpoint-store";
 
 const accountId = "900000009";
 const saved = (id = 42, text = "TEST_ONLY original ⭐", protectedContent = false) => new Api.Message({
@@ -338,8 +340,8 @@ test("a single persisted queue spaces groups and cycles, stops safely, and trans
         assert.equal(posts.length, before);
         const bad = (await pool.query("SELECT enabled,status,note FROM advertising_groups WHERE id=$1", [groups[0]!.id])).rows[0];
         assert.equal(bad.enabled, false, code);
-        assert.equal(bad.status, "error");
-        assert.match(bad.note, /Automatically disabled/);
+        assert.equal(bad.status, "removed");
+        assert.match(bad.note, /Removed after definite failure/);
         assert.equal((await pool.query("SELECT running FROM advertising_schedules WHERE group_id=$1", [groups[0]!.id])).rows[0].running, false);
         await due(); await processAccountSchedules(owner, factory);
         await due(); await processAccountSchedules(owner, factory);
@@ -369,20 +371,107 @@ test("a single persisted queue spaces groups and cycles, stops safely, and trans
       assert.equal(stopped.running, false);
       assert.equal((await pool.query("SELECT groups_sent_in_interval FROM advertising_accounts WHERE owner_id=$1", [owner])).rows[0].groups_sent_in_interval, 1,
         "an uncertain send to the second group never advances batch progress or gets replayed");
-      assert.equal((await pool.query("SELECT enabled FROM advertising_groups WHERE id=$1", [groups[1]!.id])).rows[0].enabled, true,
-        "an uncertain network failure is not evidence of a group ban");
+      assert.equal((await pool.query("SELECT status,enabled FROM advertising_groups WHERE id=$1", [groups[1]!.id])).rows[0].status, "removed");
+      assert.equal((await pool.query("SELECT count(*)::int n FROM advertising_membership_jobs WHERE owner_id=$1 AND group_id=$2 AND action='leave'", [owner, groups[1]!.id])).rows[0].n, 1,
+        "uncertain post queues one leave, never a second post");
     });
     await t.test("changed or missing source stops the whole loop instead of forwarding different content", async () => {
-      await assert.rejects(startForwardLoop(owner, input(), factory), /not ready/,
-        "an uncertain forward requires review, not an automatic restart");
+      assert.equal((await request()).data.account.connected, true,
+        "an unconfirmed delivery alone must not log out a healthy account");
       // Model an explicitly reviewed, freshly authorized synthetic connection.
       await closeAccountSession(owner);
       await pool.query("UPDATE advertising_accounts SET last_error=NULL,generation=generation+1,checked_at=now() WHERE owner_id=$1", [owner]);
       await pool.query(`UPDATE advertising_groups SET account_generation=(SELECT generation FROM advertising_accounts WHERE owner_id=$1)
         WHERE owner_id=$1`, [owner]);
+      // Reset a synthetic removed fixture for this independent source-change test.
+      await pool.query("UPDATE advertising_groups SET status='ready',enabled=true WHERE owner_id=$1", [owner]);
       await startForwardLoop(owner, input(), factory); await due(); mode = "changed";
       await processAccountSchedules(owner, factory); mode = "ok";
       assert.equal((await request()).data.forwarding.running, false);
+    });
+    await t.test("Resume preserves queue position, partial batches and Telegram waits without duplicate requests", async () => {
+      await pool.query(`UPDATE advertising_groups SET enabled=true,status='ready',account_generation=(SELECT generation FROM advertising_accounts WHERE owner_id=$1) WHERE owner_id=$1`, [owner]);
+      await startForwardLoop(owner, { ...input(), groupsPerInterval: 3 }, factory);
+      const before = posts.length;
+      await due(); await processAccountSchedules(owner, factory);
+      assert.equal(posts.at(-1), groups[0]!.chatId);
+      await stopSelectedAccountSchedules(owner);
+      const checkpoint = await readCheckpoint(owner);
+      assert.equal(checkpoint!.data.groupsSentInInterval, 1);
+      const summary = await resumeSummary(owner);
+      assert.equal(summary.nextGroupId, groups[1]!.id);
+      assert.equal(summary.available, true);
+      const command = { planId: summary.planId!, revision: summary.revision, accountId, confirmed: true, idempotencyKey: randomUUID() };
+      await assert.rejects(resumeForwardCampaign(owner, { ...command, confirmed: false }, factory), /Confirm/);
+      await assert.rejects(resumeForwardCampaign(owner, { ...command, revision: command.revision + 1 }, factory), /progress changed/);
+      await pool.query("UPDATE advertising_accounts SET telegram_wait_until=now()+interval '120 seconds' WHERE owner_id=$1", [owner]);
+      await resumeForwardCampaign(owner, command, factory);
+      const revision = (await readCheckpoint(owner))!.revision;
+      assert.match((await resumeSummary(owner)).reason, /already running/);
+      await resumeForwardCampaign(owner, command, factory);
+      assert.equal((await readCheckpoint(owner))!.revision, revision, "replaying Resume does not reset priorities or waits");
+      await processAccountSchedules(owner, factory);
+      assert.equal(posts.length, before + 1, "Telegram-required wait still prevents posting");
+      await due(); await processAccountSchedules(owner, factory);
+      assert.equal(posts.at(-1), groups[1]!.chatId, "B resumes next, not A");
+      assert.equal((await readCheckpoint(owner))!.data.groupsSentInInterval, 2);
+      await due(); await processAccountSchedules(owner, factory);
+      assert.equal(posts.at(-1), groups[2]!.chatId);
+      assert.equal((await readCheckpoint(owner))!.data.groupsSentInInterval, 0);
+      assert.deepEqual(posts.slice(before), groups.map(group => group.chatId));
+    });
+    await t.test("UNCERTAIN groups are removed and remain excluded across Resume and history pruning without logging out", async () => {
+      await startForwardLoop(owner, { ...input(), groupsPerInterval: 3 }, factory);
+      await due(); await processAccountSchedules(owner, factory);
+      await due(); mode = "uncertain"; await processAccountSchedules(owner, factory); mode = "ok";
+      assert.equal((await request()).data.account.connected, true);
+      assert.ok((await readCheckpoint(owner))!.data.queue.find(entry => entry.groupId === groups[1]!.id)?.held);
+      await stopSelectedAccountSchedules(owner);
+      await pool.query("DELETE FROM advertising_account_runs WHERE owner_id=$1", [owner]);
+      const summary = await resumeSummary(owner);
+      assert.deepEqual(summary.heldGroupIds, [groups[1]!.id]);
+      assert.equal(summary.nextGroupId, groups[2]!.id);
+      const before = posts.length;
+      await resumeForwardCampaign(owner, { planId: summary.planId!, revision: summary.revision, accountId, confirmed: true, idempotencyKey: randomUUID() }, factory);
+      assert.equal((await pool.query("SELECT running FROM advertising_schedules WHERE group_id=$1", [groups[1]!.id])).rows[0].running, false);
+      await due(); await processAccountSchedules(owner, factory);
+      assert.deepEqual(posts.slice(before), [groups[2]!.chatId]);
+      assert.equal((await readCheckpoint(owner))!.data.groupsSentInInterval, 0, "a held final destination must not refill a partial batch");
+      assert.equal((await pool.query("SELECT status FROM advertising_groups WHERE id=$1", [groups[1]!.id])).rows[0].status, "removed");
+      assert.equal((await request()).data.groups.some((group: { id: string }) => group.id === groups[1]!.id), false, "removed group disappears from the dashboard list");
+    });
+    await t.test("same-account sign-in can Resume, but a different account or changed source cannot", async () => {
+      await stopSelectedAccountSchedules(owner);
+      const original = await resumeSummary(owner);
+      const before = posts.length;
+      await pool.query("UPDATE advertising_accounts SET account_id='999999999' WHERE owner_id=$1", [owner]);
+      await assert.rejects(resumeForwardCampaign(owner, { planId: original.planId!, revision: original.revision, accountId, confirmed: true, idempotencyKey: randomUUID() }, factory), /original Telegram account/);
+      await closeAccountSession(owner);
+      await pool.query("UPDATE advertising_accounts SET account_id=$2,generation=generation+1,last_error=NULL,checked_at=now() WHERE owner_id=$1", [owner, accountId]);
+      await pool.query("UPDATE advertising_groups SET status='pending',account_generation=NULL WHERE owner_id=$1", [owner]);
+      const summary = await resumeSummary(owner);
+      const savedSource = current;
+      current = savedMessagePreview(saved(42, "TEST_ONLY changed after pause"), accountId)!;
+      await assert.rejects(resumeForwardCampaign(owner, { planId: summary.planId!, revision: summary.revision, accountId, confirmed: true, idempotencyKey: randomUUID() }, factory), /original Saved Message changed/);
+      current = savedSource;
+      await resumeForwardCampaign(owner, { planId: summary.planId!, revision: summary.revision, accountId, confirmed: true, idempotencyKey: randomUUID() }, factory);
+      await due(); await processAccountSchedules(owner, factory);
+      assert.equal(posts.length, before + 1);
+      const next = groups.find(group => group.id === summary.nextGroupId)!;
+      assert.equal(posts.at(-1), next.chatId);
+      const state = (await pool.query("SELECT status,account_generation FROM advertising_groups WHERE id=$1", [next.id])).rows[0];
+      const account = (await pool.query("SELECT generation FROM advertising_accounts WHERE owner_id=$1", [owner])).rows[0];
+      assert.equal(state.status, "ready"); assert.equal(state.account_generation, account.generation);
+      assert.equal((await pool.query("SELECT running FROM advertising_schedules WHERE group_id=$1", [groups[1]!.id])).rows[0].running, false);
+      await stopSelectedAccountSchedules(owner);
+      const paused = await resumeSummary(owner);
+      await pool.query("UPDATE advertising_groups SET enabled=false WHERE owner_id=$1 AND id=ANY($2::uuid[])", [owner, paused.groupIds]);
+      assert.equal((await resumeSummary(owner)).available, false, "disabled groups never resume");
+      await pool.query(`UPDATE advertising_groups SET enabled=true,status='ready',account_generation=(SELECT generation FROM advertising_accounts WHERE owner_id=$1) WHERE owner_id=$1`, [owner]);
+    });
+    await t.test("Resume endpoint is authenticated and rejects unconfirmed or stale requests", async () => {
+      assert.equal((await request("/forwarding/resume", "POST", {}, "")).status, 401);
+      assert.equal((await request("/forwarding/resume", "POST", {})).status, 400);
     });
     await t.test("portable ZIPs preserve the selected source and shared interval but never resume jobs or export account keys", async () => {
       const photo = saved(42, "   ");
@@ -402,6 +491,8 @@ test("a single persisted queue spaces groups and cycles, stops safely, and trans
       assert.equal(master.forward.source.text, "   ", "caption-less media keeps its original source, not reconstructed placeholder text");
       assert.equal((await pool.query("SELECT count(*)::int n FROM advertising_schedules WHERE owner_id=$1 AND running", [destination])).rows[0].n, 0);
       assert.equal((await pool.query("SELECT count(*)::int n FROM advertising_accounts WHERE owner_id=$1", [destination])).rows[0].n, 0);
+      assert.equal((await resumeSummary(destination)).available, false);
+      assert.equal(await readCheckpoint(destination), null, "portable import does not transfer executable resume checkpoints");
       assert.equal((await pool.query("SELECT max(batch_sent_count) n FROM advertising_schedules WHERE owner_id=$1", [destination])).rows[0].n, 0,
         "portable import preserves the configured count, never resumes live batch progress");
     });

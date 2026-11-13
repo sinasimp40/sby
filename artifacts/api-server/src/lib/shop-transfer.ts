@@ -22,7 +22,7 @@ const warnings = [
   "The destination bot and payment processing stay paused for review. Stop the source server before resuming; never run both copies.",
   "Public callback URLs and unfinished Telegram selections are cleared. Historical payments, balances, stock and delivery records are retained.",
   "Advertising credentials, groups, draft and history are included. Imported campaigns never resume automatically; check the bot and group permissions again.",
-  "Personal Telegram account sessions, login challenges and API app credentials are never exported. Imported group schedules are stopped; sign in and verify groups before starting.",
+  "Personal Telegram account sessions, login challenges, API app credentials, resume checkpoints and pending join/leave actions are never exported. Removed destinations stay removed. Imported group schedules are stopped; sign in and verify groups before starting.",
 ];
 
 async function advertisingImportBlocker(client: PoolClient, owner: string, data: TransferData) {
@@ -152,8 +152,10 @@ async function importRows(client: PoolClient, data: TransferData, source: string
     checkedAt: null, lastError: "Imported advertising connection. Review the transfer, then check the bot before sending.", updateOffset: 0,
   });
   await write("advertisingGroups", data.advertisingGroups.map(row => ({
-    ...row, id: groupIds.get(String(row.id)), ownerId: owner, status: "pending", checkedAt: null, accountGeneration: null,
-    note: "Imported group. Verify membership and posting permissions before sending.",
+    ...row, id: groupIds.get(String(row.id)), ownerId: owner, status: row.status === "removed" ? "removed" : "pending",
+    enabled: row.status === "removed" ? false : row.enabled, checkedAt: null, accountGeneration: null,
+    note: row.status === "removed" ? "Removed destination preserved by import. No membership action was imported. Explicit restoration is required." :
+      "Imported group. Verify membership and posting permissions before sending.",
   })));
   await write("advertisingCampaigns", data.advertisingCampaigns.map(row => ({
     ...row, id: campaignIds.get(String(row.id)), ownerId: owner,
@@ -203,6 +205,7 @@ export async function importShopTransfer(ownerId: string | null, zip: Buffer, to
     if (advertisingBlocker) throw new CommerceError(advertisingBlocker, 409);
     await importRows(client, archive.data, archive.manifest.sourceOwnerId, ownerId);
     await client.query("DELETE FROM emoji_import_sessions WHERE owner_id=$1", [ownerId]);
+    await client.query("DELETE FROM advertising_checkpoints WHERE owner_id=$1", [ownerId]);
     await client.query(`INSERT INTO shop_activity(owner_id,title,description,type)
       VALUES($1,'Shop data imported',$2,'data_transfer')`,
     [ownerId, `Verified portable import ${archive.archiveHash.slice(0, 12)}. Bot and payment processing paused for review.`]);

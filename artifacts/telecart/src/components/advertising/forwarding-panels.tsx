@@ -36,7 +36,7 @@ export function IntervalPanel({ value, unit, onChange }: { value: string; unit: 
           <div className="flex gap-1 rounded-md bg-muted p-1">{(["m", "h"] as const).map(u => <button key={u} type="button" onClick={() => onChange(value, u)} className={cn("rounded px-3 font-mono text-xs", unit === u ? "bg-ink text-white" : "text-muted-foreground hover:text-foreground")} data-testid={`button-shared-unit-${u}`}>{u === "m" ? "minutes" : "hours"}</button>)}</div>
         </div>
         {bad ? <p className="text-sm text-destructive" data-testid="error-shared-interval">Choose between 1 minute and 720 hours (30 days), in whole seconds.</p>
-          : <p className="text-xs text-muted-foreground">Send once to each group in a batch, wait {value && intervalOk(sec) ? fmtInterval(sec) : "..."}, then send to the next batch. After the final batch, wait before starting the next cycle. A confirmed restart resets this interval; Telegram-required waits still apply.</p>}
+          : <p className="text-xs text-muted-foreground">Send once to each group in a batch, wait {value && intervalOk(sec) ? fmtInterval(sec) : "..."}, then send to the next batch. After the final batch, wait before starting the next cycle. Start new resets this interval; Resume keeps the remaining wait. Telegram-required waits still apply.</p>}
       </div>
     </Panel>
   );
@@ -133,7 +133,7 @@ export function ForwardStartDialog({ open, onOpenChange, ws, source, selected, i
   return (
     <Dialog open={open} onOpenChange={o => !busy && onOpenChange(o)}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader><DialogTitle>Start forwarding queue</DialogTitle><DialogDescription>This exact Saved Message, groups per interval, group order and delay are frozen now. Each group receives one message per cycle.</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>Start new campaign</DialogTitle><DialogDescription>This starts from the beginning and replaces saved resume progress. To continue the previous campaign, use Resume campaign instead. This exact Saved Message, group order and delay are frozen now.</DialogDescription></DialogHeader>
         {snap && <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <div className="rounded-lg border bg-muted/30 p-3"><div className="mb-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Original message, forwarded as is</div><SavedMessageCard m={snap.source} /></div>

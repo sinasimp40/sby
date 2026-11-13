@@ -6,6 +6,8 @@ import { decryptProviderSecret } from "./provider-credentials";
 import { accountStatus } from "./advertising-account-auth";
 import { ownerForwardLoop } from "./advertising-forward-loop";
 import { advertisingActivity } from "./advertising-activity";
+import { membershipJobs } from "./advertising-membership-store";
+import { resumeSummary } from "./advertising-checkpoint-store";
 
 export type AdvertisingClient = PoolClient;
 export async function withAdvertisingLock<T>(owner: string, fn: (client: AdvertisingClient) => Promise<T>): Promise<T> {
@@ -43,7 +45,7 @@ export async function advertisingWorkspace(owner: string): Promise<AdvertisingWo
       COALESCE(s.interval_seconds,1800) AS "intervalSeconds",COALESCE(s.running,false) AS running,s.next_send_at AS "nextSendAt",
       COALESCE(s.last_status,'stopped') AS "lastStatus",COALESCE(s.note,'Select and start this group to begin.') AS "scheduleNote"
       FROM advertising_groups g LEFT JOIN advertising_schedules s ON s.group_id=g.id AND s.owner_id=g.owner_id
-      WHERE g.owner_id=$1 ORDER BY g.title,g.target`, [owner]),
+      WHERE g.owner_id=$1 AND g.status<>'removed' ORDER BY g.title,g.target`, [owner]),
     advertisingCampaigns(owner),
     pool.query("SELECT telegram_bot_username AS username FROM provider_credentials WHERE owner_id=$1", [owner]),
   ]);
@@ -51,6 +53,8 @@ export async function advertisingWorkspace(owner: string): Promise<AdvertisingWo
   const draftRow = (await pool.query("SELECT draft FROM advertising_bots WHERE owner_id=$1", [owner])).rows[0];
   const runs = await advertisingActivity(owner);
   return {
+    membershipJobs: await membershipJobs(owner),
+    resume: await resumeSummary(owner),
     forwarding: await ownerForwardLoop(owner, draftRow?.draft ?? { text: "", imageUrl: null, buttonText: "", buttonUrl: null }),
     account: await accountStatus(owner),
     accountRuns: runs,

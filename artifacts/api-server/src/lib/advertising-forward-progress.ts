@@ -1,5 +1,6 @@
 import type { AdvertisingForwardSnapshot } from "@workspace/api-zod";
 import type { AdvertisingClient } from "./advertising-store";
+import { captureCheckpoint } from "./advertising-checkpoint-store";
 
 export const INTER_GROUP_PAUSE_SECONDS = 3;
 
@@ -29,6 +30,7 @@ export async function completeForwardGroup(
       next_send_at=GREATEST(telegram_wait_until,now()+$2*interval '1 second')
       WHERE owner_id=$1`, [owner, gap, finished ? 0 : completed, forward.order]);
     await client.query("UPDATE advertising_groups SET last_sent_at=now() WHERE owner_id=$1 AND id=$2", [owner, groupId]);
+    await captureCheckpoint(owner, client);
     await client.query("COMMIT");
   } catch (error) { await client.query("ROLLBACK"); throw error; }
 }

@@ -124,6 +124,61 @@ paths:
       operationId: discoverAdvertisingGroups
       responses:
         "200": {description: Discover recent group additions, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
+  /shop/advertising/membership/preview:
+    post:
+      operationId: previewAdvertisingMembership
+      tags: [shop]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/AdvertisingImportInput"}
+      responses:
+        "200":
+          description: Read-only membership preview
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AdvertisingMembershipPreview"}
+  /shop/advertising/membership/start:
+    post:
+      operationId: startAdvertisingMembership
+      tags: [shop]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/AdvertisingMembershipInput"}
+      responses:
+        "200":
+          description: Confirmed join work queued
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}
+  /shop/advertising/membership/stop:
+    post:
+      operationId: stopAdvertisingMembership
+      tags: [shop]
+      responses:
+        "200":
+          description: Pending joins stopped
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}
+  /shop/advertising/forwarding/resume:
+    post:
+      operationId: resumeAdvertisingCampaign
+      tags: [shop]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/AdvertisingResumeInput"}
+      responses:
+        "200":
+          description: Same-account campaign resumed from its saved checkpoint
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}
   /shop/advertising/groups/preview:
     post:
       operationId: previewAdvertisingGroups
@@ -800,6 +855,32 @@ components:
         groupsPerInterval: {type: integer, minimum: 1, maximum: 500, default: 1}
         planId: {type: string, format: uuid}
         order: {type: integer, minimum: 0, maximum: 499}
+    AdvertisingResumeInput:
+      type: object
+      additionalProperties: false
+      required: [planId, revision, accountId, confirmed, idempotencyKey]
+      properties:
+        planId: {type: string, format: uuid}
+        revision: {type: integer, minimum: 1}
+        accountId: {type: string, pattern: '^[0-9]+$'}
+        confirmed: {type: boolean}
+        idempotencyKey: {type: string, format: uuid}
+    AdvertisingResume:
+      type: object
+      required: [available, planId, revision, accountId, groupIds, heldGroupIds, nextGroupId, nextSendAt, groupsSentInInterval, intervalSeconds, groupsPerInterval, reason]
+      properties:
+        available: {type: boolean}
+        planId: {type: [string, "null"]}
+        revision: {type: integer}
+        accountId: {type: [string, "null"]}
+        groupIds: {type: array, items: {type: string}}
+        heldGroupIds: {type: array, items: {type: string}}
+        nextGroupId: {type: [string, "null"]}
+        nextSendAt: {type: [string, "null"]}
+        groupsSentInInterval: {type: integer}
+        intervalSeconds: {type: integer}
+        groupsPerInterval: {type: integer}
+        reason: {type: string}
     AdvertisingForwardLoop:
       type: object
       required: [source, intervalSeconds, running, groupIds, nextGroupId, nextSendAt]
@@ -891,7 +972,7 @@ components:
         title: {type: string}
         chatId: {type: [string, "null"]}
         enabled: {type: boolean}
-        status: {type: string, enum: [pending, ready, needs_setup, duplicate, error]}
+        status: {type: string, enum: [pending, ready, needs_setup, duplicate, error, removed]}
         note: {type: string}
         checkedAt: {type: [string, "null"], format: date-time}
     AdvertisingImportInput:
@@ -913,6 +994,53 @@ components:
       required: [rows]
       properties:
         rows: {type: array, items: {$ref: "#/components/schemas/AdvertisingImportRow"}}
+    AdvertisingMembershipRow:
+      type: object
+      required: [target, title, chatId, state, note, canJoin]
+      properties:
+        target: {type: string}
+        title: {type: string}
+        chatId: {type: [string, "null"]}
+        state: {type: string}
+        note: {type: string}
+        canJoin: {type: boolean}
+    AdvertisingMembershipPreview:
+      type: object
+      required: [accountId, rows]
+      properties:
+        accountId: {type: string}
+        rows: {type: array, items: {$ref: "#/components/schemas/AdvertisingMembershipRow"}}
+    AdvertisingMembershipInput:
+      type: object
+      additionalProperties: false
+      required: [accountId, targets, restoreTargets, confirmed, idempotencyKey]
+      properties:
+        accountId: {type: string}
+        targets:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            type: object
+            required: [target, chatId]
+            properties:
+              target: {type: string, maxLength: 300}
+              chatId: {type: [string, "null"]}
+        restoreTargets: {type: array, maxItems: 50, uniqueItems: true, items: {type: string, maxLength: 300}}
+        confirmed: {type: boolean}
+        idempotencyKey: {type: string, format: uuid}
+    AdvertisingMembershipJob:
+      type: object
+      required: [id, target, title, action, status, note, createdAt, accountId]
+      properties:
+        id: {type: string}
+        target: {type: string}
+        title: {type: string}
+        action: {type: string}
+        status: {type: string}
+        note: {type: string}
+        accountId: {type: string}
+        createdAt: {type: string}
     AdvertisingGroupsInput:
       type: object
       required: [targets, permissionConfirmed]
@@ -971,6 +1099,8 @@ components:
       type: object
       required: [bot, draft, shopBotUrl, groups, campaigns, account, accountRuns]
       properties:
+        resume: {$ref: "#/components/schemas/AdvertisingResume"}
+        membershipJobs: {type: array, items: {$ref: "#/components/schemas/AdvertisingMembershipJob"}}
         forwarding: {$ref: "#/components/schemas/AdvertisingForwardLoop"}
         account: {$ref: "#/components/schemas/AdvertisingAccount"}
         accountRuns: {type: array, items: {$ref: "#/components/schemas/AdvertisingAccountRun"}}

@@ -27,3 +27,5 @@ export * from "./admin-sessions";
 export * from "./provider-credentials";
 export * from "./advertising";
 export * from "./advertising-accounts";
+export * from "./advertising-membership";
+export * from "./advertising-checkpoints";

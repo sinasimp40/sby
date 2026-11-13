@@ -12,8 +12,12 @@ import type { AdvertisingCampaign } from './advertisingCampaign';
 import type { AdvertisingDraft } from './advertisingDraft';
 import type { AdvertisingForwardLoop } from './advertisingForwardLoop';
 import type { AdvertisingGroup } from './advertisingGroup';
+import type { AdvertisingMembershipJob } from './advertisingMembershipJob';
+import type { AdvertisingResume } from './advertisingResume';
 
 export interface AdvertisingWorkspace {
+  resume?: AdvertisingResume;
+  membershipJobs?: AdvertisingMembershipJob[];
   forwarding?: AdvertisingForwardLoop;
   account: AdvertisingAccount;
   accountRuns: AdvertisingAccountRun[];

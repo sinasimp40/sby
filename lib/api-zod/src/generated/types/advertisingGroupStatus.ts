@@ -15,4 +15,5 @@ export const AdvertisingGroupStatus = {
   needs_setup: 'needs_setup',
   duplicate: 'duplicate',
   error: 'error',
+  removed: 'removed',
 } as const;

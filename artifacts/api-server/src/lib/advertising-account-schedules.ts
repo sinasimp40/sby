@@ -12,6 +12,9 @@ import { validateForwardSnapshot } from "./advertising-saved-messages";
 import { maintainAdvertisingActivity } from "./advertising-activity";
 import { resetCampaignInterval } from "./advertising-campaign-timing";
 import { completeForwardGroup, INTER_GROUP_PAUSE_SECONDS } from "./advertising-forward-progress";
+import { definiteDestinationFailure, queueGroupRemoval } from "./advertising-membership-store";
+import { processAccountMembership, queueRecordedUncertain } from "./advertising-membership-worker";
+import { captureCheckpoint, readCheckpoint, checkpointAllowsVerification } from "./advertising-checkpoint-store";
 
 export async function startAccountSchedules(owner: string, input: AdvertisingAccountStartInput) {
   if (input.draft.forward) throw new AccountError("Use the Saved Messages forwarding confirmation instead.");
@@ -63,16 +66,24 @@ export async function stopSelectedAccountSchedules(owner: string, ids?: string[]
       const found = await client.query("SELECT id FROM advertising_groups WHERE owner_id=$1 AND id=ANY($2::uuid[])", [owner, ids]);
       if (found.rowCount !== ids.length) throw new AccountError("One or more selected groups were not found.");
     }
-    await stopAccountSchedules(owner, client, ids);
+    await stopAccountSchedules(owner, client, ids, "Stopped by the merchant.", Boolean(ids));
   });
 }
 export async function processAccountSchedules(owner: string, factory: AccountFactory = createAccountDriver) {
   return withAdvertisingLock(owner, async client => {
-    // An interrupted send is never replayed on restart, including a later
-    // scheduled repeat for that group, until the merchant reviews/restarts it.
-    const interrupted = await client.query(`UPDATE advertising_account_runs SET status='uncertain',note='Sender restarted without confirmation. This group was stopped; check Telegram before restarting.'
+    const savedCheckpoint = await readCheckpoint(owner, client);
+    if (!savedCheckpoint || (savedCheckpoint.state === "active" &&
+      !(await client.query("SELECT 1 FROM advertising_schedules WHERE owner_id=$1 AND running=true", [owner])).rowCount))
+      await captureCheckpoint(owner, client);
+    // An interrupted send is never replayed. Queue removal/leaving only after
+    // binding its recorded chat and original account to the current identity.
+    const interrupted = await client.query(`UPDATE advertising_account_runs SET status='uncertain',note='Sender restarted without confirmation. Destination removed and account leave queued when its identity is verified; no post retry.'
       WHERE owner_id=$1 AND status='sending' AND started_at<now()-interval '60 seconds' RETURNING group_id`, [owner]);
-    if (interrupted.rowCount) await stopAccountSchedules(owner, client, interrupted.rows.map(row => row.group_id), "Interrupted send needs review.");
+    if (interrupted.rowCount) {
+      await stopAccountSchedules(owner, client, interrupted.rows.map(row => row.group_id), "Interrupted send; destination cleanup pending.");
+      const account = (await client.query("SELECT * FROM advertising_accounts WHERE owner_id=$1", [owner])).rows[0];
+      await queueRecordedUncertain(owner, client, account);
+    }
     const schedule = (await client.query("SELECT * FROM advertising_schedules WHERE owner_id=$1 AND running=true AND next_send_at<=now() ORDER BY next_send_at,group_id LIMIT 1", [owner])).rows[0];
     if (!schedule) return;
     let forward;
@@ -88,7 +99,9 @@ export async function processAccountSchedules(owner: string, factory: AccountFac
     if (Math.max(new Date(account.next_send_at).getTime(), new Date(account.telegram_wait_until).getTime()) > Date.now()) return;
     await assertTransferReviewed(owner);
     const group = (await client.query("SELECT * FROM advertising_groups WHERE owner_id=$1 AND id=$2", [owner, schedule.group_id])).rows[0];
-    if (!group?.enabled || group.status !== "ready" || !group.chat_id || group.account_generation !== account.generation) {
+    const verifyOnResume = Boolean(forward && group?.status === "pending" && group.chat_id &&
+      await checkpointAllowsVerification(owner, client, forward.planId, group.id, group.chat_id, account.account_id));
+    if (!group?.enabled || !group.chat_id || (!verifyOnResume && (group.status !== "ready" || group.account_generation !== account.generation))) {
       await stopAccountSchedules(owner, client, [schedule.group_id], "Group is disabled, removed or needs permission verification."); return;
     }
     const sentCount = Number(account.groups_sent_in_interval ?? 0);
@@ -132,6 +145,8 @@ export async function processAccountSchedules(owner: string, factory: AccountFac
         if (!me || me.id !== account.account_id) throw new AccountError("The Telegram account identity could not be verified. Review Telegram Devices before another login.", "auth", 0, "ACCOUNT_IDENTITY_UNVERIFIED");
         const checked = await driver.inspect(group.target, schedule.draft);
         if (checked.chatId !== group.chat_id) throw new AccountError("Group identity changed. Check it again.");
+        if (verifyOnResume) await client.query(`UPDATE advertising_groups SET status='ready',account_generation=$3,
+          checked_at=now(),note='Same-account resume: posting rights verified before sending.' WHERE owner_id=$1 AND id=$2`, [owner, group.id, account.generation]);
         // Cover the bounded forwarding RPC even if the process dies before its
         // receipt is persisted. Confirmed completion resets this to the normal gap.
         if (forward) await client.query("UPDATE advertising_accounts SET next_send_at=now()+$2*interval '1 second' WHERE owner_id=$1", [owner, gap + 20]);
@@ -167,9 +182,9 @@ export async function processAccountSchedules(owner: string, factory: AccountFac
           [owner, group.id, wait, safe.message]);
       } else {
         if (forward) await client.query("UPDATE advertising_accounts SET next_send_at=GREATEST(next_send_at,now()+$2*interval '1 second') WHERE owner_id=$1", [owner, gap]);
-        const uncertain = dispatched && safe.kind === "network";
+        const uncertain = dispatched && ["network", "uncertain"].includes(safe.kind);
         await client.query("UPDATE advertising_account_runs SET status=$2,note=$3 WHERE id=$1", [run.id, uncertain ? "uncertain" : "failed",
-          uncertain ? "Telegram did not confirm the post. This group is stopped; check it before restarting." : safe.message]);
+          uncertain ? "Telegram did not confirm the post. Destination removed; account leave queued. No post retry." : safe.message]);
         const invalidSource = forward && ["SAVED_MESSAGE_MISSING", "SAVED_MESSAGE_CHANGED", "CHAT_FORWARDS_RESTRICTED",
           "MESSAGE_ID_INVALID", "PREMIUM_ACCOUNT_REQUIRED"].includes(safe.telegramCode);
         await stopAccountSchedules(owner, client, ["auth", "restricted"].includes(safe.kind) || invalidSource ? undefined : [group.id], safe.message);
@@ -180,6 +195,8 @@ export async function processAccountSchedules(owner: string, factory: AccountFac
           await client.query(`UPDATE advertising_schedules SET note=$3 WHERE owner_id=$1 AND group_id=$2`,
             [owner, group.id, "Group automatically disabled because membership or posting permission was denied."]);
         }
+        if (uncertain || (!invalidSource && definiteDestinationFailure(safe)))
+          await queueGroupRemoval(owner, client, group, account, safe.message, uncertain ? "uncertain" : "definite", uncertain ? run.id : undefined);
         if (["auth", "restricted"].includes(safe.kind))
           await client.query("UPDATE advertising_accounts SET last_error=$2,checked_at=now() WHERE owner_id=$1", [owner, safe.message]);
       }
@@ -192,7 +209,9 @@ export async function runAccountAdvertisingWorker() {
       const owner = configuredOwnerId();
       if (owner) {
         await maintainAdvertisingActivity(owner);
-        await processAccountRecovery(owner); await processAccountSchedules(owner);
+        await processAccountRecovery(owner);
+        await processAccountMembership(owner);
+        await processAccountSchedules(owner);
       }
     }
     catch { logger.warn("Account advertising sender could not complete a queue check."); }

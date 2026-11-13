@@ -9,6 +9,7 @@ import { telegramAdEntities } from "./advertising-formatting";
 import { validateAdvertisingDraft } from "./advertising-telegram";
 import { AccountError, safeAccountError, reportAccountError, type AccountOperation } from "./advertising-account-errors";
 import { confirmAccountPost, type AccountPostReceipt } from "./advertising-account-receipt";
+import { inspectMembership, joinMembership, leaveMembership, type MembershipProbe } from "./advertising-membership-telegram";
 export { AccountError, safeAccountError } from "./advertising-account-errors";
 async function bounded<T>(fn: () => Promise<T>): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -37,6 +38,9 @@ export interface AccountDriver {
   qr(): Promise<{ authorized: boolean; url?: string; expires?: number }>;
   groups(): Promise<AccountGroup[]>;
   inspect(target: string, draft?: AdvertisingDraft): Promise<AccountGroup>;
+  membership?(target: string): Promise<MembershipProbe>;
+  join?(target: string, expectedChatId: string | null): Promise<MembershipProbe & { outcome: string }>;
+  leave?(target: string, expectedChatId: string): Promise<string>;
   emojiSet?(name: string): Promise<AdvertisingEmojiSet>;
   savedMessages?(offsetId: number): Promise<AdvertisingSavedMessagesPage>;
   savedMessage?(id: number): Promise<AdvertisingSavedMessage>;
@@ -277,6 +281,15 @@ export const createAccountDriver: AccountFactory = ({ apiId, apiHash, session = 
       return (await joined()).map(d => ({ chatId: d.id!.toString(), target: d.id!.toString(), title: d.title ?? d.id!.toString() }));
     }),
     inspect,
+    membership: target => run("membership", () => inspectMembership(client, target)),
+    join: (target, expected) => run("join_group", async () => {
+      const result = await joinMembership(client, target, expected);
+      dialogs = null; resolvedGroups.clear(); return result;
+    }),
+    leave: (target, expected) => run("leave_group", async () => {
+      const result = await leaveMembership(client, target, expected);
+      dialogs = null; resolvedGroups.clear(); return result;
+    }),
     emojiSet: name => run("emoji_set", () => loadAccountEmojiSet(client, name)),
     savedMessages: offsetId => run("saved_messages", () => readSavedMessages(client, offsetId)),
     savedMessage: id => run("saved_messages", () => readSavedMessage(client, id)),

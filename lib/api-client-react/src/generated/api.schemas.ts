@@ -120,6 +120,35 @@ export interface AdvertisingSavedMessagesPage {
   nextOffsetId: number | null;
 }
 
+export interface AdvertisingResumeInput {
+  planId: string;
+  /** @minimum 1 */
+  revision: number;
+  /** @pattern ^[0-9]+$ */
+  accountId: string;
+  confirmed: boolean;
+  idempotencyKey: string;
+}
+
+export interface AdvertisingResume {
+  available: boolean;
+  /** @nullable */
+  planId: string | null;
+  revision: number;
+  /** @nullable */
+  accountId: string | null;
+  groupIds: string[];
+  heldGroupIds: string[];
+  /** @nullable */
+  nextGroupId: string | null;
+  /** @nullable */
+  nextSendAt: string | null;
+  groupsSentInInterval: number;
+  intervalSeconds: number;
+  groupsPerInterval: number;
+  reason: string;
+}
+
 export interface AdvertisingForwardLoop {
   source: AdvertisingSavedMessage | null;
   intervalSeconds: number;
@@ -238,6 +267,7 @@ export const AdvertisingGroupStatus = {
   needs_setup: 'needs_setup',
   duplicate: 'duplicate',
   error: 'error',
+  removed: 'removed',
 } as const;
 
 export interface AdvertisingGroup {
@@ -303,6 +333,55 @@ export interface AdvertisingImportRow {
 
 export interface AdvertisingImportPreview {
   rows: AdvertisingImportRow[];
+}
+
+export interface AdvertisingMembershipRow {
+  target: string;
+  title: string;
+  /** @nullable */
+  chatId: string | null;
+  state: string;
+  note: string;
+  canJoin: boolean;
+}
+
+export interface AdvertisingMembershipPreview {
+  accountId: string;
+  rows: AdvertisingMembershipRow[];
+}
+
+export type AdvertisingMembershipInputTargetsItem = {
+  /** @maxLength 300 */
+  target: string;
+  /** @nullable */
+  chatId: string | null;
+};
+
+export interface AdvertisingMembershipInput {
+  accountId: string;
+  /**
+     * @minItems 1
+     * @maxItems 50
+     */
+  targets: AdvertisingMembershipInputTargetsItem[];
+  /**
+     * @maxItems 50
+     * @items.maxLength 300
+     */
+  restoreTargets: string[];
+  confirmed: boolean;
+  idempotencyKey: string;
+}
+
+export interface AdvertisingMembershipJob {
+  id: string;
+  target: string;
+  title: string;
+  action: string;
+  status: string;
+  note: string;
+  accountId: string;
+  createdAt: string;
 }
 
 export interface AdvertisingGroupsInput {
@@ -464,6 +543,8 @@ export interface AdvertisingAccountRun {
 }
 
 export interface AdvertisingWorkspace {
+  resume?: AdvertisingResume;
+  membershipJobs?: AdvertisingMembershipJob[];
   forwarding?: AdvertisingForwardLoop;
   account: AdvertisingAccount;
   accountRuns: AdvertisingAccountRun[];
