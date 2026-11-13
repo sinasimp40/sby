@@ -11,9 +11,9 @@ The user explicitly requires advertising through their own Telegram client accou
 
 Select exactly one existing message from the connected account's Telegram Saved Messages and forward it to the chosen groups, rather than recreating it in an advertisement editor.
 
-**Why:** The user clarified: “all we need is to select the message” saved in Saved Messages and then chose “Select only one message.” They explicitly said the interval is “not individual” and described sending to the first group, waiting, then sending to the second.
+**Why:** The user clarified: “all we need is to select the message” saved in Saved Messages and then chose “Select only one message.” They explicitly said the interval is “not individual” and described sending to the first group, waiting, then sending to the second. They subsequently requested a messages-per-group count and confirmed “Repeat the selected message,” not different Saved Messages.
 
-**How to apply:** Treat the custom-formatting editor approach as superseded for the primary workflow. Use native forwarding with one source and a confirmed group order: group 1, shared wait, group 2, shared wait, and repeat after the final group's wait. Do not expose independent group timers or rotate multiple source messages. Respect forwarding restrictions rather than silently copying or rebuilding unsupported content.
+**How to apply:** Treat the custom-formatting editor approach as superseded for the primary workflow. Use native forwarding with one source and a confirmed group order: send the chosen number of copies to group 1, shared wait, the same number to group 2, shared wait, and repeat after the final group's wait. Keep copies individually confirmed with a short pause; never bypass Telegram waits or replay an uncertain copy. Do not expose independent group timers or rotate multiple source messages. Respect forwarding restrictions rather than silently copying or rebuilding unsupported content.
 
 Account authorization belongs in the protected dashboard, never chat. Explain the API app ID/hash requirement and full-account access, and allow checking connection and revoking the saved session.
 
@@ -45,7 +45,7 @@ The installed GramJS `ignoreMigrated` option incorrectly excludes channels and s
 
 **How to apply:** Fetch unfiltered dialogs and exclude obsolete/left groups explicitly. Retain a regression test through the real SDK dialog iterator, not only a mocked group list, when upgrading GramJS.
 
-Freeze the exact confirmed message, account, recipient order and shared interval. Never automatically retry an unconfirmed send, catch up missed intervals in a burst, or resume imported advertising jobs.
+Freeze the exact confirmed message, account, recipient order, copies per group and shared interval. Never automatically retry an unconfirmed send, catch up missed intervals in a burst, or resume imported advertising jobs.
 
 **Why:** Advertising is an external action that cannot reliably be undone, and a network timeout can occur after Telegram accepted a message.
 

@@ -56,6 +56,13 @@ export const saveAdvertisingAppCredentialsResponseForwardingSourceOneAccountIdRe
 export const saveAdvertisingAppCredentialsResponseForwardingSourceOneTextMax = 4096;
 
 export const saveAdvertisingAppCredentialsResponseForwardingSourceOneFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const saveAdvertisingAppCredentialsResponseForwardingMessagesPerGroupDefault = 1;
+export const saveAdvertisingAppCredentialsResponseForwardingMessagesPerGroupMax = 10;
+
+export const saveAdvertisingAppCredentialsResponseForwardingSentInCurrentGroupDefault = 0;
+export const saveAdvertisingAppCredentialsResponseForwardingSentInCurrentGroupMin = 0;
+export const saveAdvertisingAppCredentialsResponseForwardingSentInCurrentGroupMax = 9;
+
 export const saveAdvertisingAppCredentialsResponseDraftTextMax = 4096;
 
 export const saveAdvertisingAppCredentialsResponseDraftImageUrlMax = 2048;
@@ -81,6 +88,9 @@ export const saveAdvertisingAppCredentialsResponseDraftForwardSourceFingerprintR
 export const saveAdvertisingAppCredentialsResponseDraftForwardIntervalSecondsMin = 60;
 export const saveAdvertisingAppCredentialsResponseDraftForwardIntervalSecondsMax = 2592000;
 
+export const saveAdvertisingAppCredentialsResponseDraftForwardMessagesPerGroupDefault = 1;
+export const saveAdvertisingAppCredentialsResponseDraftForwardMessagesPerGroupMax = 10;
+
 export const saveAdvertisingAppCredentialsResponseDraftForwardOrderMin = 0;
 export const saveAdvertisingAppCredentialsResponseDraftForwardOrderMax = 499;
 
@@ -102,6 +112,8 @@ export const SaveAdvertisingAppCredentialsResponse = zod.object({
   "fingerprint": zod.string().regex(saveAdvertisingAppCredentialsResponseForwardingSourceOneFingerprintRegExp)
 }),zod.null()]),
   "intervalSeconds": zod.number().int(),
+  "messagesPerGroup": zod.number().int().min(1).max(saveAdvertisingAppCredentialsResponseForwardingMessagesPerGroupMax).default(saveAdvertisingAppCredentialsResponseForwardingMessagesPerGroupDefault),
+  "sentInCurrentGroup": zod.number().int().min(saveAdvertisingAppCredentialsResponseForwardingSentInCurrentGroupMin).max(saveAdvertisingAppCredentialsResponseForwardingSentInCurrentGroupMax).default(saveAdvertisingAppCredentialsResponseForwardingSentInCurrentGroupDefault),
   "running": zod.boolean(),
   "groupIds": zod.array(zod.string().uuid()),
   "nextGroupId": zod.string().uuid().nullable(),
@@ -165,6 +177,7 @@ export const SaveAdvertisingAppCredentialsResponse = zod.object({
   "fingerprint": zod.string().regex(saveAdvertisingAppCredentialsResponseDraftForwardSourceFingerprintRegExp)
 }),
   "intervalSeconds": zod.number().int().min(saveAdvertisingAppCredentialsResponseDraftForwardIntervalSecondsMin).max(saveAdvertisingAppCredentialsResponseDraftForwardIntervalSecondsMax),
+  "messagesPerGroup": zod.number().int().min(1).max(saveAdvertisingAppCredentialsResponseDraftForwardMessagesPerGroupMax).default(saveAdvertisingAppCredentialsResponseDraftForwardMessagesPerGroupDefault),
   "planId": zod.string().uuid(),
   "order": zod.number().int().min(saveAdvertisingAppCredentialsResponseDraftForwardOrderMin).max(saveAdvertisingAppCredentialsResponseDraftForwardOrderMax)
 }).optional()
@@ -207,6 +220,13 @@ export const forgetAdvertisingAppCredentialsResponseForwardingSourceOneAccountId
 export const forgetAdvertisingAppCredentialsResponseForwardingSourceOneTextMax = 4096;
 
 export const forgetAdvertisingAppCredentialsResponseForwardingSourceOneFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const forgetAdvertisingAppCredentialsResponseForwardingMessagesPerGroupDefault = 1;
+export const forgetAdvertisingAppCredentialsResponseForwardingMessagesPerGroupMax = 10;
+
+export const forgetAdvertisingAppCredentialsResponseForwardingSentInCurrentGroupDefault = 0;
+export const forgetAdvertisingAppCredentialsResponseForwardingSentInCurrentGroupMin = 0;
+export const forgetAdvertisingAppCredentialsResponseForwardingSentInCurrentGroupMax = 9;
+
 export const forgetAdvertisingAppCredentialsResponseDraftTextMax = 4096;
 
 export const forgetAdvertisingAppCredentialsResponseDraftImageUrlMax = 2048;
@@ -232,6 +252,9 @@ export const forgetAdvertisingAppCredentialsResponseDraftForwardSourceFingerprin
 export const forgetAdvertisingAppCredentialsResponseDraftForwardIntervalSecondsMin = 60;
 export const forgetAdvertisingAppCredentialsResponseDraftForwardIntervalSecondsMax = 2592000;
 
+export const forgetAdvertisingAppCredentialsResponseDraftForwardMessagesPerGroupDefault = 1;
+export const forgetAdvertisingAppCredentialsResponseDraftForwardMessagesPerGroupMax = 10;
+
 export const forgetAdvertisingAppCredentialsResponseDraftForwardOrderMin = 0;
 export const forgetAdvertisingAppCredentialsResponseDraftForwardOrderMax = 499;
 
@@ -253,6 +276,8 @@ export const ForgetAdvertisingAppCredentialsResponse = zod.object({
   "fingerprint": zod.string().regex(forgetAdvertisingAppCredentialsResponseForwardingSourceOneFingerprintRegExp)
 }),zod.null()]),
   "intervalSeconds": zod.number().int(),
+  "messagesPerGroup": zod.number().int().min(1).max(forgetAdvertisingAppCredentialsResponseForwardingMessagesPerGroupMax).default(forgetAdvertisingAppCredentialsResponseForwardingMessagesPerGroupDefault),
+  "sentInCurrentGroup": zod.number().int().min(forgetAdvertisingAppCredentialsResponseForwardingSentInCurrentGroupMin).max(forgetAdvertisingAppCredentialsResponseForwardingSentInCurrentGroupMax).default(forgetAdvertisingAppCredentialsResponseForwardingSentInCurrentGroupDefault),
   "running": zod.boolean(),
   "groupIds": zod.array(zod.string().uuid()),
   "nextGroupId": zod.string().uuid().nullable(),
@@ -316,6 +341,7 @@ export const ForgetAdvertisingAppCredentialsResponse = zod.object({
   "fingerprint": zod.string().regex(forgetAdvertisingAppCredentialsResponseDraftForwardSourceFingerprintRegExp)
 }),
   "intervalSeconds": zod.number().int().min(forgetAdvertisingAppCredentialsResponseDraftForwardIntervalSecondsMin).max(forgetAdvertisingAppCredentialsResponseDraftForwardIntervalSecondsMax),
+  "messagesPerGroup": zod.number().int().min(1).max(forgetAdvertisingAppCredentialsResponseDraftForwardMessagesPerGroupMax).default(forgetAdvertisingAppCredentialsResponseDraftForwardMessagesPerGroupDefault),
   "planId": zod.string().uuid(),
   "order": zod.number().int().min(forgetAdvertisingAppCredentialsResponseDraftForwardOrderMin).max(forgetAdvertisingAppCredentialsResponseDraftForwardOrderMax)
 }).optional()
@@ -374,6 +400,13 @@ export const beginAdvertisingAccountLoginResponseForwardingSourceOneAccountIdReg
 export const beginAdvertisingAccountLoginResponseForwardingSourceOneTextMax = 4096;
 
 export const beginAdvertisingAccountLoginResponseForwardingSourceOneFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const beginAdvertisingAccountLoginResponseForwardingMessagesPerGroupDefault = 1;
+export const beginAdvertisingAccountLoginResponseForwardingMessagesPerGroupMax = 10;
+
+export const beginAdvertisingAccountLoginResponseForwardingSentInCurrentGroupDefault = 0;
+export const beginAdvertisingAccountLoginResponseForwardingSentInCurrentGroupMin = 0;
+export const beginAdvertisingAccountLoginResponseForwardingSentInCurrentGroupMax = 9;
+
 export const beginAdvertisingAccountLoginResponseDraftTextMax = 4096;
 
 export const beginAdvertisingAccountLoginResponseDraftImageUrlMax = 2048;
@@ -399,6 +432,9 @@ export const beginAdvertisingAccountLoginResponseDraftForwardSourceFingerprintRe
 export const beginAdvertisingAccountLoginResponseDraftForwardIntervalSecondsMin = 60;
 export const beginAdvertisingAccountLoginResponseDraftForwardIntervalSecondsMax = 2592000;
 
+export const beginAdvertisingAccountLoginResponseDraftForwardMessagesPerGroupDefault = 1;
+export const beginAdvertisingAccountLoginResponseDraftForwardMessagesPerGroupMax = 10;
+
 export const beginAdvertisingAccountLoginResponseDraftForwardOrderMin = 0;
 export const beginAdvertisingAccountLoginResponseDraftForwardOrderMax = 499;
 
@@ -420,6 +456,8 @@ export const BeginAdvertisingAccountLoginResponse = zod.object({
   "fingerprint": zod.string().regex(beginAdvertisingAccountLoginResponseForwardingSourceOneFingerprintRegExp)
 }),zod.null()]),
   "intervalSeconds": zod.number().int(),
+  "messagesPerGroup": zod.number().int().min(1).max(beginAdvertisingAccountLoginResponseForwardingMessagesPerGroupMax).default(beginAdvertisingAccountLoginResponseForwardingMessagesPerGroupDefault),
+  "sentInCurrentGroup": zod.number().int().min(beginAdvertisingAccountLoginResponseForwardingSentInCurrentGroupMin).max(beginAdvertisingAccountLoginResponseForwardingSentInCurrentGroupMax).default(beginAdvertisingAccountLoginResponseForwardingSentInCurrentGroupDefault),
   "running": zod.boolean(),
   "groupIds": zod.array(zod.string().uuid()),
   "nextGroupId": zod.string().uuid().nullable(),
@@ -483,6 +521,7 @@ export const BeginAdvertisingAccountLoginResponse = zod.object({
   "fingerprint": zod.string().regex(beginAdvertisingAccountLoginResponseDraftForwardSourceFingerprintRegExp)
 }),
   "intervalSeconds": zod.number().int().min(beginAdvertisingAccountLoginResponseDraftForwardIntervalSecondsMin).max(beginAdvertisingAccountLoginResponseDraftForwardIntervalSecondsMax),
+  "messagesPerGroup": zod.number().int().min(1).max(beginAdvertisingAccountLoginResponseDraftForwardMessagesPerGroupMax).default(beginAdvertisingAccountLoginResponseDraftForwardMessagesPerGroupDefault),
   "planId": zod.string().uuid(),
   "order": zod.number().int().min(beginAdvertisingAccountLoginResponseDraftForwardOrderMin).max(beginAdvertisingAccountLoginResponseDraftForwardOrderMax)
 }).optional()
@@ -525,6 +564,13 @@ export const cancelAdvertisingAccountLoginResponseForwardingSourceOneAccountIdRe
 export const cancelAdvertisingAccountLoginResponseForwardingSourceOneTextMax = 4096;
 
 export const cancelAdvertisingAccountLoginResponseForwardingSourceOneFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const cancelAdvertisingAccountLoginResponseForwardingMessagesPerGroupDefault = 1;
+export const cancelAdvertisingAccountLoginResponseForwardingMessagesPerGroupMax = 10;
+
+export const cancelAdvertisingAccountLoginResponseForwardingSentInCurrentGroupDefault = 0;
+export const cancelAdvertisingAccountLoginResponseForwardingSentInCurrentGroupMin = 0;
+export const cancelAdvertisingAccountLoginResponseForwardingSentInCurrentGroupMax = 9;
+
 export const cancelAdvertisingAccountLoginResponseDraftTextMax = 4096;
 
 export const cancelAdvertisingAccountLoginResponseDraftImageUrlMax = 2048;
@@ -550,6 +596,9 @@ export const cancelAdvertisingAccountLoginResponseDraftForwardSourceFingerprintR
 export const cancelAdvertisingAccountLoginResponseDraftForwardIntervalSecondsMin = 60;
 export const cancelAdvertisingAccountLoginResponseDraftForwardIntervalSecondsMax = 2592000;
 
+export const cancelAdvertisingAccountLoginResponseDraftForwardMessagesPerGroupDefault = 1;
+export const cancelAdvertisingAccountLoginResponseDraftForwardMessagesPerGroupMax = 10;
+
 export const cancelAdvertisingAccountLoginResponseDraftForwardOrderMin = 0;
 export const cancelAdvertisingAccountLoginResponseDraftForwardOrderMax = 499;
 
@@ -571,6 +620,8 @@ export const CancelAdvertisingAccountLoginResponse = zod.object({
   "fingerprint": zod.string().regex(cancelAdvertisingAccountLoginResponseForwardingSourceOneFingerprintRegExp)
 }),zod.null()]),
   "intervalSeconds": zod.number().int(),
+  "messagesPerGroup": zod.number().int().min(1).max(cancelAdvertisingAccountLoginResponseForwardingMessagesPerGroupMax).default(cancelAdvertisingAccountLoginResponseForwardingMessagesPerGroupDefault),
+  "sentInCurrentGroup": zod.number().int().min(cancelAdvertisingAccountLoginResponseForwardingSentInCurrentGroupMin).max(cancelAdvertisingAccountLoginResponseForwardingSentInCurrentGroupMax).default(cancelAdvertisingAccountLoginResponseForwardingSentInCurrentGroupDefault),
   "running": zod.boolean(),
   "groupIds": zod.array(zod.string().uuid()),
   "nextGroupId": zod.string().uuid().nullable(),
@@ -634,6 +685,7 @@ export const CancelAdvertisingAccountLoginResponse = zod.object({
   "fingerprint": zod.string().regex(cancelAdvertisingAccountLoginResponseDraftForwardSourceFingerprintRegExp)
 }),
   "intervalSeconds": zod.number().int().min(cancelAdvertisingAccountLoginResponseDraftForwardIntervalSecondsMin).max(cancelAdvertisingAccountLoginResponseDraftForwardIntervalSecondsMax),
+  "messagesPerGroup": zod.number().int().min(1).max(cancelAdvertisingAccountLoginResponseDraftForwardMessagesPerGroupMax).default(cancelAdvertisingAccountLoginResponseDraftForwardMessagesPerGroupDefault),
   "planId": zod.string().uuid(),
   "order": zod.number().int().min(cancelAdvertisingAccountLoginResponseDraftForwardOrderMin).max(cancelAdvertisingAccountLoginResponseDraftForwardOrderMax)
 }).optional()
@@ -689,6 +741,13 @@ export const verifyAdvertisingAccountLoginResponseForwardingSourceOneAccountIdRe
 export const verifyAdvertisingAccountLoginResponseForwardingSourceOneTextMax = 4096;
 
 export const verifyAdvertisingAccountLoginResponseForwardingSourceOneFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const verifyAdvertisingAccountLoginResponseForwardingMessagesPerGroupDefault = 1;
+export const verifyAdvertisingAccountLoginResponseForwardingMessagesPerGroupMax = 10;
+
+export const verifyAdvertisingAccountLoginResponseForwardingSentInCurrentGroupDefault = 0;
+export const verifyAdvertisingAccountLoginResponseForwardingSentInCurrentGroupMin = 0;
+export const verifyAdvertisingAccountLoginResponseForwardingSentInCurrentGroupMax = 9;
+
 export const verifyAdvertisingAccountLoginResponseDraftTextMax = 4096;
 
 export const verifyAdvertisingAccountLoginResponseDraftImageUrlMax = 2048;
@@ -714,6 +773,9 @@ export const verifyAdvertisingAccountLoginResponseDraftForwardSourceFingerprintR
 export const verifyAdvertisingAccountLoginResponseDraftForwardIntervalSecondsMin = 60;
 export const verifyAdvertisingAccountLoginResponseDraftForwardIntervalSecondsMax = 2592000;
 
+export const verifyAdvertisingAccountLoginResponseDraftForwardMessagesPerGroupDefault = 1;
+export const verifyAdvertisingAccountLoginResponseDraftForwardMessagesPerGroupMax = 10;
+
 export const verifyAdvertisingAccountLoginResponseDraftForwardOrderMin = 0;
 export const verifyAdvertisingAccountLoginResponseDraftForwardOrderMax = 499;
 
@@ -735,6 +797,8 @@ export const VerifyAdvertisingAccountLoginResponse = zod.object({
   "fingerprint": zod.string().regex(verifyAdvertisingAccountLoginResponseForwardingSourceOneFingerprintRegExp)
 }),zod.null()]),
   "intervalSeconds": zod.number().int(),
+  "messagesPerGroup": zod.number().int().min(1).max(verifyAdvertisingAccountLoginResponseForwardingMessagesPerGroupMax).default(verifyAdvertisingAccountLoginResponseForwardingMessagesPerGroupDefault),
+  "sentInCurrentGroup": zod.number().int().min(verifyAdvertisingAccountLoginResponseForwardingSentInCurrentGroupMin).max(verifyAdvertisingAccountLoginResponseForwardingSentInCurrentGroupMax).default(verifyAdvertisingAccountLoginResponseForwardingSentInCurrentGroupDefault),
   "running": zod.boolean(),
   "groupIds": zod.array(zod.string().uuid()),
   "nextGroupId": zod.string().uuid().nullable(),
@@ -798,6 +862,7 @@ export const VerifyAdvertisingAccountLoginResponse = zod.object({
   "fingerprint": zod.string().regex(verifyAdvertisingAccountLoginResponseDraftForwardSourceFingerprintRegExp)
 }),
   "intervalSeconds": zod.number().int().min(verifyAdvertisingAccountLoginResponseDraftForwardIntervalSecondsMin).max(verifyAdvertisingAccountLoginResponseDraftForwardIntervalSecondsMax),
+  "messagesPerGroup": zod.number().int().min(1).max(verifyAdvertisingAccountLoginResponseDraftForwardMessagesPerGroupMax).default(verifyAdvertisingAccountLoginResponseDraftForwardMessagesPerGroupDefault),
   "planId": zod.string().uuid(),
   "order": zod.number().int().min(verifyAdvertisingAccountLoginResponseDraftForwardOrderMin).max(verifyAdvertisingAccountLoginResponseDraftForwardOrderMax)
 }).optional()
@@ -844,6 +909,13 @@ export const pollAdvertisingAccountLoginResponseForwardingSourceOneAccountIdRegE
 export const pollAdvertisingAccountLoginResponseForwardingSourceOneTextMax = 4096;
 
 export const pollAdvertisingAccountLoginResponseForwardingSourceOneFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const pollAdvertisingAccountLoginResponseForwardingMessagesPerGroupDefault = 1;
+export const pollAdvertisingAccountLoginResponseForwardingMessagesPerGroupMax = 10;
+
+export const pollAdvertisingAccountLoginResponseForwardingSentInCurrentGroupDefault = 0;
+export const pollAdvertisingAccountLoginResponseForwardingSentInCurrentGroupMin = 0;
+export const pollAdvertisingAccountLoginResponseForwardingSentInCurrentGroupMax = 9;
+
 export const pollAdvertisingAccountLoginResponseDraftTextMax = 4096;
 
 export const pollAdvertisingAccountLoginResponseDraftImageUrlMax = 2048;
@@ -869,6 +941,9 @@ export const pollAdvertisingAccountLoginResponseDraftForwardSourceFingerprintReg
 export const pollAdvertisingAccountLoginResponseDraftForwardIntervalSecondsMin = 60;
 export const pollAdvertisingAccountLoginResponseDraftForwardIntervalSecondsMax = 2592000;
 
+export const pollAdvertisingAccountLoginResponseDraftForwardMessagesPerGroupDefault = 1;
+export const pollAdvertisingAccountLoginResponseDraftForwardMessagesPerGroupMax = 10;
+
 export const pollAdvertisingAccountLoginResponseDraftForwardOrderMin = 0;
 export const pollAdvertisingAccountLoginResponseDraftForwardOrderMax = 499;
 
@@ -890,6 +965,8 @@ export const PollAdvertisingAccountLoginResponse = zod.object({
   "fingerprint": zod.string().regex(pollAdvertisingAccountLoginResponseForwardingSourceOneFingerprintRegExp)
 }),zod.null()]),
   "intervalSeconds": zod.number().int(),
+  "messagesPerGroup": zod.number().int().min(1).max(pollAdvertisingAccountLoginResponseForwardingMessagesPerGroupMax).default(pollAdvertisingAccountLoginResponseForwardingMessagesPerGroupDefault),
+  "sentInCurrentGroup": zod.number().int().min(pollAdvertisingAccountLoginResponseForwardingSentInCurrentGroupMin).max(pollAdvertisingAccountLoginResponseForwardingSentInCurrentGroupMax).default(pollAdvertisingAccountLoginResponseForwardingSentInCurrentGroupDefault),
   "running": zod.boolean(),
   "groupIds": zod.array(zod.string().uuid()),
   "nextGroupId": zod.string().uuid().nullable(),
@@ -953,6 +1030,7 @@ export const PollAdvertisingAccountLoginResponse = zod.object({
   "fingerprint": zod.string().regex(pollAdvertisingAccountLoginResponseDraftForwardSourceFingerprintRegExp)
 }),
   "intervalSeconds": zod.number().int().min(pollAdvertisingAccountLoginResponseDraftForwardIntervalSecondsMin).max(pollAdvertisingAccountLoginResponseDraftForwardIntervalSecondsMax),
+  "messagesPerGroup": zod.number().int().min(1).max(pollAdvertisingAccountLoginResponseDraftForwardMessagesPerGroupMax).default(pollAdvertisingAccountLoginResponseDraftForwardMessagesPerGroupDefault),
   "planId": zod.string().uuid(),
   "order": zod.number().int().min(pollAdvertisingAccountLoginResponseDraftForwardOrderMin).max(pollAdvertisingAccountLoginResponseDraftForwardOrderMax)
 }).optional()
@@ -995,6 +1073,13 @@ export const checkAdvertisingAccountResponseForwardingSourceOneAccountIdRegExp =
 export const checkAdvertisingAccountResponseForwardingSourceOneTextMax = 4096;
 
 export const checkAdvertisingAccountResponseForwardingSourceOneFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const checkAdvertisingAccountResponseForwardingMessagesPerGroupDefault = 1;
+export const checkAdvertisingAccountResponseForwardingMessagesPerGroupMax = 10;
+
+export const checkAdvertisingAccountResponseForwardingSentInCurrentGroupDefault = 0;
+export const checkAdvertisingAccountResponseForwardingSentInCurrentGroupMin = 0;
+export const checkAdvertisingAccountResponseForwardingSentInCurrentGroupMax = 9;
+
 export const checkAdvertisingAccountResponseDraftTextMax = 4096;
 
 export const checkAdvertisingAccountResponseDraftImageUrlMax = 2048;
@@ -1020,6 +1105,9 @@ export const checkAdvertisingAccountResponseDraftForwardSourceFingerprintRegExp 
 export const checkAdvertisingAccountResponseDraftForwardIntervalSecondsMin = 60;
 export const checkAdvertisingAccountResponseDraftForwardIntervalSecondsMax = 2592000;
 
+export const checkAdvertisingAccountResponseDraftForwardMessagesPerGroupDefault = 1;
+export const checkAdvertisingAccountResponseDraftForwardMessagesPerGroupMax = 10;
+
 export const checkAdvertisingAccountResponseDraftForwardOrderMin = 0;
 export const checkAdvertisingAccountResponseDraftForwardOrderMax = 499;
 
@@ -1041,6 +1129,8 @@ export const CheckAdvertisingAccountResponse = zod.object({
   "fingerprint": zod.string().regex(checkAdvertisingAccountResponseForwardingSourceOneFingerprintRegExp)
 }),zod.null()]),
   "intervalSeconds": zod.number().int(),
+  "messagesPerGroup": zod.number().int().min(1).max(checkAdvertisingAccountResponseForwardingMessagesPerGroupMax).default(checkAdvertisingAccountResponseForwardingMessagesPerGroupDefault),
+  "sentInCurrentGroup": zod.number().int().min(checkAdvertisingAccountResponseForwardingSentInCurrentGroupMin).max(checkAdvertisingAccountResponseForwardingSentInCurrentGroupMax).default(checkAdvertisingAccountResponseForwardingSentInCurrentGroupDefault),
   "running": zod.boolean(),
   "groupIds": zod.array(zod.string().uuid()),
   "nextGroupId": zod.string().uuid().nullable(),
@@ -1104,6 +1194,7 @@ export const CheckAdvertisingAccountResponse = zod.object({
   "fingerprint": zod.string().regex(checkAdvertisingAccountResponseDraftForwardSourceFingerprintRegExp)
 }),
   "intervalSeconds": zod.number().int().min(checkAdvertisingAccountResponseDraftForwardIntervalSecondsMin).max(checkAdvertisingAccountResponseDraftForwardIntervalSecondsMax),
+  "messagesPerGroup": zod.number().int().min(1).max(checkAdvertisingAccountResponseDraftForwardMessagesPerGroupMax).default(checkAdvertisingAccountResponseDraftForwardMessagesPerGroupDefault),
   "planId": zod.string().uuid(),
   "order": zod.number().int().min(checkAdvertisingAccountResponseDraftForwardOrderMin).max(checkAdvertisingAccountResponseDraftForwardOrderMax)
 }).optional()
@@ -1179,6 +1270,9 @@ export const startAdvertisingForwardLoopBodyAccountIdRegExp = new RegExp('^[0-9]
 export const startAdvertisingForwardLoopBodyMessageIdMax = 2147483647;
 
 export const startAdvertisingForwardLoopBodySourceFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const startAdvertisingForwardLoopBodyMessagesPerGroupDefault = 1;
+export const startAdvertisingForwardLoopBodyMessagesPerGroupMax = 10;
+
 export const startAdvertisingForwardLoopBodyGroupIdsMax = 500;
 
 export const startAdvertisingForwardLoopBodyExpectedGroupsItemChatIdRegExp = new RegExp('^-[1-9][0-9]{5,15}$');
@@ -1193,6 +1287,7 @@ export const StartAdvertisingForwardLoopBody = zod.object({
   "accountId": zod.string().regex(startAdvertisingForwardLoopBodyAccountIdRegExp),
   "messageId": zod.number().int().min(1).max(startAdvertisingForwardLoopBodyMessageIdMax),
   "sourceFingerprint": zod.string().regex(startAdvertisingForwardLoopBodySourceFingerprintRegExp),
+  "messagesPerGroup": zod.number().int().min(1).max(startAdvertisingForwardLoopBodyMessagesPerGroupMax).default(startAdvertisingForwardLoopBodyMessagesPerGroupDefault),
   "groupIds": zod.array(zod.string().uuid()).min(1).max(startAdvertisingForwardLoopBodyGroupIdsMax),
   "expectedGroups": zod.array(zod.object({
   "id": zod.string().uuid(),
@@ -1209,6 +1304,13 @@ export const startAdvertisingForwardLoopResponseForwardingSourceOneAccountIdRegE
 export const startAdvertisingForwardLoopResponseForwardingSourceOneTextMax = 4096;
 
 export const startAdvertisingForwardLoopResponseForwardingSourceOneFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const startAdvertisingForwardLoopResponseForwardingMessagesPerGroupDefault = 1;
+export const startAdvertisingForwardLoopResponseForwardingMessagesPerGroupMax = 10;
+
+export const startAdvertisingForwardLoopResponseForwardingSentInCurrentGroupDefault = 0;
+export const startAdvertisingForwardLoopResponseForwardingSentInCurrentGroupMin = 0;
+export const startAdvertisingForwardLoopResponseForwardingSentInCurrentGroupMax = 9;
+
 export const startAdvertisingForwardLoopResponseDraftTextMax = 4096;
 
 export const startAdvertisingForwardLoopResponseDraftImageUrlMax = 2048;
@@ -1234,6 +1336,9 @@ export const startAdvertisingForwardLoopResponseDraftForwardSourceFingerprintReg
 export const startAdvertisingForwardLoopResponseDraftForwardIntervalSecondsMin = 60;
 export const startAdvertisingForwardLoopResponseDraftForwardIntervalSecondsMax = 2592000;
 
+export const startAdvertisingForwardLoopResponseDraftForwardMessagesPerGroupDefault = 1;
+export const startAdvertisingForwardLoopResponseDraftForwardMessagesPerGroupMax = 10;
+
 export const startAdvertisingForwardLoopResponseDraftForwardOrderMin = 0;
 export const startAdvertisingForwardLoopResponseDraftForwardOrderMax = 499;
 
@@ -1255,6 +1360,8 @@ export const StartAdvertisingForwardLoopResponse = zod.object({
   "fingerprint": zod.string().regex(startAdvertisingForwardLoopResponseForwardingSourceOneFingerprintRegExp)
 }),zod.null()]),
   "intervalSeconds": zod.number().int(),
+  "messagesPerGroup": zod.number().int().min(1).max(startAdvertisingForwardLoopResponseForwardingMessagesPerGroupMax).default(startAdvertisingForwardLoopResponseForwardingMessagesPerGroupDefault),
+  "sentInCurrentGroup": zod.number().int().min(startAdvertisingForwardLoopResponseForwardingSentInCurrentGroupMin).max(startAdvertisingForwardLoopResponseForwardingSentInCurrentGroupMax).default(startAdvertisingForwardLoopResponseForwardingSentInCurrentGroupDefault),
   "running": zod.boolean(),
   "groupIds": zod.array(zod.string().uuid()),
   "nextGroupId": zod.string().uuid().nullable(),
@@ -1318,6 +1425,7 @@ export const StartAdvertisingForwardLoopResponse = zod.object({
   "fingerprint": zod.string().regex(startAdvertisingForwardLoopResponseDraftForwardSourceFingerprintRegExp)
 }),
   "intervalSeconds": zod.number().int().min(startAdvertisingForwardLoopResponseDraftForwardIntervalSecondsMin).max(startAdvertisingForwardLoopResponseDraftForwardIntervalSecondsMax),
+  "messagesPerGroup": zod.number().int().min(1).max(startAdvertisingForwardLoopResponseDraftForwardMessagesPerGroupMax).default(startAdvertisingForwardLoopResponseDraftForwardMessagesPerGroupDefault),
   "planId": zod.string().uuid(),
   "order": zod.number().int().min(startAdvertisingForwardLoopResponseDraftForwardOrderMin).max(startAdvertisingForwardLoopResponseDraftForwardOrderMax)
 }).optional()
@@ -1378,6 +1486,13 @@ export const disconnectAdvertisingAccountResponseForwardingSourceOneAccountIdReg
 export const disconnectAdvertisingAccountResponseForwardingSourceOneTextMax = 4096;
 
 export const disconnectAdvertisingAccountResponseForwardingSourceOneFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const disconnectAdvertisingAccountResponseForwardingMessagesPerGroupDefault = 1;
+export const disconnectAdvertisingAccountResponseForwardingMessagesPerGroupMax = 10;
+
+export const disconnectAdvertisingAccountResponseForwardingSentInCurrentGroupDefault = 0;
+export const disconnectAdvertisingAccountResponseForwardingSentInCurrentGroupMin = 0;
+export const disconnectAdvertisingAccountResponseForwardingSentInCurrentGroupMax = 9;
+
 export const disconnectAdvertisingAccountResponseDraftTextMax = 4096;
 
 export const disconnectAdvertisingAccountResponseDraftImageUrlMax = 2048;
@@ -1403,6 +1518,9 @@ export const disconnectAdvertisingAccountResponseDraftForwardSourceFingerprintRe
 export const disconnectAdvertisingAccountResponseDraftForwardIntervalSecondsMin = 60;
 export const disconnectAdvertisingAccountResponseDraftForwardIntervalSecondsMax = 2592000;
 
+export const disconnectAdvertisingAccountResponseDraftForwardMessagesPerGroupDefault = 1;
+export const disconnectAdvertisingAccountResponseDraftForwardMessagesPerGroupMax = 10;
+
 export const disconnectAdvertisingAccountResponseDraftForwardOrderMin = 0;
 export const disconnectAdvertisingAccountResponseDraftForwardOrderMax = 499;
 
@@ -1424,6 +1542,8 @@ export const DisconnectAdvertisingAccountResponse = zod.object({
   "fingerprint": zod.string().regex(disconnectAdvertisingAccountResponseForwardingSourceOneFingerprintRegExp)
 }),zod.null()]),
   "intervalSeconds": zod.number().int(),
+  "messagesPerGroup": zod.number().int().min(1).max(disconnectAdvertisingAccountResponseForwardingMessagesPerGroupMax).default(disconnectAdvertisingAccountResponseForwardingMessagesPerGroupDefault),
+  "sentInCurrentGroup": zod.number().int().min(disconnectAdvertisingAccountResponseForwardingSentInCurrentGroupMin).max(disconnectAdvertisingAccountResponseForwardingSentInCurrentGroupMax).default(disconnectAdvertisingAccountResponseForwardingSentInCurrentGroupDefault),
   "running": zod.boolean(),
   "groupIds": zod.array(zod.string().uuid()),
   "nextGroupId": zod.string().uuid().nullable(),
@@ -1487,6 +1607,7 @@ export const DisconnectAdvertisingAccountResponse = zod.object({
   "fingerprint": zod.string().regex(disconnectAdvertisingAccountResponseDraftForwardSourceFingerprintRegExp)
 }),
   "intervalSeconds": zod.number().int().min(disconnectAdvertisingAccountResponseDraftForwardIntervalSecondsMin).max(disconnectAdvertisingAccountResponseDraftForwardIntervalSecondsMax),
+  "messagesPerGroup": zod.number().int().min(1).max(disconnectAdvertisingAccountResponseDraftForwardMessagesPerGroupMax).default(disconnectAdvertisingAccountResponseDraftForwardMessagesPerGroupDefault),
   "planId": zod.string().uuid(),
   "order": zod.number().int().min(disconnectAdvertisingAccountResponseDraftForwardOrderMin).max(disconnectAdvertisingAccountResponseDraftForwardOrderMax)
 }).optional()
@@ -1557,6 +1678,9 @@ export const startAdvertisingAccountSchedulesBodyDraftForwardSourceFingerprintRe
 export const startAdvertisingAccountSchedulesBodyDraftForwardIntervalSecondsMin = 60;
 export const startAdvertisingAccountSchedulesBodyDraftForwardIntervalSecondsMax = 2592000;
 
+export const startAdvertisingAccountSchedulesBodyDraftForwardMessagesPerGroupDefault = 1;
+export const startAdvertisingAccountSchedulesBodyDraftForwardMessagesPerGroupMax = 10;
+
 export const startAdvertisingAccountSchedulesBodyDraftForwardOrderMin = 0;
 export const startAdvertisingAccountSchedulesBodyDraftForwardOrderMax = 499;
 
@@ -1594,6 +1718,7 @@ export const StartAdvertisingAccountSchedulesBody = zod.object({
   "fingerprint": zod.string().regex(startAdvertisingAccountSchedulesBodyDraftForwardSourceFingerprintRegExp)
 }),
   "intervalSeconds": zod.number().int().min(startAdvertisingAccountSchedulesBodyDraftForwardIntervalSecondsMin).max(startAdvertisingAccountSchedulesBodyDraftForwardIntervalSecondsMax),
+  "messagesPerGroup": zod.number().int().min(1).max(startAdvertisingAccountSchedulesBodyDraftForwardMessagesPerGroupMax).default(startAdvertisingAccountSchedulesBodyDraftForwardMessagesPerGroupDefault),
   "planId": zod.string().uuid(),
   "order": zod.number().int().min(startAdvertisingAccountSchedulesBodyDraftForwardOrderMin).max(startAdvertisingAccountSchedulesBodyDraftForwardOrderMax)
 }).optional()
@@ -1608,6 +1733,13 @@ export const startAdvertisingAccountSchedulesResponseForwardingSourceOneAccountI
 export const startAdvertisingAccountSchedulesResponseForwardingSourceOneTextMax = 4096;
 
 export const startAdvertisingAccountSchedulesResponseForwardingSourceOneFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const startAdvertisingAccountSchedulesResponseForwardingMessagesPerGroupDefault = 1;
+export const startAdvertisingAccountSchedulesResponseForwardingMessagesPerGroupMax = 10;
+
+export const startAdvertisingAccountSchedulesResponseForwardingSentInCurrentGroupDefault = 0;
+export const startAdvertisingAccountSchedulesResponseForwardingSentInCurrentGroupMin = 0;
+export const startAdvertisingAccountSchedulesResponseForwardingSentInCurrentGroupMax = 9;
+
 export const startAdvertisingAccountSchedulesResponseDraftTextMax = 4096;
 
 export const startAdvertisingAccountSchedulesResponseDraftImageUrlMax = 2048;
@@ -1633,6 +1765,9 @@ export const startAdvertisingAccountSchedulesResponseDraftForwardSourceFingerpri
 export const startAdvertisingAccountSchedulesResponseDraftForwardIntervalSecondsMin = 60;
 export const startAdvertisingAccountSchedulesResponseDraftForwardIntervalSecondsMax = 2592000;
 
+export const startAdvertisingAccountSchedulesResponseDraftForwardMessagesPerGroupDefault = 1;
+export const startAdvertisingAccountSchedulesResponseDraftForwardMessagesPerGroupMax = 10;
+
 export const startAdvertisingAccountSchedulesResponseDraftForwardOrderMin = 0;
 export const startAdvertisingAccountSchedulesResponseDraftForwardOrderMax = 499;
 
@@ -1654,6 +1789,8 @@ export const StartAdvertisingAccountSchedulesResponse = zod.object({
   "fingerprint": zod.string().regex(startAdvertisingAccountSchedulesResponseForwardingSourceOneFingerprintRegExp)
 }),zod.null()]),
   "intervalSeconds": zod.number().int(),
+  "messagesPerGroup": zod.number().int().min(1).max(startAdvertisingAccountSchedulesResponseForwardingMessagesPerGroupMax).default(startAdvertisingAccountSchedulesResponseForwardingMessagesPerGroupDefault),
+  "sentInCurrentGroup": zod.number().int().min(startAdvertisingAccountSchedulesResponseForwardingSentInCurrentGroupMin).max(startAdvertisingAccountSchedulesResponseForwardingSentInCurrentGroupMax).default(startAdvertisingAccountSchedulesResponseForwardingSentInCurrentGroupDefault),
   "running": zod.boolean(),
   "groupIds": zod.array(zod.string().uuid()),
   "nextGroupId": zod.string().uuid().nullable(),
@@ -1717,6 +1854,7 @@ export const StartAdvertisingAccountSchedulesResponse = zod.object({
   "fingerprint": zod.string().regex(startAdvertisingAccountSchedulesResponseDraftForwardSourceFingerprintRegExp)
 }),
   "intervalSeconds": zod.number().int().min(startAdvertisingAccountSchedulesResponseDraftForwardIntervalSecondsMin).max(startAdvertisingAccountSchedulesResponseDraftForwardIntervalSecondsMax),
+  "messagesPerGroup": zod.number().int().min(1).max(startAdvertisingAccountSchedulesResponseDraftForwardMessagesPerGroupMax).default(startAdvertisingAccountSchedulesResponseDraftForwardMessagesPerGroupDefault),
   "planId": zod.string().uuid(),
   "order": zod.number().int().min(startAdvertisingAccountSchedulesResponseDraftForwardOrderMin).max(startAdvertisingAccountSchedulesResponseDraftForwardOrderMax)
 }).optional()
@@ -1767,6 +1905,13 @@ export const stopAdvertisingAccountSchedulesResponseForwardingSourceOneAccountId
 export const stopAdvertisingAccountSchedulesResponseForwardingSourceOneTextMax = 4096;
 
 export const stopAdvertisingAccountSchedulesResponseForwardingSourceOneFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const stopAdvertisingAccountSchedulesResponseForwardingMessagesPerGroupDefault = 1;
+export const stopAdvertisingAccountSchedulesResponseForwardingMessagesPerGroupMax = 10;
+
+export const stopAdvertisingAccountSchedulesResponseForwardingSentInCurrentGroupDefault = 0;
+export const stopAdvertisingAccountSchedulesResponseForwardingSentInCurrentGroupMin = 0;
+export const stopAdvertisingAccountSchedulesResponseForwardingSentInCurrentGroupMax = 9;
+
 export const stopAdvertisingAccountSchedulesResponseDraftTextMax = 4096;
 
 export const stopAdvertisingAccountSchedulesResponseDraftImageUrlMax = 2048;
@@ -1792,6 +1937,9 @@ export const stopAdvertisingAccountSchedulesResponseDraftForwardSourceFingerprin
 export const stopAdvertisingAccountSchedulesResponseDraftForwardIntervalSecondsMin = 60;
 export const stopAdvertisingAccountSchedulesResponseDraftForwardIntervalSecondsMax = 2592000;
 
+export const stopAdvertisingAccountSchedulesResponseDraftForwardMessagesPerGroupDefault = 1;
+export const stopAdvertisingAccountSchedulesResponseDraftForwardMessagesPerGroupMax = 10;
+
 export const stopAdvertisingAccountSchedulesResponseDraftForwardOrderMin = 0;
 export const stopAdvertisingAccountSchedulesResponseDraftForwardOrderMax = 499;
 
@@ -1813,6 +1961,8 @@ export const StopAdvertisingAccountSchedulesResponse = zod.object({
   "fingerprint": zod.string().regex(stopAdvertisingAccountSchedulesResponseForwardingSourceOneFingerprintRegExp)
 }),zod.null()]),
   "intervalSeconds": zod.number().int(),
+  "messagesPerGroup": zod.number().int().min(1).max(stopAdvertisingAccountSchedulesResponseForwardingMessagesPerGroupMax).default(stopAdvertisingAccountSchedulesResponseForwardingMessagesPerGroupDefault),
+  "sentInCurrentGroup": zod.number().int().min(stopAdvertisingAccountSchedulesResponseForwardingSentInCurrentGroupMin).max(stopAdvertisingAccountSchedulesResponseForwardingSentInCurrentGroupMax).default(stopAdvertisingAccountSchedulesResponseForwardingSentInCurrentGroupDefault),
   "running": zod.boolean(),
   "groupIds": zod.array(zod.string().uuid()),
   "nextGroupId": zod.string().uuid().nullable(),
@@ -1876,6 +2026,7 @@ export const StopAdvertisingAccountSchedulesResponse = zod.object({
   "fingerprint": zod.string().regex(stopAdvertisingAccountSchedulesResponseDraftForwardSourceFingerprintRegExp)
 }),
   "intervalSeconds": zod.number().int().min(stopAdvertisingAccountSchedulesResponseDraftForwardIntervalSecondsMin).max(stopAdvertisingAccountSchedulesResponseDraftForwardIntervalSecondsMax),
+  "messagesPerGroup": zod.number().int().min(1).max(stopAdvertisingAccountSchedulesResponseDraftForwardMessagesPerGroupMax).default(stopAdvertisingAccountSchedulesResponseDraftForwardMessagesPerGroupDefault),
   "planId": zod.string().uuid(),
   "order": zod.number().int().min(stopAdvertisingAccountSchedulesResponseDraftForwardOrderMin).max(stopAdvertisingAccountSchedulesResponseDraftForwardOrderMax)
 }).optional()
@@ -1918,6 +2069,13 @@ export const stopAllAdvertisingAccountSchedulesResponseForwardingSourceOneAccoun
 export const stopAllAdvertisingAccountSchedulesResponseForwardingSourceOneTextMax = 4096;
 
 export const stopAllAdvertisingAccountSchedulesResponseForwardingSourceOneFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const stopAllAdvertisingAccountSchedulesResponseForwardingMessagesPerGroupDefault = 1;
+export const stopAllAdvertisingAccountSchedulesResponseForwardingMessagesPerGroupMax = 10;
+
+export const stopAllAdvertisingAccountSchedulesResponseForwardingSentInCurrentGroupDefault = 0;
+export const stopAllAdvertisingAccountSchedulesResponseForwardingSentInCurrentGroupMin = 0;
+export const stopAllAdvertisingAccountSchedulesResponseForwardingSentInCurrentGroupMax = 9;
+
 export const stopAllAdvertisingAccountSchedulesResponseDraftTextMax = 4096;
 
 export const stopAllAdvertisingAccountSchedulesResponseDraftImageUrlMax = 2048;
@@ -1943,6 +2101,9 @@ export const stopAllAdvertisingAccountSchedulesResponseDraftForwardSourceFingerp
 export const stopAllAdvertisingAccountSchedulesResponseDraftForwardIntervalSecondsMin = 60;
 export const stopAllAdvertisingAccountSchedulesResponseDraftForwardIntervalSecondsMax = 2592000;
 
+export const stopAllAdvertisingAccountSchedulesResponseDraftForwardMessagesPerGroupDefault = 1;
+export const stopAllAdvertisingAccountSchedulesResponseDraftForwardMessagesPerGroupMax = 10;
+
 export const stopAllAdvertisingAccountSchedulesResponseDraftForwardOrderMin = 0;
 export const stopAllAdvertisingAccountSchedulesResponseDraftForwardOrderMax = 499;
 
@@ -1964,6 +2125,8 @@ export const StopAllAdvertisingAccountSchedulesResponse = zod.object({
   "fingerprint": zod.string().regex(stopAllAdvertisingAccountSchedulesResponseForwardingSourceOneFingerprintRegExp)
 }),zod.null()]),
   "intervalSeconds": zod.number().int(),
+  "messagesPerGroup": zod.number().int().min(1).max(stopAllAdvertisingAccountSchedulesResponseForwardingMessagesPerGroupMax).default(stopAllAdvertisingAccountSchedulesResponseForwardingMessagesPerGroupDefault),
+  "sentInCurrentGroup": zod.number().int().min(stopAllAdvertisingAccountSchedulesResponseForwardingSentInCurrentGroupMin).max(stopAllAdvertisingAccountSchedulesResponseForwardingSentInCurrentGroupMax).default(stopAllAdvertisingAccountSchedulesResponseForwardingSentInCurrentGroupDefault),
   "running": zod.boolean(),
   "groupIds": zod.array(zod.string().uuid()),
   "nextGroupId": zod.string().uuid().nullable(),
@@ -2027,6 +2190,7 @@ export const StopAllAdvertisingAccountSchedulesResponse = zod.object({
   "fingerprint": zod.string().regex(stopAllAdvertisingAccountSchedulesResponseDraftForwardSourceFingerprintRegExp)
 }),
   "intervalSeconds": zod.number().int().min(stopAllAdvertisingAccountSchedulesResponseDraftForwardIntervalSecondsMin).max(stopAllAdvertisingAccountSchedulesResponseDraftForwardIntervalSecondsMax),
+  "messagesPerGroup": zod.number().int().min(1).max(stopAllAdvertisingAccountSchedulesResponseDraftForwardMessagesPerGroupMax).default(stopAllAdvertisingAccountSchedulesResponseDraftForwardMessagesPerGroupDefault),
   "planId": zod.string().uuid(),
   "order": zod.number().int().min(stopAllAdvertisingAccountSchedulesResponseDraftForwardOrderMin).max(stopAllAdvertisingAccountSchedulesResponseDraftForwardOrderMax)
 }).optional()
@@ -2069,6 +2233,13 @@ export const getAdvertisingWorkspaceResponseForwardingSourceOneAccountIdRegExp =
 export const getAdvertisingWorkspaceResponseForwardingSourceOneTextMax = 4096;
 
 export const getAdvertisingWorkspaceResponseForwardingSourceOneFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const getAdvertisingWorkspaceResponseForwardingMessagesPerGroupDefault = 1;
+export const getAdvertisingWorkspaceResponseForwardingMessagesPerGroupMax = 10;
+
+export const getAdvertisingWorkspaceResponseForwardingSentInCurrentGroupDefault = 0;
+export const getAdvertisingWorkspaceResponseForwardingSentInCurrentGroupMin = 0;
+export const getAdvertisingWorkspaceResponseForwardingSentInCurrentGroupMax = 9;
+
 export const getAdvertisingWorkspaceResponseDraftTextMax = 4096;
 
 export const getAdvertisingWorkspaceResponseDraftImageUrlMax = 2048;
@@ -2094,6 +2265,9 @@ export const getAdvertisingWorkspaceResponseDraftForwardSourceFingerprintRegExp 
 export const getAdvertisingWorkspaceResponseDraftForwardIntervalSecondsMin = 60;
 export const getAdvertisingWorkspaceResponseDraftForwardIntervalSecondsMax = 2592000;
 
+export const getAdvertisingWorkspaceResponseDraftForwardMessagesPerGroupDefault = 1;
+export const getAdvertisingWorkspaceResponseDraftForwardMessagesPerGroupMax = 10;
+
 export const getAdvertisingWorkspaceResponseDraftForwardOrderMin = 0;
 export const getAdvertisingWorkspaceResponseDraftForwardOrderMax = 499;
 
@@ -2115,6 +2289,8 @@ export const GetAdvertisingWorkspaceResponse = zod.object({
   "fingerprint": zod.string().regex(getAdvertisingWorkspaceResponseForwardingSourceOneFingerprintRegExp)
 }),zod.null()]),
   "intervalSeconds": zod.number().int(),
+  "messagesPerGroup": zod.number().int().min(1).max(getAdvertisingWorkspaceResponseForwardingMessagesPerGroupMax).default(getAdvertisingWorkspaceResponseForwardingMessagesPerGroupDefault),
+  "sentInCurrentGroup": zod.number().int().min(getAdvertisingWorkspaceResponseForwardingSentInCurrentGroupMin).max(getAdvertisingWorkspaceResponseForwardingSentInCurrentGroupMax).default(getAdvertisingWorkspaceResponseForwardingSentInCurrentGroupDefault),
   "running": zod.boolean(),
   "groupIds": zod.array(zod.string().uuid()),
   "nextGroupId": zod.string().uuid().nullable(),
@@ -2178,6 +2354,7 @@ export const GetAdvertisingWorkspaceResponse = zod.object({
   "fingerprint": zod.string().regex(getAdvertisingWorkspaceResponseDraftForwardSourceFingerprintRegExp)
 }),
   "intervalSeconds": zod.number().int().min(getAdvertisingWorkspaceResponseDraftForwardIntervalSecondsMin).max(getAdvertisingWorkspaceResponseDraftForwardIntervalSecondsMax),
+  "messagesPerGroup": zod.number().int().min(1).max(getAdvertisingWorkspaceResponseDraftForwardMessagesPerGroupMax).default(getAdvertisingWorkspaceResponseDraftForwardMessagesPerGroupDefault),
   "planId": zod.string().uuid(),
   "order": zod.number().int().min(getAdvertisingWorkspaceResponseDraftForwardOrderMin).max(getAdvertisingWorkspaceResponseDraftForwardOrderMax)
 }).optional()
@@ -2229,6 +2406,13 @@ export const connectAdvertisingBotResponseForwardingSourceOneAccountIdRegExp = n
 export const connectAdvertisingBotResponseForwardingSourceOneTextMax = 4096;
 
 export const connectAdvertisingBotResponseForwardingSourceOneFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const connectAdvertisingBotResponseForwardingMessagesPerGroupDefault = 1;
+export const connectAdvertisingBotResponseForwardingMessagesPerGroupMax = 10;
+
+export const connectAdvertisingBotResponseForwardingSentInCurrentGroupDefault = 0;
+export const connectAdvertisingBotResponseForwardingSentInCurrentGroupMin = 0;
+export const connectAdvertisingBotResponseForwardingSentInCurrentGroupMax = 9;
+
 export const connectAdvertisingBotResponseDraftTextMax = 4096;
 
 export const connectAdvertisingBotResponseDraftImageUrlMax = 2048;
@@ -2254,6 +2438,9 @@ export const connectAdvertisingBotResponseDraftForwardSourceFingerprintRegExp = 
 export const connectAdvertisingBotResponseDraftForwardIntervalSecondsMin = 60;
 export const connectAdvertisingBotResponseDraftForwardIntervalSecondsMax = 2592000;
 
+export const connectAdvertisingBotResponseDraftForwardMessagesPerGroupDefault = 1;
+export const connectAdvertisingBotResponseDraftForwardMessagesPerGroupMax = 10;
+
 export const connectAdvertisingBotResponseDraftForwardOrderMin = 0;
 export const connectAdvertisingBotResponseDraftForwardOrderMax = 499;
 
@@ -2275,6 +2462,8 @@ export const ConnectAdvertisingBotResponse = zod.object({
   "fingerprint": zod.string().regex(connectAdvertisingBotResponseForwardingSourceOneFingerprintRegExp)
 }),zod.null()]),
   "intervalSeconds": zod.number().int(),
+  "messagesPerGroup": zod.number().int().min(1).max(connectAdvertisingBotResponseForwardingMessagesPerGroupMax).default(connectAdvertisingBotResponseForwardingMessagesPerGroupDefault),
+  "sentInCurrentGroup": zod.number().int().min(connectAdvertisingBotResponseForwardingSentInCurrentGroupMin).max(connectAdvertisingBotResponseForwardingSentInCurrentGroupMax).default(connectAdvertisingBotResponseForwardingSentInCurrentGroupDefault),
   "running": zod.boolean(),
   "groupIds": zod.array(zod.string().uuid()),
   "nextGroupId": zod.string().uuid().nullable(),
@@ -2338,6 +2527,7 @@ export const ConnectAdvertisingBotResponse = zod.object({
   "fingerprint": zod.string().regex(connectAdvertisingBotResponseDraftForwardSourceFingerprintRegExp)
 }),
   "intervalSeconds": zod.number().int().min(connectAdvertisingBotResponseDraftForwardIntervalSecondsMin).max(connectAdvertisingBotResponseDraftForwardIntervalSecondsMax),
+  "messagesPerGroup": zod.number().int().min(1).max(connectAdvertisingBotResponseDraftForwardMessagesPerGroupMax).default(connectAdvertisingBotResponseDraftForwardMessagesPerGroupDefault),
   "planId": zod.string().uuid(),
   "order": zod.number().int().min(connectAdvertisingBotResponseDraftForwardOrderMin).max(connectAdvertisingBotResponseDraftForwardOrderMax)
 }).optional()
@@ -2380,6 +2570,13 @@ export const disconnectAdvertisingBotResponseForwardingSourceOneAccountIdRegExp 
 export const disconnectAdvertisingBotResponseForwardingSourceOneTextMax = 4096;
 
 export const disconnectAdvertisingBotResponseForwardingSourceOneFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const disconnectAdvertisingBotResponseForwardingMessagesPerGroupDefault = 1;
+export const disconnectAdvertisingBotResponseForwardingMessagesPerGroupMax = 10;
+
+export const disconnectAdvertisingBotResponseForwardingSentInCurrentGroupDefault = 0;
+export const disconnectAdvertisingBotResponseForwardingSentInCurrentGroupMin = 0;
+export const disconnectAdvertisingBotResponseForwardingSentInCurrentGroupMax = 9;
+
 export const disconnectAdvertisingBotResponseDraftTextMax = 4096;
 
 export const disconnectAdvertisingBotResponseDraftImageUrlMax = 2048;
@@ -2405,6 +2602,9 @@ export const disconnectAdvertisingBotResponseDraftForwardSourceFingerprintRegExp
 export const disconnectAdvertisingBotResponseDraftForwardIntervalSecondsMin = 60;
 export const disconnectAdvertisingBotResponseDraftForwardIntervalSecondsMax = 2592000;
 
+export const disconnectAdvertisingBotResponseDraftForwardMessagesPerGroupDefault = 1;
+export const disconnectAdvertisingBotResponseDraftForwardMessagesPerGroupMax = 10;
+
 export const disconnectAdvertisingBotResponseDraftForwardOrderMin = 0;
 export const disconnectAdvertisingBotResponseDraftForwardOrderMax = 499;
 
@@ -2426,6 +2626,8 @@ export const DisconnectAdvertisingBotResponse = zod.object({
   "fingerprint": zod.string().regex(disconnectAdvertisingBotResponseForwardingSourceOneFingerprintRegExp)
 }),zod.null()]),
   "intervalSeconds": zod.number().int(),
+  "messagesPerGroup": zod.number().int().min(1).max(disconnectAdvertisingBotResponseForwardingMessagesPerGroupMax).default(disconnectAdvertisingBotResponseForwardingMessagesPerGroupDefault),
+  "sentInCurrentGroup": zod.number().int().min(disconnectAdvertisingBotResponseForwardingSentInCurrentGroupMin).max(disconnectAdvertisingBotResponseForwardingSentInCurrentGroupMax).default(disconnectAdvertisingBotResponseForwardingSentInCurrentGroupDefault),
   "running": zod.boolean(),
   "groupIds": zod.array(zod.string().uuid()),
   "nextGroupId": zod.string().uuid().nullable(),
@@ -2489,6 +2691,7 @@ export const DisconnectAdvertisingBotResponse = zod.object({
   "fingerprint": zod.string().regex(disconnectAdvertisingBotResponseDraftForwardSourceFingerprintRegExp)
 }),
   "intervalSeconds": zod.number().int().min(disconnectAdvertisingBotResponseDraftForwardIntervalSecondsMin).max(disconnectAdvertisingBotResponseDraftForwardIntervalSecondsMax),
+  "messagesPerGroup": zod.number().int().min(1).max(disconnectAdvertisingBotResponseDraftForwardMessagesPerGroupMax).default(disconnectAdvertisingBotResponseDraftForwardMessagesPerGroupDefault),
   "planId": zod.string().uuid(),
   "order": zod.number().int().min(disconnectAdvertisingBotResponseDraftForwardOrderMin).max(disconnectAdvertisingBotResponseDraftForwardOrderMax)
 }).optional()
@@ -2531,6 +2734,13 @@ export const checkAdvertisingBotResponseForwardingSourceOneAccountIdRegExp = new
 export const checkAdvertisingBotResponseForwardingSourceOneTextMax = 4096;
 
 export const checkAdvertisingBotResponseForwardingSourceOneFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const checkAdvertisingBotResponseForwardingMessagesPerGroupDefault = 1;
+export const checkAdvertisingBotResponseForwardingMessagesPerGroupMax = 10;
+
+export const checkAdvertisingBotResponseForwardingSentInCurrentGroupDefault = 0;
+export const checkAdvertisingBotResponseForwardingSentInCurrentGroupMin = 0;
+export const checkAdvertisingBotResponseForwardingSentInCurrentGroupMax = 9;
+
 export const checkAdvertisingBotResponseDraftTextMax = 4096;
 
 export const checkAdvertisingBotResponseDraftImageUrlMax = 2048;
@@ -2556,6 +2766,9 @@ export const checkAdvertisingBotResponseDraftForwardSourceFingerprintRegExp = ne
 export const checkAdvertisingBotResponseDraftForwardIntervalSecondsMin = 60;
 export const checkAdvertisingBotResponseDraftForwardIntervalSecondsMax = 2592000;
 
+export const checkAdvertisingBotResponseDraftForwardMessagesPerGroupDefault = 1;
+export const checkAdvertisingBotResponseDraftForwardMessagesPerGroupMax = 10;
+
 export const checkAdvertisingBotResponseDraftForwardOrderMin = 0;
 export const checkAdvertisingBotResponseDraftForwardOrderMax = 499;
 
@@ -2577,6 +2790,8 @@ export const CheckAdvertisingBotResponse = zod.object({
   "fingerprint": zod.string().regex(checkAdvertisingBotResponseForwardingSourceOneFingerprintRegExp)
 }),zod.null()]),
   "intervalSeconds": zod.number().int(),
+  "messagesPerGroup": zod.number().int().min(1).max(checkAdvertisingBotResponseForwardingMessagesPerGroupMax).default(checkAdvertisingBotResponseForwardingMessagesPerGroupDefault),
+  "sentInCurrentGroup": zod.number().int().min(checkAdvertisingBotResponseForwardingSentInCurrentGroupMin).max(checkAdvertisingBotResponseForwardingSentInCurrentGroupMax).default(checkAdvertisingBotResponseForwardingSentInCurrentGroupDefault),
   "running": zod.boolean(),
   "groupIds": zod.array(zod.string().uuid()),
   "nextGroupId": zod.string().uuid().nullable(),
@@ -2640,6 +2855,7 @@ export const CheckAdvertisingBotResponse = zod.object({
   "fingerprint": zod.string().regex(checkAdvertisingBotResponseDraftForwardSourceFingerprintRegExp)
 }),
   "intervalSeconds": zod.number().int().min(checkAdvertisingBotResponseDraftForwardIntervalSecondsMin).max(checkAdvertisingBotResponseDraftForwardIntervalSecondsMax),
+  "messagesPerGroup": zod.number().int().min(1).max(checkAdvertisingBotResponseDraftForwardMessagesPerGroupMax).default(checkAdvertisingBotResponseDraftForwardMessagesPerGroupDefault),
   "planId": zod.string().uuid(),
   "order": zod.number().int().min(checkAdvertisingBotResponseDraftForwardOrderMin).max(checkAdvertisingBotResponseDraftForwardOrderMax)
 }).optional()
@@ -2682,6 +2898,13 @@ export const discoverAdvertisingGroupsResponseForwardingSourceOneAccountIdRegExp
 export const discoverAdvertisingGroupsResponseForwardingSourceOneTextMax = 4096;
 
 export const discoverAdvertisingGroupsResponseForwardingSourceOneFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const discoverAdvertisingGroupsResponseForwardingMessagesPerGroupDefault = 1;
+export const discoverAdvertisingGroupsResponseForwardingMessagesPerGroupMax = 10;
+
+export const discoverAdvertisingGroupsResponseForwardingSentInCurrentGroupDefault = 0;
+export const discoverAdvertisingGroupsResponseForwardingSentInCurrentGroupMin = 0;
+export const discoverAdvertisingGroupsResponseForwardingSentInCurrentGroupMax = 9;
+
 export const discoverAdvertisingGroupsResponseDraftTextMax = 4096;
 
 export const discoverAdvertisingGroupsResponseDraftImageUrlMax = 2048;
@@ -2707,6 +2930,9 @@ export const discoverAdvertisingGroupsResponseDraftForwardSourceFingerprintRegEx
 export const discoverAdvertisingGroupsResponseDraftForwardIntervalSecondsMin = 60;
 export const discoverAdvertisingGroupsResponseDraftForwardIntervalSecondsMax = 2592000;
 
+export const discoverAdvertisingGroupsResponseDraftForwardMessagesPerGroupDefault = 1;
+export const discoverAdvertisingGroupsResponseDraftForwardMessagesPerGroupMax = 10;
+
 export const discoverAdvertisingGroupsResponseDraftForwardOrderMin = 0;
 export const discoverAdvertisingGroupsResponseDraftForwardOrderMax = 499;
 
@@ -2728,6 +2954,8 @@ export const DiscoverAdvertisingGroupsResponse = zod.object({
   "fingerprint": zod.string().regex(discoverAdvertisingGroupsResponseForwardingSourceOneFingerprintRegExp)
 }),zod.null()]),
   "intervalSeconds": zod.number().int(),
+  "messagesPerGroup": zod.number().int().min(1).max(discoverAdvertisingGroupsResponseForwardingMessagesPerGroupMax).default(discoverAdvertisingGroupsResponseForwardingMessagesPerGroupDefault),
+  "sentInCurrentGroup": zod.number().int().min(discoverAdvertisingGroupsResponseForwardingSentInCurrentGroupMin).max(discoverAdvertisingGroupsResponseForwardingSentInCurrentGroupMax).default(discoverAdvertisingGroupsResponseForwardingSentInCurrentGroupDefault),
   "running": zod.boolean(),
   "groupIds": zod.array(zod.string().uuid()),
   "nextGroupId": zod.string().uuid().nullable(),
@@ -2791,6 +3019,7 @@ export const DiscoverAdvertisingGroupsResponse = zod.object({
   "fingerprint": zod.string().regex(discoverAdvertisingGroupsResponseDraftForwardSourceFingerprintRegExp)
 }),
   "intervalSeconds": zod.number().int().min(discoverAdvertisingGroupsResponseDraftForwardIntervalSecondsMin).max(discoverAdvertisingGroupsResponseDraftForwardIntervalSecondsMax),
+  "messagesPerGroup": zod.number().int().min(1).max(discoverAdvertisingGroupsResponseDraftForwardMessagesPerGroupMax).default(discoverAdvertisingGroupsResponseDraftForwardMessagesPerGroupDefault),
   "planId": zod.string().uuid(),
   "order": zod.number().int().min(discoverAdvertisingGroupsResponseDraftForwardOrderMin).max(discoverAdvertisingGroupsResponseDraftForwardOrderMax)
 }).optional()
@@ -2863,6 +3092,13 @@ export const addAdvertisingGroupsResponseForwardingSourceOneAccountIdRegExp = ne
 export const addAdvertisingGroupsResponseForwardingSourceOneTextMax = 4096;
 
 export const addAdvertisingGroupsResponseForwardingSourceOneFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const addAdvertisingGroupsResponseForwardingMessagesPerGroupDefault = 1;
+export const addAdvertisingGroupsResponseForwardingMessagesPerGroupMax = 10;
+
+export const addAdvertisingGroupsResponseForwardingSentInCurrentGroupDefault = 0;
+export const addAdvertisingGroupsResponseForwardingSentInCurrentGroupMin = 0;
+export const addAdvertisingGroupsResponseForwardingSentInCurrentGroupMax = 9;
+
 export const addAdvertisingGroupsResponseDraftTextMax = 4096;
 
 export const addAdvertisingGroupsResponseDraftImageUrlMax = 2048;
@@ -2888,6 +3124,9 @@ export const addAdvertisingGroupsResponseDraftForwardSourceFingerprintRegExp = n
 export const addAdvertisingGroupsResponseDraftForwardIntervalSecondsMin = 60;
 export const addAdvertisingGroupsResponseDraftForwardIntervalSecondsMax = 2592000;
 
+export const addAdvertisingGroupsResponseDraftForwardMessagesPerGroupDefault = 1;
+export const addAdvertisingGroupsResponseDraftForwardMessagesPerGroupMax = 10;
+
 export const addAdvertisingGroupsResponseDraftForwardOrderMin = 0;
 export const addAdvertisingGroupsResponseDraftForwardOrderMax = 499;
 
@@ -2909,6 +3148,8 @@ export const AddAdvertisingGroupsResponse = zod.object({
   "fingerprint": zod.string().regex(addAdvertisingGroupsResponseForwardingSourceOneFingerprintRegExp)
 }),zod.null()]),
   "intervalSeconds": zod.number().int(),
+  "messagesPerGroup": zod.number().int().min(1).max(addAdvertisingGroupsResponseForwardingMessagesPerGroupMax).default(addAdvertisingGroupsResponseForwardingMessagesPerGroupDefault),
+  "sentInCurrentGroup": zod.number().int().min(addAdvertisingGroupsResponseForwardingSentInCurrentGroupMin).max(addAdvertisingGroupsResponseForwardingSentInCurrentGroupMax).default(addAdvertisingGroupsResponseForwardingSentInCurrentGroupDefault),
   "running": zod.boolean(),
   "groupIds": zod.array(zod.string().uuid()),
   "nextGroupId": zod.string().uuid().nullable(),
@@ -2972,6 +3213,7 @@ export const AddAdvertisingGroupsResponse = zod.object({
   "fingerprint": zod.string().regex(addAdvertisingGroupsResponseDraftForwardSourceFingerprintRegExp)
 }),
   "intervalSeconds": zod.number().int().min(addAdvertisingGroupsResponseDraftForwardIntervalSecondsMin).max(addAdvertisingGroupsResponseDraftForwardIntervalSecondsMax),
+  "messagesPerGroup": zod.number().int().min(1).max(addAdvertisingGroupsResponseDraftForwardMessagesPerGroupMax).default(addAdvertisingGroupsResponseDraftForwardMessagesPerGroupDefault),
   "planId": zod.string().uuid(),
   "order": zod.number().int().min(addAdvertisingGroupsResponseDraftForwardOrderMin).max(addAdvertisingGroupsResponseDraftForwardOrderMax)
 }).optional()
@@ -3022,6 +3264,13 @@ export const checkAdvertisingGroupsResponseForwardingSourceOneAccountIdRegExp = 
 export const checkAdvertisingGroupsResponseForwardingSourceOneTextMax = 4096;
 
 export const checkAdvertisingGroupsResponseForwardingSourceOneFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const checkAdvertisingGroupsResponseForwardingMessagesPerGroupDefault = 1;
+export const checkAdvertisingGroupsResponseForwardingMessagesPerGroupMax = 10;
+
+export const checkAdvertisingGroupsResponseForwardingSentInCurrentGroupDefault = 0;
+export const checkAdvertisingGroupsResponseForwardingSentInCurrentGroupMin = 0;
+export const checkAdvertisingGroupsResponseForwardingSentInCurrentGroupMax = 9;
+
 export const checkAdvertisingGroupsResponseDraftTextMax = 4096;
 
 export const checkAdvertisingGroupsResponseDraftImageUrlMax = 2048;
@@ -3047,6 +3296,9 @@ export const checkAdvertisingGroupsResponseDraftForwardSourceFingerprintRegExp =
 export const checkAdvertisingGroupsResponseDraftForwardIntervalSecondsMin = 60;
 export const checkAdvertisingGroupsResponseDraftForwardIntervalSecondsMax = 2592000;
 
+export const checkAdvertisingGroupsResponseDraftForwardMessagesPerGroupDefault = 1;
+export const checkAdvertisingGroupsResponseDraftForwardMessagesPerGroupMax = 10;
+
 export const checkAdvertisingGroupsResponseDraftForwardOrderMin = 0;
 export const checkAdvertisingGroupsResponseDraftForwardOrderMax = 499;
 
@@ -3068,6 +3320,8 @@ export const CheckAdvertisingGroupsResponse = zod.object({
   "fingerprint": zod.string().regex(checkAdvertisingGroupsResponseForwardingSourceOneFingerprintRegExp)
 }),zod.null()]),
   "intervalSeconds": zod.number().int(),
+  "messagesPerGroup": zod.number().int().min(1).max(checkAdvertisingGroupsResponseForwardingMessagesPerGroupMax).default(checkAdvertisingGroupsResponseForwardingMessagesPerGroupDefault),
+  "sentInCurrentGroup": zod.number().int().min(checkAdvertisingGroupsResponseForwardingSentInCurrentGroupMin).max(checkAdvertisingGroupsResponseForwardingSentInCurrentGroupMax).default(checkAdvertisingGroupsResponseForwardingSentInCurrentGroupDefault),
   "running": zod.boolean(),
   "groupIds": zod.array(zod.string().uuid()),
   "nextGroupId": zod.string().uuid().nullable(),
@@ -3131,6 +3385,7 @@ export const CheckAdvertisingGroupsResponse = zod.object({
   "fingerprint": zod.string().regex(checkAdvertisingGroupsResponseDraftForwardSourceFingerprintRegExp)
 }),
   "intervalSeconds": zod.number().int().min(checkAdvertisingGroupsResponseDraftForwardIntervalSecondsMin).max(checkAdvertisingGroupsResponseDraftForwardIntervalSecondsMax),
+  "messagesPerGroup": zod.number().int().min(1).max(checkAdvertisingGroupsResponseDraftForwardMessagesPerGroupMax).default(checkAdvertisingGroupsResponseDraftForwardMessagesPerGroupDefault),
   "planId": zod.string().uuid(),
   "order": zod.number().int().min(checkAdvertisingGroupsResponseDraftForwardOrderMin).max(checkAdvertisingGroupsResponseDraftForwardOrderMax)
 }).optional()
@@ -3190,6 +3445,13 @@ export const updateAdvertisingGroupResponseForwardingSourceOneAccountIdRegExp = 
 export const updateAdvertisingGroupResponseForwardingSourceOneTextMax = 4096;
 
 export const updateAdvertisingGroupResponseForwardingSourceOneFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const updateAdvertisingGroupResponseForwardingMessagesPerGroupDefault = 1;
+export const updateAdvertisingGroupResponseForwardingMessagesPerGroupMax = 10;
+
+export const updateAdvertisingGroupResponseForwardingSentInCurrentGroupDefault = 0;
+export const updateAdvertisingGroupResponseForwardingSentInCurrentGroupMin = 0;
+export const updateAdvertisingGroupResponseForwardingSentInCurrentGroupMax = 9;
+
 export const updateAdvertisingGroupResponseDraftTextMax = 4096;
 
 export const updateAdvertisingGroupResponseDraftImageUrlMax = 2048;
@@ -3215,6 +3477,9 @@ export const updateAdvertisingGroupResponseDraftForwardSourceFingerprintRegExp =
 export const updateAdvertisingGroupResponseDraftForwardIntervalSecondsMin = 60;
 export const updateAdvertisingGroupResponseDraftForwardIntervalSecondsMax = 2592000;
 
+export const updateAdvertisingGroupResponseDraftForwardMessagesPerGroupDefault = 1;
+export const updateAdvertisingGroupResponseDraftForwardMessagesPerGroupMax = 10;
+
 export const updateAdvertisingGroupResponseDraftForwardOrderMin = 0;
 export const updateAdvertisingGroupResponseDraftForwardOrderMax = 499;
 
@@ -3236,6 +3501,8 @@ export const UpdateAdvertisingGroupResponse = zod.object({
   "fingerprint": zod.string().regex(updateAdvertisingGroupResponseForwardingSourceOneFingerprintRegExp)
 }),zod.null()]),
   "intervalSeconds": zod.number().int(),
+  "messagesPerGroup": zod.number().int().min(1).max(updateAdvertisingGroupResponseForwardingMessagesPerGroupMax).default(updateAdvertisingGroupResponseForwardingMessagesPerGroupDefault),
+  "sentInCurrentGroup": zod.number().int().min(updateAdvertisingGroupResponseForwardingSentInCurrentGroupMin).max(updateAdvertisingGroupResponseForwardingSentInCurrentGroupMax).default(updateAdvertisingGroupResponseForwardingSentInCurrentGroupDefault),
   "running": zod.boolean(),
   "groupIds": zod.array(zod.string().uuid()),
   "nextGroupId": zod.string().uuid().nullable(),
@@ -3299,6 +3566,7 @@ export const UpdateAdvertisingGroupResponse = zod.object({
   "fingerprint": zod.string().regex(updateAdvertisingGroupResponseDraftForwardSourceFingerprintRegExp)
 }),
   "intervalSeconds": zod.number().int().min(updateAdvertisingGroupResponseDraftForwardIntervalSecondsMin).max(updateAdvertisingGroupResponseDraftForwardIntervalSecondsMax),
+  "messagesPerGroup": zod.number().int().min(1).max(updateAdvertisingGroupResponseDraftForwardMessagesPerGroupMax).default(updateAdvertisingGroupResponseDraftForwardMessagesPerGroupDefault),
   "planId": zod.string().uuid(),
   "order": zod.number().int().min(updateAdvertisingGroupResponseDraftForwardOrderMin).max(updateAdvertisingGroupResponseDraftForwardOrderMax)
 }).optional()
@@ -3345,6 +3613,13 @@ export const deleteAdvertisingGroupResponseForwardingSourceOneAccountIdRegExp = 
 export const deleteAdvertisingGroupResponseForwardingSourceOneTextMax = 4096;
 
 export const deleteAdvertisingGroupResponseForwardingSourceOneFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const deleteAdvertisingGroupResponseForwardingMessagesPerGroupDefault = 1;
+export const deleteAdvertisingGroupResponseForwardingMessagesPerGroupMax = 10;
+
+export const deleteAdvertisingGroupResponseForwardingSentInCurrentGroupDefault = 0;
+export const deleteAdvertisingGroupResponseForwardingSentInCurrentGroupMin = 0;
+export const deleteAdvertisingGroupResponseForwardingSentInCurrentGroupMax = 9;
+
 export const deleteAdvertisingGroupResponseDraftTextMax = 4096;
 
 export const deleteAdvertisingGroupResponseDraftImageUrlMax = 2048;
@@ -3370,6 +3645,9 @@ export const deleteAdvertisingGroupResponseDraftForwardSourceFingerprintRegExp =
 export const deleteAdvertisingGroupResponseDraftForwardIntervalSecondsMin = 60;
 export const deleteAdvertisingGroupResponseDraftForwardIntervalSecondsMax = 2592000;
 
+export const deleteAdvertisingGroupResponseDraftForwardMessagesPerGroupDefault = 1;
+export const deleteAdvertisingGroupResponseDraftForwardMessagesPerGroupMax = 10;
+
 export const deleteAdvertisingGroupResponseDraftForwardOrderMin = 0;
 export const deleteAdvertisingGroupResponseDraftForwardOrderMax = 499;
 
@@ -3391,6 +3669,8 @@ export const DeleteAdvertisingGroupResponse = zod.object({
   "fingerprint": zod.string().regex(deleteAdvertisingGroupResponseForwardingSourceOneFingerprintRegExp)
 }),zod.null()]),
   "intervalSeconds": zod.number().int(),
+  "messagesPerGroup": zod.number().int().min(1).max(deleteAdvertisingGroupResponseForwardingMessagesPerGroupMax).default(deleteAdvertisingGroupResponseForwardingMessagesPerGroupDefault),
+  "sentInCurrentGroup": zod.number().int().min(deleteAdvertisingGroupResponseForwardingSentInCurrentGroupMin).max(deleteAdvertisingGroupResponseForwardingSentInCurrentGroupMax).default(deleteAdvertisingGroupResponseForwardingSentInCurrentGroupDefault),
   "running": zod.boolean(),
   "groupIds": zod.array(zod.string().uuid()),
   "nextGroupId": zod.string().uuid().nullable(),
@@ -3454,6 +3734,7 @@ export const DeleteAdvertisingGroupResponse = zod.object({
   "fingerprint": zod.string().regex(deleteAdvertisingGroupResponseDraftForwardSourceFingerprintRegExp)
 }),
   "intervalSeconds": zod.number().int().min(deleteAdvertisingGroupResponseDraftForwardIntervalSecondsMin).max(deleteAdvertisingGroupResponseDraftForwardIntervalSecondsMax),
+  "messagesPerGroup": zod.number().int().min(1).max(deleteAdvertisingGroupResponseDraftForwardMessagesPerGroupMax).default(deleteAdvertisingGroupResponseDraftForwardMessagesPerGroupDefault),
   "planId": zod.string().uuid(),
   "order": zod.number().int().min(deleteAdvertisingGroupResponseDraftForwardOrderMin).max(deleteAdvertisingGroupResponseDraftForwardOrderMax)
 }).optional()
@@ -3515,6 +3796,9 @@ export const saveAdvertisingDraftBodyForwardSourceFingerprintRegExp = new RegExp
 export const saveAdvertisingDraftBodyForwardIntervalSecondsMin = 60;
 export const saveAdvertisingDraftBodyForwardIntervalSecondsMax = 2592000;
 
+export const saveAdvertisingDraftBodyForwardMessagesPerGroupDefault = 1;
+export const saveAdvertisingDraftBodyForwardMessagesPerGroupMax = 10;
+
 export const saveAdvertisingDraftBodyForwardOrderMin = 0;
 export const saveAdvertisingDraftBodyForwardOrderMax = 499;
 
@@ -3544,6 +3828,7 @@ export const SaveAdvertisingDraftBody = zod.object({
   "fingerprint": zod.string().regex(saveAdvertisingDraftBodyForwardSourceFingerprintRegExp)
 }),
   "intervalSeconds": zod.number().int().min(saveAdvertisingDraftBodyForwardIntervalSecondsMin).max(saveAdvertisingDraftBodyForwardIntervalSecondsMax),
+  "messagesPerGroup": zod.number().int().min(1).max(saveAdvertisingDraftBodyForwardMessagesPerGroupMax).default(saveAdvertisingDraftBodyForwardMessagesPerGroupDefault),
   "planId": zod.string().uuid(),
   "order": zod.number().int().min(saveAdvertisingDraftBodyForwardOrderMin).max(saveAdvertisingDraftBodyForwardOrderMax)
 }).optional()
@@ -3555,6 +3840,13 @@ export const saveAdvertisingDraftResponseForwardingSourceOneAccountIdRegExp = ne
 export const saveAdvertisingDraftResponseForwardingSourceOneTextMax = 4096;
 
 export const saveAdvertisingDraftResponseForwardingSourceOneFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const saveAdvertisingDraftResponseForwardingMessagesPerGroupDefault = 1;
+export const saveAdvertisingDraftResponseForwardingMessagesPerGroupMax = 10;
+
+export const saveAdvertisingDraftResponseForwardingSentInCurrentGroupDefault = 0;
+export const saveAdvertisingDraftResponseForwardingSentInCurrentGroupMin = 0;
+export const saveAdvertisingDraftResponseForwardingSentInCurrentGroupMax = 9;
+
 export const saveAdvertisingDraftResponseDraftTextMax = 4096;
 
 export const saveAdvertisingDraftResponseDraftImageUrlMax = 2048;
@@ -3580,6 +3872,9 @@ export const saveAdvertisingDraftResponseDraftForwardSourceFingerprintRegExp = n
 export const saveAdvertisingDraftResponseDraftForwardIntervalSecondsMin = 60;
 export const saveAdvertisingDraftResponseDraftForwardIntervalSecondsMax = 2592000;
 
+export const saveAdvertisingDraftResponseDraftForwardMessagesPerGroupDefault = 1;
+export const saveAdvertisingDraftResponseDraftForwardMessagesPerGroupMax = 10;
+
 export const saveAdvertisingDraftResponseDraftForwardOrderMin = 0;
 export const saveAdvertisingDraftResponseDraftForwardOrderMax = 499;
 
@@ -3601,6 +3896,8 @@ export const SaveAdvertisingDraftResponse = zod.object({
   "fingerprint": zod.string().regex(saveAdvertisingDraftResponseForwardingSourceOneFingerprintRegExp)
 }),zod.null()]),
   "intervalSeconds": zod.number().int(),
+  "messagesPerGroup": zod.number().int().min(1).max(saveAdvertisingDraftResponseForwardingMessagesPerGroupMax).default(saveAdvertisingDraftResponseForwardingMessagesPerGroupDefault),
+  "sentInCurrentGroup": zod.number().int().min(saveAdvertisingDraftResponseForwardingSentInCurrentGroupMin).max(saveAdvertisingDraftResponseForwardingSentInCurrentGroupMax).default(saveAdvertisingDraftResponseForwardingSentInCurrentGroupDefault),
   "running": zod.boolean(),
   "groupIds": zod.array(zod.string().uuid()),
   "nextGroupId": zod.string().uuid().nullable(),
@@ -3664,6 +3961,7 @@ export const SaveAdvertisingDraftResponse = zod.object({
   "fingerprint": zod.string().regex(saveAdvertisingDraftResponseDraftForwardSourceFingerprintRegExp)
 }),
   "intervalSeconds": zod.number().int().min(saveAdvertisingDraftResponseDraftForwardIntervalSecondsMin).max(saveAdvertisingDraftResponseDraftForwardIntervalSecondsMax),
+  "messagesPerGroup": zod.number().int().min(1).max(saveAdvertisingDraftResponseDraftForwardMessagesPerGroupMax).default(saveAdvertisingDraftResponseDraftForwardMessagesPerGroupDefault),
   "planId": zod.string().uuid(),
   "order": zod.number().int().min(saveAdvertisingDraftResponseDraftForwardOrderMin).max(saveAdvertisingDraftResponseDraftForwardOrderMax)
 }).optional()
@@ -3725,6 +4023,9 @@ export const startAdvertisingCampaignBodyDraftForwardSourceFingerprintRegExp = n
 export const startAdvertisingCampaignBodyDraftForwardIntervalSecondsMin = 60;
 export const startAdvertisingCampaignBodyDraftForwardIntervalSecondsMax = 2592000;
 
+export const startAdvertisingCampaignBodyDraftForwardMessagesPerGroupDefault = 1;
+export const startAdvertisingCampaignBodyDraftForwardMessagesPerGroupMax = 10;
+
 export const startAdvertisingCampaignBodyDraftForwardOrderMin = 0;
 export const startAdvertisingCampaignBodyDraftForwardOrderMax = 499;
 
@@ -3757,6 +4058,7 @@ export const StartAdvertisingCampaignBody = zod.object({
   "fingerprint": zod.string().regex(startAdvertisingCampaignBodyDraftForwardSourceFingerprintRegExp)
 }),
   "intervalSeconds": zod.number().int().min(startAdvertisingCampaignBodyDraftForwardIntervalSecondsMin).max(startAdvertisingCampaignBodyDraftForwardIntervalSecondsMax),
+  "messagesPerGroup": zod.number().int().min(1).max(startAdvertisingCampaignBodyDraftForwardMessagesPerGroupMax).default(startAdvertisingCampaignBodyDraftForwardMessagesPerGroupDefault),
   "planId": zod.string().uuid(),
   "order": zod.number().int().min(startAdvertisingCampaignBodyDraftForwardOrderMin).max(startAdvertisingCampaignBodyDraftForwardOrderMax)
 }).optional()
@@ -3817,6 +4119,13 @@ export const cancelAdvertisingCampaignResponseForwardingSourceOneAccountIdRegExp
 export const cancelAdvertisingCampaignResponseForwardingSourceOneTextMax = 4096;
 
 export const cancelAdvertisingCampaignResponseForwardingSourceOneFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const cancelAdvertisingCampaignResponseForwardingMessagesPerGroupDefault = 1;
+export const cancelAdvertisingCampaignResponseForwardingMessagesPerGroupMax = 10;
+
+export const cancelAdvertisingCampaignResponseForwardingSentInCurrentGroupDefault = 0;
+export const cancelAdvertisingCampaignResponseForwardingSentInCurrentGroupMin = 0;
+export const cancelAdvertisingCampaignResponseForwardingSentInCurrentGroupMax = 9;
+
 export const cancelAdvertisingCampaignResponseDraftTextMax = 4096;
 
 export const cancelAdvertisingCampaignResponseDraftImageUrlMax = 2048;
@@ -3842,6 +4151,9 @@ export const cancelAdvertisingCampaignResponseDraftForwardSourceFingerprintRegEx
 export const cancelAdvertisingCampaignResponseDraftForwardIntervalSecondsMin = 60;
 export const cancelAdvertisingCampaignResponseDraftForwardIntervalSecondsMax = 2592000;
 
+export const cancelAdvertisingCampaignResponseDraftForwardMessagesPerGroupDefault = 1;
+export const cancelAdvertisingCampaignResponseDraftForwardMessagesPerGroupMax = 10;
+
 export const cancelAdvertisingCampaignResponseDraftForwardOrderMin = 0;
 export const cancelAdvertisingCampaignResponseDraftForwardOrderMax = 499;
 
@@ -3863,6 +4175,8 @@ export const CancelAdvertisingCampaignResponse = zod.object({
   "fingerprint": zod.string().regex(cancelAdvertisingCampaignResponseForwardingSourceOneFingerprintRegExp)
 }),zod.null()]),
   "intervalSeconds": zod.number().int(),
+  "messagesPerGroup": zod.number().int().min(1).max(cancelAdvertisingCampaignResponseForwardingMessagesPerGroupMax).default(cancelAdvertisingCampaignResponseForwardingMessagesPerGroupDefault),
+  "sentInCurrentGroup": zod.number().int().min(cancelAdvertisingCampaignResponseForwardingSentInCurrentGroupMin).max(cancelAdvertisingCampaignResponseForwardingSentInCurrentGroupMax).default(cancelAdvertisingCampaignResponseForwardingSentInCurrentGroupDefault),
   "running": zod.boolean(),
   "groupIds": zod.array(zod.string().uuid()),
   "nextGroupId": zod.string().uuid().nullable(),
@@ -3926,6 +4240,7 @@ export const CancelAdvertisingCampaignResponse = zod.object({
   "fingerprint": zod.string().regex(cancelAdvertisingCampaignResponseDraftForwardSourceFingerprintRegExp)
 }),
   "intervalSeconds": zod.number().int().min(cancelAdvertisingCampaignResponseDraftForwardIntervalSecondsMin).max(cancelAdvertisingCampaignResponseDraftForwardIntervalSecondsMax),
+  "messagesPerGroup": zod.number().int().min(1).max(cancelAdvertisingCampaignResponseDraftForwardMessagesPerGroupMax).default(cancelAdvertisingCampaignResponseDraftForwardMessagesPerGroupDefault),
   "planId": zod.string().uuid(),
   "order": zod.number().int().min(cancelAdvertisingCampaignResponseDraftForwardOrderMin).max(cancelAdvertisingCampaignResponseDraftForwardOrderMax)
 }).optional()

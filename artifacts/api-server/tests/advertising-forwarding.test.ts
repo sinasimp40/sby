@@ -248,6 +248,54 @@ test("a single persisted queue spaces groups and cycles, stops safely, and trans
       await processAccountSchedules(owner, factory);
       assert.equal(posts.length, before + 2, "a retried HTTP request must not create an immediate duplicate");
     });
+    await t.test("repeat counts are bounded and included in start deduplication", async () => {
+      for (const messagesPerGroup of [0, 11, -1, 1.5]) {
+        await assert.rejects(startForwardLoop(owner, { ...input(), messagesPerGroup }, factory));
+        assert.equal((await request("/forwarding/start", "POST", { ...input(), messagesPerGroup })).status, 400);
+      }
+      const confirmation = { ...input(), messagesPerGroup: 2 };
+      await startForwardLoop(owner, confirmation, factory);
+      await assert.rejects(startForwardLoop(owner, { ...confirmation, messagesPerGroup: 3 }, factory), /different selection/);
+    });
+    await t.test("two copies stay on the same group, pause between copies, then cycle after the shared delay", async () => {
+      await startForwardLoop(owner, { ...input(), messagesPerGroup: 2 }, factory);
+      const before = posts.length;
+      for (let i = 0; i < 7; i++) {
+        await due(); await processAccountSchedules(owner, factory);
+        const status = (await request()).data.forwarding;
+        assert.equal(status.messagesPerGroup, 2);
+        assert.equal(status.sentInCurrentGroup, (i + 1) % 2);
+        const wait = new Date(status.nextSendAt).getTime() - Date.now();
+        if (i % 2 === 0) assert.ok(wait > 0 && wait <= 4000, "copies use a short pause, not the shared interval");
+        else assert.ok(wait >= 59000, "completed batches wait the full shared interval");
+        const count = posts.length;
+        await processAccountSchedules(owner, factory);
+        assert.equal(posts.length, count, "a second worker check cannot skip the copy pause");
+        if (i === 0) await closeAccountSession(owner); // Progress survives client disposal/recreation.
+      }
+      assert.deepEqual(posts.slice(before), [groups[0]!.chatId, groups[0]!.chatId, groups[1]!.chatId,
+        groups[1]!.chatId, groups[2]!.chatId, groups[2]!.chatId, groups[0]!.chatId]);
+      const runs = (await pool.query(`SELECT random_id FROM advertising_account_runs WHERE owner_id=$1 AND
+        draft->'forward'->>'planId'=$2 AND status='sent'`, [owner,
+        (await pool.query("SELECT draft FROM advertising_bots WHERE owner_id=$1", [owner])).rows[0].draft.forward.planId])).rows;
+      assert.equal(runs.length, 7);
+      assert.equal(new Set(runs.map(run => run.random_id)).size, 7, "each copy has a distinct deduplication identity");
+      await stopSelectedAccountSchedules(owner);
+      const stopped = posts.length;
+      await due(); await processAccountSchedules(owner, factory);
+      assert.equal(posts.length, stopped, "stopping midway prevents the remaining copies");
+      await startForwardLoop(owner, { ...input(), messagesPerGroup: 2 }, factory);
+      assert.equal((await request()).data.forwarding.sentInCurrentGroup, 0, "a confirmed restart begins a fresh batch");
+    });
+    await t.test("the maximum repeat count sends exactly ten copies before moving on", async () => {
+      await startForwardLoop(owner, { ...input([groups[0]!.id, groups[1]!.id]), messagesPerGroup: 10 }, factory);
+      const before = posts.length;
+      for (let i = 0; i < 10; i++) { await due(); await processAccountSchedules(owner, factory); }
+      assert.deepEqual(posts.slice(before), Array(10).fill(groups[0]!.chatId));
+      assert.equal((await request()).data.forwarding.nextGroupId, groups[1]!.id);
+      await due(); await processAccountSchedules(owner, factory);
+      assert.equal(posts.at(-1), groups[1]!.chatId);
+    });
     await t.test("permission failures disable only the affected group and skip it on following cycles", async () => {
       for (const [code, stage] of [
         ["USER_NOT_PARTICIPANT", "permission-inspect"], ["USER_KICKED", "permission-inspect"],
@@ -275,22 +323,25 @@ test("a single persisted queue spaces groups and cycles, stops safely, and trans
       await pool.query("UPDATE advertising_groups SET enabled=true,status='ready',account_generation=1 WHERE owner_id=$1", [owner]);
     });
     await t.test("Telegram flood waits survive Stop/Start and uncertain forwards are not replayed", async () => {
-      await startForwardLoop(owner, input(), factory); await due(); mode = "flood";
+      await startForwardLoop(owner, { ...input(), messagesPerGroup: 2 }, factory);
+      await due(); await processAccountSchedules(owner, factory);
+      await due(); mode = "flood";
       const count = posts.length; await processAccountSchedules(owner, factory);
       assert.equal(posts.length, count);
       assert.equal((await request()).data.forwarding.nextGroupId, groups[0]!.id);
       const wait = (await pool.query("SELECT telegram_wait_until FROM advertising_accounts WHERE owner_id=$1", [owner])).rows[0].telegram_wait_until;
       await stopSelectedAccountSchedules(owner);
-      await startForwardLoop(owner, input(), factory);
+      await startForwardLoop(owner, { ...input(), messagesPerGroup: 2 }, factory);
       const retained = (await pool.query("SELECT next_send_at FROM advertising_accounts WHERE owner_id=$1", [owner])).rows[0].next_send_at;
       assert.ok(new Date(retained).getTime() >= new Date(wait).getTime());
       mode = "ok"; await processAccountSchedules(owner, factory); assert.equal(posts.length, count);
       await due(); await processAccountSchedules(owner, factory); assert.equal(posts.at(-1), groups[0]!.chatId);
       await due(); mode = "uncertain"; await processAccountSchedules(owner, factory);
       mode = "ok"; const after = posts.length; await processAccountSchedules(owner, factory); assert.equal(posts.length, after);
-      const stopped = (await pool.query("SELECT running FROM advertising_schedules WHERE group_id=$1", [groups[1]!.id])).rows[0];
+      const stopped = (await pool.query("SELECT running,batch_sent_count FROM advertising_schedules WHERE group_id=$1", [groups[0]!.id])).rows[0];
       assert.equal(stopped.running, false);
-      assert.equal((await pool.query("SELECT enabled FROM advertising_groups WHERE id=$1", [groups[1]!.id])).rows[0].enabled, true,
+      assert.equal(stopped.batch_sent_count, 1, "an uncertain second copy never advances progress or gets replayed");
+      assert.equal((await pool.query("SELECT enabled FROM advertising_groups WHERE id=$1", [groups[0]!.id])).rows[0].enabled, true,
         "an uncertain network failure is not evidence of a group ban");
     });
     await t.test("changed or missing source stops the whole loop instead of forwarding different content", async () => {
@@ -310,17 +361,21 @@ test("a single persisted queue spaces groups and cycles, stops safely, and trans
       photo.entities = [];
       photo.media = new Api.MessageMediaPhoto({ photo: new Api.PhotoEmpty({ id: bigInt(123) }) });
       current = savedMessagePreview(photo, accountId)!;
-      await startForwardLoop(owner, input(), factory);
+      await startForwardLoop(owner, { ...input(), messagesPerGroup: 3 }, factory);
+      await due(); await processAccountSchedules(owner, factory);
       const exported = await exportShopTransfer(owner);
       const preview = await previewShopTransfer(destination, exported.zip);
       assert.equal(preview.canImport, true);
       await importShopTransfer(destination, exported.zip, preview.confirmationToken);
       const master = (await pool.query("SELECT draft FROM advertising_bots WHERE owner_id=$1", [destination])).rows[0].draft;
       assert.equal(master.forward.source.id, 42); assert.equal(master.forward.intervalSeconds, 60);
+      assert.equal(master.forward.messagesPerGroup, 3);
       assert.equal(master.forward.source.mediaKind, "photo");
       assert.equal(master.forward.source.text, "   ", "caption-less media keeps its original source, not reconstructed placeholder text");
       assert.equal((await pool.query("SELECT count(*)::int n FROM advertising_schedules WHERE owner_id=$1 AND running", [destination])).rows[0].n, 0);
       assert.equal((await pool.query("SELECT count(*)::int n FROM advertising_accounts WHERE owner_id=$1", [destination])).rows[0].n, 0);
+      assert.equal((await pool.query("SELECT max(batch_sent_count) n FROM advertising_schedules WHERE owner_id=$1", [destination])).rows[0].n, 0,
+        "portable import preserves the configured count, never resumes live batch progress");
     });
   } finally {
     await closeAccountSession(owner).catch(() => {});

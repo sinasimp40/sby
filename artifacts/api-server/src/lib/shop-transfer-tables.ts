@@ -30,7 +30,10 @@ export const MAX_TRANSFER_ROWS = 50000;
 export const quote = (identifier: string) => `"${identifier.replace(/"/g, '""')}"`;
 export function tableInfo(key: TransferTable) {
   const table: SQLiteTable = transferTables[key];
-  return { name: getTableConfig(table).name, columns: Object.entries(getTableColumns(table)) };
+  // Batch position is live runtime state, not portable shop data. Imported
+  // advertising is always stopped, with progress reset by the SQLite default.
+  return { name: getTableConfig(table).name, columns: Object.entries(getTableColumns(table))
+    .filter(([name]) => key !== "advertisingAccountSchedules" || name !== "batchSentCount") };
 }
 function schemaHash() { return createHash("sha256").update(JSON.stringify(tableKeys.map(key => ({
   key, table: tableInfo(key).name,
@@ -66,7 +69,8 @@ const schemas = Object.fromEntries(tableKeys.map(key => {
       overrides[name] = column.notNull ? json : json.nullable();
     }
   }
-  return [key, createSelectSchema(transferTables[key] as SQLiteTable, overrides).strict()];
+  const schema = createSelectSchema(transferTables[key] as SQLiteTable, overrides);
+  return [key, (key === "advertisingAccountSchedules" ? schema.omit({ batchSentCount: true }) : schema).strict()];
 })) as unknown as Record<TransferTable, z.ZodType<TransferRow>>;
 
 export function parseTransferData(value: unknown): TransferData {

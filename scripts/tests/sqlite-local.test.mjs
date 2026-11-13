@@ -108,6 +108,30 @@ test("known SQLite upgrade preserves records and conservatively retains an old u
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
+test("upgrading the separate-clock schema adds batch progress without resetting records or Telegram waits", () => {
+  const directory = mkdtempSync(join(tmpdir(), "telecart batch upgrade "));
+  const file = join(directory, "shop.db");
+  try {
+    const old = new DatabaseSync(file);
+    const migrations = readdirSync(join(root, "lib/db/migrations")).filter(name => name.endsWith(".sql")).sort();
+    for (const migration of migrations.slice(0, 2)) old.exec(readFileSync(join(root, "lib/db/migrations", migration), "utf8"));
+    const wait = new Date(Date.now() + 120000).toISOString().replace("Z", "000Z");
+    old.prepare("INSERT INTO advertising_accounts(owner_id,next_send_at,telegram_wait_until) VALUES(?,?,?)").run("TEST_ONLY", wait, wait);
+    old.prepare("INSERT INTO advertising_schedules(group_id,owner_id,draft) VALUES(?,?,?)").run("TEST_ONLY_GROUP", "TEST_ONLY", '{"keep":true}');
+    old.exec("PRAGMA user_version=2"); old.close();
+    assert.equal(JSON.parse(inspectFile(file).stdout).needsMigration, true);
+    initializeSqlite(file);
+    const upgraded = new DatabaseSync(file, { readOnly: true });
+    assert.equal(upgraded.prepare("PRAGMA user_version").get().user_version, sqliteSchemaVersion);
+    assert.equal(upgraded.prepare("SELECT telegram_wait_until FROM advertising_accounts").get().telegram_wait_until, wait);
+    const schedule = upgraded.prepare("SELECT batch_sent_count,draft FROM advertising_schedules").get();
+    assert.equal(schedule.batch_sent_count, 0);
+    assert.equal(schedule.draft, '{"keep":true}');
+    assert.equal(upgraded.prepare("PRAGMA integrity_check").get().integrity_check, "ok");
+    upgraded.close();
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
 test("folder entered at setup is saved as a database file before credentials are requested", async () => {
   const directory = mkdtempSync(join(tmpdir(), "telecart setup directory "));
   try {

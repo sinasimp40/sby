@@ -24,6 +24,7 @@ export const advertisingSchedules = pgTable("advertising_schedules", {
   ownerId: text("owner_id").notNull(),
   running: boolean("running").notNull().default(false),
   intervalSeconds: integer("interval_seconds").notNull().default(1800),
+  batchSentCount: integer("batch_sent_count").notNull().default(0),
   revision: integer("revision").notNull().default(0),
   accountGeneration: integer("account_generation").notNull().default(0),
   draft: jsonb("draft"),

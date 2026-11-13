@@ -11,6 +11,7 @@ import { processAccountRecovery, recoveryState } from "./advertising-account-rec
 import { validateForwardSnapshot } from "./advertising-saved-messages";
 import { maintainAdvertisingActivity } from "./advertising-activity";
 import { resetCampaignInterval } from "./advertising-campaign-timing";
+import { completeForwardCopy, COPY_PAUSE_SECONDS } from "./advertising-forward-progress";
 
 export async function startAccountSchedules(owner: string, input: AdvertisingAccountStartInput) {
   if (input.draft.forward) throw new AccountError("Use the Saved Messages forwarding confirmation instead.");
@@ -90,6 +91,12 @@ export async function processAccountSchedules(owner: string, factory: AccountFac
     if (!group?.enabled || group.status !== "ready" || !group.chat_id || group.account_generation !== account.generation) {
       await stopAccountSchedules(owner, client, [schedule.group_id], "Group is disabled, removed or needs permission verification."); return;
     }
+    const sentCount = Number(schedule.batch_sent_count ?? 0);
+    const copies = forward?.messagesPerGroup ?? 1;
+    if (forward && (!Number.isInteger(sentCount) || sentCount < 0 || sentCount >= copies)) {
+      await stopAccountSchedules(owner, client, [group.id], "Invalid batch progress. Review and confirm a new campaign."); return;
+    }
+    const gap = forward && sentCount + 1 >= copies ? forward.intervalSeconds : COPY_PAUSE_SECONDS;
     const run = (await client.query(`INSERT INTO advertising_account_runs(owner_id,group_id,target,chat_id,account_generation,revision,scheduled_for,draft,random_id)
       VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9) ON CONFLICT DO NOTHING RETURNING id`,
       [owner, group.id, group.title || group.target, group.chat_id, account.generation, schedule.revision, schedule.next_send_at,
@@ -98,17 +105,16 @@ export async function processAccountSchedules(owner: string, factory: AccountFac
       const prior = (await client.query("SELECT status FROM advertising_account_runs WHERE owner_id=$1 AND group_id=$2 AND revision=$3 AND scheduled_for=$4", [owner, group.id, schedule.revision, schedule.next_send_at])).rows[0];
       if (prior?.status === "sent" || prior?.status === "rate_limited") {
         if (forward) {
-          if (prior.status === "rate_limited")
+          if (prior.status === "rate_limited") {
             await client.query("UPDATE advertising_schedules SET revision=revision+1 WHERE owner_id=$1 AND group_id=$2", [owner, group.id]);
-          else await client.query("UPDATE advertising_schedules SET next_send_at=now() WHERE owner_id=$1 AND group_id=$2", [owner, group.id]);
-          await client.query("UPDATE advertising_accounts SET next_send_at=GREATEST(next_send_at,now()+$2*interval '1 second') WHERE owner_id=$1", [owner, forward.intervalSeconds]);
+            await client.query("UPDATE advertising_accounts SET next_send_at=GREATEST(next_send_at,telegram_wait_until,now()+$2*interval '1 second') WHERE owner_id=$1", [owner, gap]);
+          } else await completeForwardCopy(owner, client, group.id, forward, sentCount);
         } else await client.query("UPDATE advertising_schedules SET next_send_at=now()+interval_seconds*interval '1 second' WHERE owner_id=$1 AND group_id=$2", [owner, group.id]);
       }
       else if (prior?.status !== "sending") await stopAccountSchedules(owner, client, [group.id], "Previous attempt needs review.");
       return;
     }
     const randomId = (await client.query("SELECT random_id FROM advertising_account_runs WHERE id=$1", [run.id])).rows[0].random_id;
-    const gap = forward?.intervalSeconds ?? 3;
     await client.query("UPDATE advertising_accounts SET next_send_at=now()+$2*interval '1 second' WHERE owner_id=$1", [owner, gap]);
     await client.query("UPDATE advertising_schedules SET last_status='sending',note='Waiting for Telegram confirmation.' WHERE owner_id=$1 AND group_id=$2", [owner, group.id]);
     let dispatched = false;
@@ -129,15 +135,15 @@ export async function processAccountSchedules(owner: string, factory: AccountFac
           throw new AccountError("Telegram did not provide a verified message receipt. Check the group before restarting; no automatic retry.", "network", 0, "POST_NOT_CONFIRMED");
         return receipt;
       }, factory, "post_ad");
-      await client.query("UPDATE advertising_account_runs SET status='sent',sent_at=now(),note=$2 WHERE id=$1",
-        [run.id, `Verified in selected group: message #${receipt.messageId}. It was readable at send time; later removal is possible.`]);
       if (forward) {
-        await client.query(`UPDATE advertising_schedules SET next_send_at=now(),last_status='sent',
-          note='Forwarded. This group returns after the others in the shared queue.' WHERE owner_id=$1 AND group_id=$2`, [owner, group.id]);
-        await client.query("UPDATE advertising_accounts SET next_send_at=now()+$2*interval '1 second' WHERE owner_id=$1", [owner, gap]);
-      } else await client.query(`UPDATE advertising_schedules SET next_send_at=now()+interval_seconds*interval '1 second',
-        last_status='sent',note='Posted. Next post follows this group interval.' WHERE owner_id=$1 AND group_id=$2`, [owner, group.id]);
-      await client.query("UPDATE advertising_groups SET last_sent_at=now() WHERE owner_id=$1 AND id=$2", [owner, group.id]);
+        await completeForwardCopy(owner, client, group.id, forward, sentCount, { runId: run.id, messageId: receipt.messageId });
+      } else {
+        await client.query("UPDATE advertising_account_runs SET status='sent',sent_at=now(),note=$2 WHERE id=$1",
+          [run.id, `Verified in selected group: message #${receipt.messageId}. It was readable at send time; later removal is possible.`]);
+        await client.query(`UPDATE advertising_schedules SET next_send_at=now()+interval_seconds*interval '1 second',
+          last_status='sent',note='Posted. Next post follows this group interval.' WHERE owner_id=$1 AND group_id=$2`, [owner, group.id]);
+        await client.query("UPDATE advertising_groups SET last_sent_at=now() WHERE owner_id=$1 AND id=$2", [owner, group.id]);
+      }
     } catch (error) {
       const safe = safeAccountError(error);
       if (safe.kind === "rate_limit") {

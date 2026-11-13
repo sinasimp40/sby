@@ -1,0 +1,1 @@
+ALTER TABLE `advertising_schedules` ADD `batch_sent_count` integer DEFAULT 0 NOT NULL;

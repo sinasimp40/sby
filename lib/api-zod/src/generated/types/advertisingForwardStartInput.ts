@@ -18,6 +18,11 @@ export interface AdvertisingForwardStartInput {
   /** @pattern ^[a-f0-9]{64}$ */
   sourceFingerprint: string;
   /**
+     * @minimum 1
+     * @maximum 10
+     */
+  messagesPerGroup?: number;
+  /**
      * @minItems 1
      * @maxItems 500
      */

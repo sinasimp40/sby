@@ -68,6 +68,11 @@ export interface AdvertisingForwardSnapshot {
      * @maximum 2592000
      */
   intervalSeconds: number;
+  /**
+     * @minimum 1
+     * @maximum 10
+     */
+  messagesPerGroup?: number;
   planId: string;
   /**
      * @minimum 0
@@ -118,6 +123,16 @@ export interface AdvertisingSavedMessagesPage {
 export interface AdvertisingForwardLoop {
   source: AdvertisingSavedMessage | null;
   intervalSeconds: number;
+  /**
+     * @minimum 1
+     * @maximum 10
+     */
+  messagesPerGroup?: number;
+  /**
+     * @minimum 0
+     * @maximum 9
+     */
+  sentInCurrentGroup?: number;
   running: boolean;
   groupIds: string[];
   /** @nullable */
@@ -142,6 +157,11 @@ export interface AdvertisingForwardStartInput {
   messageId: number;
   /** @pattern ^[a-f0-9]{64}$ */
   sourceFingerprint: string;
+  /**
+     * @minimum 1
+     * @maximum 10
+     */
+  messagesPerGroup?: number;
   /**
      * @minItems 1
      * @maxItems 500

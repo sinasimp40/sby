@@ -10,6 +10,16 @@ import type { AdvertisingSavedMessage } from './advertisingSavedMessage';
 export interface AdvertisingForwardLoop {
   source: AdvertisingSavedMessage | null;
   intervalSeconds: number;
+  /**
+     * @minimum 1
+     * @maximum 10
+     */
+  messagesPerGroup?: number;
+  /**
+     * @minimum 0
+     * @maximum 9
+     */
+  sentInCurrentGroup?: number;
   running: boolean;
   groupIds: string[];
   /** @nullable */

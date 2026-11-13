@@ -15,6 +15,13 @@
       "when": 1794553364240,
       "tag": "0001_brown_karma",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1794555391721,
+      "tag": "0002_mushy_synch",
+      "breakpoints": true
     }
   ]
 }
