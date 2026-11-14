@@ -7,10 +7,10 @@ import {
   getGetAdvertisingCampaignQueryKey, getGetAdvertisingWorkspaceQueryKey, useCancelAdvertisingCampaign,
   type AdvertisingWorkspace, type AdvertisingGroup, type AdvertisingImportRow, type AdvertisingDraft,
 } from "@workspace/api-client-react";
-import { Loader2, FileUp, Search, Trash2, Pencil, ShieldCheck, Send, Ban, Megaphone, Radar, X, Timer, Link2, Bold, Italic, Unlink, Sparkles, RefreshCw } from "lucide-react";
+import { Loader2, FileUp, Search, Trash2, Pencil, ShieldCheck, Send, Ban, Power, Megaphone, Radar, X, Timer, Link2, Bold, Italic, Unlink, Sparkles, RefreshCw } from "lucide-react";
 import { adjustForEdit, covered, entitiesProblem, insertEmoji, linkAt, normalize, safeHttps, segments, setLink, snapSelection, toggleStyle, type Entity } from "@/lib/ad-entities";
 import { EmojiSetPicker } from "@/components/advertising/emoji-set-picker";
-import { alphabeticalGroups, retainedGroupSelection, filteredGroups, selectedGroupIdsInView, selectGroupsInView, selectEnabledGroupsInView, snapshotGroupRemoval, snapshotEnabledGroups, ScrollableGroupList } from "@/components/advertising/group-list";
+import { alphabeticalGroups, retainedGroupSelection, filteredGroups, selectedGroupIdsInView, selectGroupsInView, selectEnabledGroupsInView, snapshotGroupRemoval, snapshotEnabledGroups, snapshotDisabledGroups, ScrollableGroupList } from "@/components/advertising/group-list";
 import { GroupBulkActionDialog } from "@/components/advertising/group-bulk-action-dialog";
 import { Panel, EmptyState, ErrorState, RowsSkeleton } from "@/components/shared";
 import { Button } from "@/components/ui/button";
@@ -300,6 +300,7 @@ export function GroupsPanel({ ws, selected: savedSelected, setSelected, sequenti
   const [deleting, setDeleting] = useState<AdvertisingGroup | null>(null);
   const [bulkRemoving, setBulkRemoving] = useState<Pick<AdvertisingGroup, "id" | "title" | "target">[] | null>(null);
   const [bulkDisabling, setBulkDisabling] = useState<Pick<AdvertisingGroup, "id" | "title" | "target">[] | null>(null);
+  const [bulkEnabling, setBulkEnabling] = useState<Pick<AdvertisingGroup, "id" | "title" | "target">[] | null>(null);
   const [progress, setProgress] = useState("");
   const [intervalFor, setIntervalFor] = useState<AdvertisingGroup | null>(null);
   const [ivValue, setIvValue] = useState("");
@@ -309,6 +310,7 @@ export function GroupsPanel({ ws, selected: savedSelected, setSelected, sequenti
   const list = useMemo(() => filteredGroups(orderedGroups, status, q), [orderedGroups, q, status]);
   const visibleSelected = useMemo(() => selectedGroupIdsInView(list, selected), [list, selected]);
   const disableTargets = useMemo(() => snapshotEnabledGroups(list), [list]);
+  const enableTargets = useMemo(() => snapshotDisabledGroups(list), [list]);
   const toggle = (id: string) => { const n = new Set(selected); if (n.has(id)) n.delete(id); else n.add(id); setSelected(n); };
   async function checkPerms() {
     const ids = [...visibleSelected];
@@ -344,6 +346,12 @@ export function GroupsPanel({ ws, selected: savedSelected, setSelected, sequenti
             onClick={() => setSelected(selectEnabledGroupsInView(list, selected))}>Select enabled only</Button>
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4 [&>button]:h-9 [&>button]:w-full [&>button]:whitespace-nowrap" data-testid="group-actions-toolbar">
+          <Button size="sm" variant="outline" disabled={!enableTargets.length}
+            title="Turn on disabled groups matching this filter and search, including unchecked groups. Groups with errors must pass a permission check first. This does not start a campaign."
+            data-testid="button-enable-all-groups" onClick={() => {
+              if (enableTargets.length > 1000) { toast({ title: "Narrow the filter to 1,000 disabled groups or fewer", variant: "destructive" }); return; }
+              setBulkEnabling(enableTargets);
+            }}><Power className="mr-1 h-3.5 w-3.5" />Enable all shown ({enableTargets.length})</Button>
           <Button size="sm" variant="outline" disabled={!disableTargets.length}
             title="Turn off all enabled groups matching this filter and search, including unchecked groups."
             data-testid="button-disable-all-groups" onClick={() => {
@@ -418,6 +426,7 @@ export function GroupsPanel({ ws, selected: savedSelected, setSelected, sequenti
       </AlertDialog>
       <GroupBulkActionDialog groups={bulkRemoving} onClose={() => setBulkRemoving(null)} onComplete={workspace => { sync(workspace); toast({ title: "Removal requested", description: "Posting stopped. Groups are erased after Telegram departure is confirmed; duplicate aliases are erased locally." }); }} />
       <GroupBulkActionDialog action="disable" groups={bulkDisabling} onClose={() => setBulkDisabling(null)} onComplete={workspace => { sync(workspace); toast({ title: "Shown groups disabled", description: "Their posting schedules were stopped. Other groups were not changed." }); }} />
+      <GroupBulkActionDialog action="enable" groups={bulkEnabling} onClose={() => setBulkEnabling(null)} onComplete={workspace => sync(workspace)} />
     </Panel>
   );
 }

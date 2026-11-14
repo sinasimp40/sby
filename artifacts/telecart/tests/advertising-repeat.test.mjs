@@ -22,7 +22,7 @@ test("groups-per-interval controls render one-copy semantics and bounded group c
   });
   try {
     const { GroupsPerIntervalPanel, ForwardingStatus, groupsPerIntervalOk, queueGroups } = await vite.ssrLoadModule("/src/components/advertising/forwarding-panels.tsx");
-    const { alphabeticalGroups, retainedGroupSelection, filteredGroups, selectedGroupIdsInView, selectGroupsInView, selectEnabledGroupsInView, snapshotGroupRemoval, snapshotEnabledGroups, ScrollableGroupList, groupListViewportHeight } = await vite.ssrLoadModule("/src/components/advertising/group-list.tsx");
+    const { alphabeticalGroups, retainedGroupSelection, filteredGroups, selectedGroupIdsInView, selectGroupsInView, selectEnabledGroupsInView, snapshotGroupRemoval, snapshotEnabledGroups, snapshotDisabledGroups, ScrollableGroupList, groupListViewportHeight } = await vite.ssrLoadModule("/src/components/advertising/group-list.tsx");
     const { CampaignGroupCounts, campaignGroupCounts } = await vite.ssrLoadModule("/src/components/advertising/campaign-group-counts.tsx");
     const countGroups = Array.from({ length: 211 }, (_, i) => ({
       id: `count-${i}`, title: `Group ${i}`, target: `-${i + 1}`, chatId: i < 205 ? `-${i + 1}` : null,
@@ -148,6 +148,17 @@ test("groups-per-interval controls render one-copy semantics and bounded group c
       "Disable all shown also respects search");
     assert.deepEqual(snapshotEnabledGroups(disabled), [], "Disabled filter has nothing left to turn off");
     assert.deepEqual(snapshotEnabledGroups([]), []);
+    assert.deepEqual(snapshotDisabledGroups(disabled).map(group => group.id), ["good"],
+      "Enable all shown excludes error groups until their permission check succeeds");
+    assert.deepEqual(snapshotDisabledGroups(filteredGroups(enabledFixture, "disabled", "ready")).map(group => group.id), ["good"],
+      "Enable all shown respects both search and filter");
+    assert.deepEqual(snapshotDisabledGroups(enabled), []);
+    assert.deepEqual(snapshotDisabledGroups([]), []);
+    assert.deepEqual(snapshotDisabledGroups([{ ...groups[0], enabled: false, status: "removed" }]), []);
+    const enableSnapshot = snapshotDisabledGroups(disabled);
+    const originalTitle = enableSnapshot[0].title;
+    disabled.find(group => group.id === "good").title = "Changed after confirmation";
+    assert.equal(enableSnapshot[0].title, originalTitle, "enable confirmation uses a frozen snapshot");
     const disableAll = snapshotEnabledGroups(enabledFixture);
     assert.equal(disableAll.length, enabledFixture.filter(group => group.enabled).length);
     enabledFixture[1].title = "Later live update";
@@ -180,6 +191,14 @@ test("groups-per-interval controls render one-copy semantics and bounded group c
     assert.match(groupHtml, /data-testid="text-visible-selected-count">5 selected here/);
     assert.match(groupHtml, /data-testid="button-remove-selected-groups"/);
     assert.match(groupHtml, /data-testid="button-disable-all-groups"/);
+    assert.match(groupHtml, /<button[^>]*disabled=""[^>]*data-testid="button-enable-all-groups"/);
+    const enableButton = renderGroups(groups.map(group => ({ ...group, enabled: false })), false, new Set())
+      .match(/<button[^>]*data-testid="button-enable-all-groups"[^>]*>/)?.[0];
+    assert.ok(enableButton);
+    assert.doesNotMatch(enableButton, /\sdisabled=""/,
+      "Enable all shown works independently of campaign checkbox selection");
+    assert.match(renderGroups(groups.map(group => ({ ...group, enabled: false, status: "error" }))),
+      /<button[^>]*disabled=""[^>]*data-testid="button-enable-all-groups"/);
     assert.match(renderGroups(groups, false, new Set([groups[0].id])), /aria-checked="mixed"/);
     const noSelection = renderGroups(groups, false, new Set());
     assert.match(noSelection, /<button[^>]*disabled=""[^>]*data-testid="button-remove-selected-groups"/);

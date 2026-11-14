@@ -42,6 +42,12 @@ export function snapshotEnabledGroups(groups: AdvertisingGroup[]) {
   return groups.filter(group => group.enabled).map(({ id, title, target }) => ({ id, title, target }));
 }
 
+/** Match the single-group switch: errors need a successful permission check first. */
+export function snapshotDisabledGroups(groups: AdvertisingGroup[]) {
+  return groups.filter(group => !group.enabled && group.status !== "error" && group.status !== "removed")
+    .map(({ id, title, target }) => ({ id, title, target }));
+}
+
 export function alphabeticalGroups(groups: AdvertisingGroup[]) {
   return [...groups].sort((a, b) =>
     Number(Boolean(b.enabled)) - Number(Boolean(a.enabled)) ||
