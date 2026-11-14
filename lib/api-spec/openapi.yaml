@@ -240,6 +240,17 @@ paths:
         "400": {description: Invalid selection}
         "401": {description: Sign-in required}
         "404": {description: A selected group was not found}
+  /shop/advertising/groups/enable:
+    post:
+      operationId: enableAdvertisingGroups
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingGroupEnableInput"}}}}
+      responses:
+        "200": {description: Confirmed groups enabled atomically without starting or modifying campaigns, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
+        "400": {description: Invalid selection}
+        "401": {description: Sign-in required}
+        "404": {description: A selected group was not found}
+        "409": {description: A group was removed or requires a successful permission check}
+        "429": {description: Too many dashboard changes; retry after the current minute}
   /shop/advertising/draft:
     put:
       operationId: saveAdvertisingDraft
@@ -1097,6 +1108,11 @@ components:
       properties:
         groupIds: {type: array, minItems: 1, maxItems: 1000, uniqueItems: true, items: {type: string, format: uuid}}
     AdvertisingGroupDisableInput:
+      type: object
+      required: [groupIds]
+      properties:
+        groupIds: {type: array, minItems: 1, maxItems: 1000, uniqueItems: true, items: {type: string, format: uuid}}
+    AdvertisingGroupEnableInput:
       type: object
       required: [groupIds]
       properties:

@@ -5297,6 +5297,202 @@ export const DisableAdvertisingGroupsResponse = zod.object({
 })
 
 
+export const enableAdvertisingGroupsBodyGroupIdsMax = 1000;
+
+
+
+export const EnableAdvertisingGroupsBody = zod.object({
+  "groupIds": zod.array(zod.string().uuid()).min(1).max(enableAdvertisingGroupsBodyGroupIdsMax)
+})
+
+export const enableAdvertisingGroupsResponseForwardingSourceOneIdMax = 2147483647;
+
+export const enableAdvertisingGroupsResponseForwardingSourceOneAccountIdRegExp = new RegExp('^[0-9]+$');
+export const enableAdvertisingGroupsResponseForwardingSourceOneTextMax = 4096;
+
+export const enableAdvertisingGroupsResponseForwardingSourceOneFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const enableAdvertisingGroupsResponseForwardingGroupsPerIntervalDefault = 1;
+export const enableAdvertisingGroupsResponseForwardingGroupsPerIntervalMax = 500;
+
+export const enableAdvertisingGroupsResponseForwardingGroupsSentInIntervalDefault = 0;
+export const enableAdvertisingGroupsResponseForwardingGroupsSentInIntervalMin = 0;
+export const enableAdvertisingGroupsResponseForwardingGroupsSentInIntervalMax = 499;
+
+export const enableAdvertisingGroupsResponseDraftTextMax = 4096;
+
+export const enableAdvertisingGroupsResponseDraftImageUrlMax = 2048;
+
+export const enableAdvertisingGroupsResponseDraftButtonTextMax = 64;
+
+export const enableAdvertisingGroupsResponseDraftButtonUrlMax = 2048;
+
+export const enableAdvertisingGroupsResponseDraftEntitiesItemOffsetMin = 0;
+
+
+export const enableAdvertisingGroupsResponseDraftEntitiesItemUrlMax = 2048;
+
+export const enableAdvertisingGroupsResponseDraftEntitiesItemDocumentIdRegExp = new RegExp('^[1-9][0-9]{0,18}$');
+export const enableAdvertisingGroupsResponseDraftEntitiesMax = 100;
+
+export const enableAdvertisingGroupsResponseDraftForwardSourceIdMax = 2147483647;
+
+export const enableAdvertisingGroupsResponseDraftForwardSourceAccountIdRegExp = new RegExp('^[0-9]+$');
+export const enableAdvertisingGroupsResponseDraftForwardSourceTextMax = 4096;
+
+export const enableAdvertisingGroupsResponseDraftForwardSourceFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const enableAdvertisingGroupsResponseDraftForwardIntervalSecondsMin = 60;
+export const enableAdvertisingGroupsResponseDraftForwardIntervalSecondsMax = 2592000;
+
+export const enableAdvertisingGroupsResponseDraftForwardGroupsPerIntervalDefault = 1;
+export const enableAdvertisingGroupsResponseDraftForwardGroupsPerIntervalMax = 500;
+
+export const enableAdvertisingGroupsResponseDraftForwardOrderMin = 0;
+export const enableAdvertisingGroupsResponseDraftForwardOrderMax = 499;
+
+export const enableAdvertisingGroupsResponseGroupsItemIntervalSecondsMin = 60;
+export const enableAdvertisingGroupsResponseGroupsItemIntervalSecondsMax = 2592000;
+
+
+
+export const EnableAdvertisingGroupsResponse = zod.object({
+  "resume": zod.object({
+  "available": zod.boolean(),
+  "planId": zod.string().nullable(),
+  "revision": zod.number().int(),
+  "accountId": zod.string().nullable(),
+  "groupIds": zod.array(zod.string()),
+  "heldGroupIds": zod.array(zod.string()),
+  "nextGroupId": zod.string().nullable(),
+  "nextSendAt": zod.string().nullable(),
+  "groupsSentInInterval": zod.number().int(),
+  "intervalSeconds": zod.number().int(),
+  "groupsPerInterval": zod.number().int(),
+  "reason": zod.string()
+}).optional(),
+  "membershipJobs": zod.array(zod.object({
+  "id": zod.string(),
+  "target": zod.string(),
+  "title": zod.string(),
+  "action": zod.string(),
+  "status": zod.string(),
+  "note": zod.string(),
+  "accountId": zod.string(),
+  "createdAt": zod.string()
+})).optional(),
+  "forwarding": zod.object({
+  "source": zod.union([zod.object({
+  "id": zod.number().int().min(1).max(enableAdvertisingGroupsResponseForwardingSourceOneIdMax),
+  "accountId": zod.string().regex(enableAdvertisingGroupsResponseForwardingSourceOneAccountIdRegExp),
+  "date": zod.coerce.date(),
+  "text": zod.string().max(enableAdvertisingGroupsResponseForwardingSourceOneTextMax),
+  "mediaKind": zod.enum(['text', 'photo', 'video', 'animation', 'document', 'audio', 'voice', 'sticker', 'other']),
+  "canForward": zod.boolean(),
+  "reason": zod.string().nullable(),
+  "fingerprint": zod.string().regex(enableAdvertisingGroupsResponseForwardingSourceOneFingerprintRegExp)
+}),zod.null()]),
+  "intervalSeconds": zod.number().int(),
+  "groupsPerInterval": zod.number().int().min(1).max(enableAdvertisingGroupsResponseForwardingGroupsPerIntervalMax).default(enableAdvertisingGroupsResponseForwardingGroupsPerIntervalDefault),
+  "groupsSentInInterval": zod.number().int().min(enableAdvertisingGroupsResponseForwardingGroupsSentInIntervalMin).max(enableAdvertisingGroupsResponseForwardingGroupsSentInIntervalMax).default(enableAdvertisingGroupsResponseForwardingGroupsSentInIntervalDefault),
+  "running": zod.boolean(),
+  "groupIds": zod.array(zod.string().uuid()),
+  "nextGroupId": zod.string().uuid().nullable(),
+  "nextSendAt": zod.coerce.date().nullable()
+}).optional(),
+  "account": zod.object({
+  "appConfigured": zod.boolean(),
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "accountId": zod.string().nullable(),
+  "username": zod.string(),
+  "displayName": zod.string(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable(),
+  "login": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "method": zod.enum(['qr', 'phone']),
+  "step": zod.enum(['qr', 'code', 'password', 'expired']),
+  "expiresAt": zod.coerce.date(),
+  "qrImage": zod.string().nullable()
+}),zod.null()])
+}),
+  "accountRuns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "groupId": zod.string().uuid(),
+  "target": zod.string(),
+  "status": zod.enum(['sending', 'sent', 'failed', 'uncertain', 'cancelled', 'rate_limited']),
+  "note": zod.string(),
+  "startedAt": zod.coerce.date(),
+  "sentAt": zod.coerce.date().nullable()
+})),
+  "bot": zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "username": zod.string(),
+  "botLink": zod.string().nullable(),
+  "checkedAt": zod.coerce.date().nullable(),
+  "error": zod.string().nullable()
+}),
+  "draft": zod.object({
+  "text": zod.string().max(enableAdvertisingGroupsResponseDraftTextMax),
+  "imageUrl": zod.string().max(enableAdvertisingGroupsResponseDraftImageUrlMax).nullable(),
+  "buttonText": zod.string().max(enableAdvertisingGroupsResponseDraftButtonTextMax),
+  "buttonUrl": zod.string().max(enableAdvertisingGroupsResponseDraftButtonUrlMax).nullable(),
+  "entities": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'text_link', 'custom_emoji']),
+  "offset": zod.number().int().min(enableAdvertisingGroupsResponseDraftEntitiesItemOffsetMin),
+  "length": zod.number().int().min(1),
+  "url": zod.string().max(enableAdvertisingGroupsResponseDraftEntitiesItemUrlMax).optional(),
+  "documentId": zod.string().regex(enableAdvertisingGroupsResponseDraftEntitiesItemDocumentIdRegExp).optional()
+})).max(enableAdvertisingGroupsResponseDraftEntitiesMax).optional(),
+  "forward": zod.object({
+  "source": zod.object({
+  "id": zod.number().int().min(1).max(enableAdvertisingGroupsResponseDraftForwardSourceIdMax),
+  "accountId": zod.string().regex(enableAdvertisingGroupsResponseDraftForwardSourceAccountIdRegExp),
+  "date": zod.coerce.date(),
+  "text": zod.string().max(enableAdvertisingGroupsResponseDraftForwardSourceTextMax),
+  "mediaKind": zod.enum(['text', 'photo', 'video', 'animation', 'document', 'audio', 'voice', 'sticker', 'other']),
+  "canForward": zod.boolean(),
+  "reason": zod.string().nullable(),
+  "fingerprint": zod.string().regex(enableAdvertisingGroupsResponseDraftForwardSourceFingerprintRegExp)
+}),
+  "intervalSeconds": zod.number().int().min(enableAdvertisingGroupsResponseDraftForwardIntervalSecondsMin).max(enableAdvertisingGroupsResponseDraftForwardIntervalSecondsMax),
+  "groupsPerInterval": zod.number().int().min(1).max(enableAdvertisingGroupsResponseDraftForwardGroupsPerIntervalMax).default(enableAdvertisingGroupsResponseDraftForwardGroupsPerIntervalDefault),
+  "planId": zod.string().uuid(),
+  "order": zod.number().int().min(enableAdvertisingGroupsResponseDraftForwardOrderMin).max(enableAdvertisingGroupsResponseDraftForwardOrderMax)
+}).optional()
+}),
+  "shopBotUrl": zod.string().nullable(),
+  "groups": zod.array(zod.object({
+  "intervalSeconds": zod.number().int().min(enableAdvertisingGroupsResponseGroupsItemIntervalSecondsMin).max(enableAdvertisingGroupsResponseGroupsItemIntervalSecondsMax),
+  "running": zod.boolean(),
+  "nextSendAt": zod.coerce.date().nullable(),
+  "lastStatus": zod.string(),
+  "scheduleNote": zod.string(),
+  "id": zod.string().uuid(),
+  "target": zod.string(),
+  "kind": zod.enum(['public', 'private_invite', 'chat_id']),
+  "title": zod.string(),
+  "chatId": zod.string().nullable(),
+  "enabled": zod.boolean(),
+  "status": zod.enum(['pending', 'ready', 'needs_setup', 'duplicate', 'error', 'removed']),
+  "note": zod.string(),
+  "checkedAt": zod.coerce.date().nullable()
+})),
+  "campaigns": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['queued', 'sending', 'completed', 'partial', 'cancelled']),
+  "text": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "total": zod.number().int(),
+  "sent": zod.number().int(),
+  "failed": zod.number().int(),
+  "uncertain": zod.number().int(),
+  "pending": zod.number().int(),
+  "cancelled": zod.number().int()
+}))
+})
+
+
 export const saveAdvertisingDraftBodyTextMax = 4096;
 
 export const saveAdvertisingDraftBodyImageUrlMax = 2048;

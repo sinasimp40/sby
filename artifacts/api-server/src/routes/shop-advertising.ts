@@ -7,6 +7,7 @@ import {
   GetAdvertisingActivityQueryParams,
   RemoveAdvertisingGroupsBody, RemoveAdvertisingGroupsResponse,
   DisableAdvertisingGroupsBody, DisableAdvertisingGroupsResponse,
+  EnableAdvertisingGroupsBody, EnableAdvertisingGroupsResponse,
 } from "@workspace/api-zod";
 import { getShopAuth } from "../lib/admin-auth";
 import { advertisingActivityPage, maintainAdvertisingActivity } from "../lib/advertising-activity";
@@ -23,6 +24,7 @@ import { accountMode, discoverAccountGroups, checkAccountGroups } from "../lib/a
 import { stopAccountSchedules } from "../lib/advertising-account-auth";
 import { removeAdvertisingGroups } from "../lib/advertising-group-removal";
 import { disableAdvertisingGroups } from "../lib/advertising-group-disabling";
+import { enableAdvertisingGroups } from "../lib/advertising-group-enabling";
 
 const router: IRouter = Router();
 router.use("/advertising", (req, res, next) => {
@@ -133,6 +135,10 @@ router.post("/advertising/groups/remove", run(async req => {
 router.post("/advertising/groups/disable", run(async req => {
   await disableAdvertisingGroups(owner(req), DisableAdvertisingGroupsBody.parse(req.body).groupIds);
   return DisableAdvertisingGroupsResponse.parse(await advertisingWorkspace(owner(req)));
+}));
+router.post("/advertising/groups/enable", run(async req => {
+  await enableAdvertisingGroups(owner(req), EnableAdvertisingGroupsBody.parse(req.body).groupIds);
+  return EnableAdvertisingGroupsResponse.parse(await advertisingWorkspace(owner(req)));
 }));
 router.delete("/advertising/groups/:id", run(async req => {
   await removeAdvertisingGroups(owner(req), [id(req)]);

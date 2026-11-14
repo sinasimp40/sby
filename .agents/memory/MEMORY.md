@@ -10,3 +10,4 @@
 - [Welcome message media](welcome-media.md) — The user requires an image link above welcome text, delivered with its menu in exactly one Telegram message.
 - [Separate advertising account](advertising-bot.md) — Forward one Saved Message through selected groups with one shared interval; personal-account ads stay separate from the shop bot.
 - [Advertising history limits](advertising-activity.md) — Show ten rows in a scrollable daily history with five-day retention; preserve duplicate-send safeguards.
+- [Advertising bulk actions](advertising-bulk-actions.md) — Use one atomic request for bulk local group changes; per-group HTTP loops exhaust dashboard write limits.

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useRemoveAdvertisingGroups, useDisableAdvertisingGroups, useUpdateAdvertisingGroup, type AdvertisingGroup, type AdvertisingWorkspace } from "@workspace/api-client-react";
+import { useRemoveAdvertisingGroups, useDisableAdvertisingGroups, useEnableAdvertisingGroups, type AdvertisingGroup, type AdvertisingWorkspace } from "@workspace/api-client-react";
 import { Loader2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { errMsg } from "@/lib/format";
@@ -14,12 +14,10 @@ export function GroupBulkActionDialog({ groups, action = "remove", onClose, onCo
 }) {
   const remove = useRemoveAdvertisingGroups();
   const disable = useDisableAdvertisingGroups();
-  const update = useUpdateAdvertisingGroup();
-  const mutation = action === "disable" ? disable : remove;
+  const enable = useEnableAdvertisingGroups();
+  const mutation = action === "enable" ? enable : action === "disable" ? disable : remove;
   const [error, setError] = useState("");
-  const [enabling, setEnabling] = useState(false);
-  const [enabledCount, setEnabledCount] = useState(0);
-  const busy = mutation.isPending || enabling;
+  const busy = mutation.isPending;
   const verb = action === "enable" ? "Enable" : action === "disable" ? "Disable" : "Remove";
   return <AlertDialog open={!!groups} onOpenChange={open => { if (!open && !busy) { setError(""); onClose(); } }}>
     <AlertDialogContent>
@@ -39,7 +37,7 @@ export function GroupBulkActionDialog({ groups, action = "remove", onClose, onCo
         {groups?.map(group => <li key={group.id} className="break-words">{group.title || group.target}<span className="ml-2 font-mono text-xs text-muted-foreground">{group.target}</span></li>)}
       </ul>
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-      {enabling && <p role="status" className="text-sm">Enabled {enabledCount} / {groups?.length ?? 0}</p>}
+      {action === "enable" && busy && <p role="status" className="text-sm">Enabling {groups?.length ?? 0} groups in one request…</p>}
       <AlertDialogFooter>
         <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
         <AlertDialogAction className={action === "remove" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : undefined} disabled={busy || !groups?.length}
@@ -47,25 +45,6 @@ export function GroupBulkActionDialog({ groups, action = "remove", onClose, onCo
             event.preventDefault();
             if (!groups?.length || busy) return;
             setError("");
-            if (action === "enable") {
-              setEnabling(true);
-              setEnabledCount(0);
-              let workspace: AdvertisingWorkspace | undefined;
-              let completed = 0;
-              try {
-                for (const group of groups) {
-                  workspace = await update.mutateAsync({ id: group.id, data: { enabled: true } });
-                  setEnabledCount(++completed);
-                }
-                onClose();
-              } catch (failure) {
-                setError(`Enabled ${completed} of ${groups.length} groups. ${errMsg(failure)} Remaining groups were not changed.`);
-              } finally {
-                if (workspace) onComplete(workspace);
-                setEnabling(false);
-              }
-              return;
-            }
             try {
               const workspace = await mutation.mutateAsync({ data: { groupIds: groups.map(group => group.id) } });
               onComplete(workspace);
