@@ -2449,7 +2449,7 @@ export const deleteAdvertisingGroup = async (id: string, options?: Parameters<ty
 
 export const getDeleteAdvertisingGroupMutationKey = () => ['deleteAdvertisingGroup'] as const;
 
-export const getDeleteAdvertisingGroupMutationOptions = <TError = ErrorType<unknown>,
+export const getDeleteAdvertisingGroupMutationOptions = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdvertisingGroup>>, TError,DeleteAdvertisingGroupMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof deleteAdvertisingGroup>>, TError,DeleteAdvertisingGroupMutationVariables, TContext> => {
 
@@ -2478,10 +2478,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type DeleteAdvertisingGroupMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAdvertisingGroup>>>
 
-    export type DeleteAdvertisingGroupMutationError = ErrorType<unknown>
+    export type DeleteAdvertisingGroupMutationError = ErrorType<void>
     export type DeleteAdvertisingGroupMutationVariables = {id: string}
 
-    export const useDeleteAdvertisingGroup = <TError = ErrorType<unknown>,
+    export const useDeleteAdvertisingGroup = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdvertisingGroup>>, TError,DeleteAdvertisingGroupMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof deleteAdvertisingGroup>>,

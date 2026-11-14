@@ -1,4 +1,5 @@
 import { pool } from "@workspace/db";
+import { purgeAdvertisingGroup } from "./advertising-group-purge";
 import { CommerceError } from "./commerce-providers";
 import { encryptProviderSecret, decryptProviderSecret } from "./provider-credentials";
 import { advertisingBotForOwner, withAdvertisingLock, type AdvertisingClient } from "./advertising-store";
@@ -79,7 +80,7 @@ export async function checkAdvertisingTargets(owner: string, ids: string[], call
         const verified = await inspectAdvertisingGroup(token, row.bot_id, group.target, call);
         const duplicate = await client.query("SELECT 1 FROM advertising_groups WHERE owner_id=$1 AND chat_id=$2 AND id<>$3", [owner, verified.chatId, group.id]);
         if (duplicate.rowCount) {
-          await client.query("UPDATE advertising_groups SET chat_id=NULL,status='duplicate',note='This chat is already saved under another target.',checked_at=now() WHERE owner_id=$1 AND id=$2", [owner, group.id]);
+          await purgeAdvertisingGroup(owner, client, group.id, { duplicateChatId: verified.chatId });
         } else {
           await client.query("UPDATE advertising_groups SET chat_id=$3,title=$4,status='ready',note='Bot membership and posting permission verified.',checked_at=now() WHERE owner_id=$1 AND id=$2",
             [owner, group.id, verified.chatId, verified.title.slice(0, 200)]);

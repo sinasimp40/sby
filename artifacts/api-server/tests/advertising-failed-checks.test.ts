@@ -67,8 +67,7 @@ test("failed group checks cannot remain enabled and known resolution failures ar
       await processAccountMembership(owner, factory);
       assert.equal((await read(good.id)).status, "ready");
       assert.equal((await read(good.id)).enabled, false, "recovery cannot enable or start a group");
-      assert.equal((await read(bad.id)).status, "removed");
-      assert.equal((await read(bad.id)).enabled, false);
+      assert.equal(await read(bad.id), undefined, "confirmed departure permanently erases the failed destination");
       assert.ok(left.includes(bad.target));
       assert.ok(!left.includes(good.target));
       assert.equal((await read(healthy.id)).enabled, true);

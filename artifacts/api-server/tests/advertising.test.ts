@@ -121,8 +121,8 @@ test("advertising API and durable sender isolate credentials, require approval, 
     assert.equal((await request("/groups/check", "POST", { groupIds: [invite.id] })).data.groups.find((group: { id: string }) => group.id === invite.id).status, "ready");
     const aliases = await request("/groups", "POST", { targets: ["@test_only_alias"], permissionConfirmed: true });
     const alias = aliases.data.groups.find((group: { target: string }) => group.target === "@test_only_alias");
-    assert.equal((await request("/groups/check", "POST", { groupIds: [alias.id] })).data.groups.find((group: { id: string }) => group.id === alias.id).status, "duplicate");
-    assert.equal((await request(`/groups/${alias.id}`, "DELETE")).status, 200);
+    assert.equal((await request("/groups/check", "POST", { groupIds: [alias.id] })).data.groups.find((group: { id: string }) => group.id === alias.id), undefined);
+    assert.equal((await request(`/groups/${alias.id}`, "DELETE")).status, 404);
     const foreignId = randomUUID();
     await pool.query("INSERT INTO advertising_groups(id,owner_id,target,kind) VALUES($1,$2,'@foreign_test_group','public')", [foreignId, foreign]);
     assert.equal((await request(`/groups/${foreignId}`, "PATCH", { enabled: false })).status, 404);
@@ -176,8 +176,8 @@ test("advertising API and durable sender isolate credentials, require approval, 
     const decoded = decodeShopArchive(exported.zip);
     assert.equal(decoded.data.advertisingBots.length, 1);
     assert.equal(decoded.data.advertisingGroups.filter(group => group.status !== "removed").length, 4);
-    assert.equal(decoded.data.advertisingGroups.filter(group => group.status === "removed").length, 1,
-      "portable exports retain removed identities so restoring cannot silently rediscover them");
+    assert.equal(decoded.data.advertisingGroups.filter(group => group.status === "removed").length, 0,
+      "purged duplicate aliases must not be exported");
     assert.ok(decoded.data.advertisingCampaigns.length > 0 && decoded.data.advertisingDeliveries.length > 0);
     assert.ok(!JSON.stringify(decoded.data).includes(token)); validateShopRelationships(decoded.data, owner);
     const disabledCampaign = await start();
@@ -187,7 +187,11 @@ test("advertising API and durable sender isolate credentials, require approval, 
     assert.equal(attempts.length, 5);
     await request(`/groups/${ready[0].id}`, "PATCH", { enabled: true });
     const removedCampaign = await start();
+    assert.equal((await request(`/groups/${ready[0].id}`, "DELETE")).status, 409,
+      "a bot cannot leave the merchant's personal Telegram memberships");
+    await pool.query("INSERT INTO advertising_accounts(owner_id,account_id,generation) VALUES($1,'TEST_ONLY_ACCOUNT',1)", [owner]);
     await request(`/groups/${ready[0].id}`, "DELETE");
+    await pool.query("DELETE FROM advertising_accounts WHERE owner_id=$1", [owner]);
     await processAdvertisingOwner(owner);
     assert.equal((await request(`/campaigns/${removedCampaign.id}`)).data.campaign.cancelled, 1);
     assert.equal(attempts.length, 5);

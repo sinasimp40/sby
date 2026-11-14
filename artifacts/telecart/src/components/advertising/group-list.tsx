@@ -11,7 +11,7 @@ export function retainedGroupSelection(groups: Pick<AdvertisingGroup, "id">[], s
 
 export function filteredGroups(groups: AdvertisingGroup[], status: string, search: string) {
   const query = search.trim().toLowerCase();
-  return groups.filter(group => (status === "all" || (status === "disabled" ? !group.enabled : group.status === status)) &&
+  return groups.filter(group => (status === "all" || (status === "enabled" ? group.enabled : status === "disabled" ? !group.enabled : group.status === status)) &&
     (!query || `${group.title} ${group.target} ${group.chatId ?? ""}`.toLowerCase().includes(query)));
 }
 
@@ -26,6 +26,13 @@ export function selectGroupsInView(groups: Pick<AdvertisingGroup, "id">[], selec
   return next;
 }
 
+/** Replace selection in this view only, leaving hidden choices unchanged. */
+export function selectEnabledGroupsInView(groups: AdvertisingGroup[], selected: Set<string>) {
+  const next = new Set(selected);
+  groups.forEach(group => group.enabled ? next.add(group.id) : next.delete(group.id));
+  return next;
+}
+
 export function snapshotGroupRemoval(groups: AdvertisingGroup[], selected: Set<string>) {
   return groups.filter(group => selected.has(group.id)).map(({ id, title, target }) => ({ id, title, target }));
 }
@@ -37,6 +44,7 @@ export function snapshotEnabledGroups(groups: AdvertisingGroup[]) {
 
 export function alphabeticalGroups(groups: AdvertisingGroup[]) {
   return [...groups].sort((a, b) =>
+    Number(Boolean(b.enabled)) - Number(Boolean(a.enabled)) ||
     names.compare((a.title || a.target).trim(), (b.title || b.target).trim()) ||
     names.compare(a.target, b.target) || a.id.localeCompare(b.id));
 }
@@ -69,5 +77,5 @@ export function ScrollableGroupList({ children, count }: { children: ReactNode; 
     return () => observer.disconnect();
   }, [children, count]);
   return <ul ref={ref} className="shrink-0 divide-y overflow-y-auto rounded-lg border [scrollbar-gutter:stable]" style={{ height: count > 10 ? height : undefined }}
-    tabIndex={0} aria-label="Groups in alphabetical order" data-testid="list-advertising-groups">{children}</ul>;
+    tabIndex={0} aria-label="Enabled groups first, alphabetically within each section" data-testid="list-advertising-groups">{children}</ul>;
 }

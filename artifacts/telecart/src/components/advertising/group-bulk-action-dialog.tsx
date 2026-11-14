@@ -24,8 +24,8 @@ export function GroupBulkActionDialog({ groups, action = "remove", onClose, onCo
         <AlertDialogDescription>
           {action === "disable"
             ? "This turns off every enabled group listed below from your current filter and search, including unchecked groups, and stops their posting schedules. It does not delete groups or leave them on Telegram."
-            : "This removes only the groups listed below from advertising and stops their posting schedules. It does not leave them on Telegram."}
-          {" "}Posting history is kept; groups outside this list are not affected.
+            : "Posting stops now. The verified account will leave these groups; after departure or absence is confirmed, their saved records and related history are permanently erased. Failed or uncertain departures remain recorded. Duplicate aliases are erased without leaving the valid original group."}
+          {" "}{action === "disable" ? "Posting history is kept; " : ""}Groups outside this list are not affected.
           An action already sent to Telegram may have completed.
         </AlertDialogDescription>
       </AlertDialogHeader>

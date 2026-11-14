@@ -10,7 +10,7 @@ export async function repairMissingLeaveIdentities(owner: string, client: Advert
       AND g.status='removed' AND (j.status='pending' OR (j.status='failed' AND j.note=$3))`,
   [owner, account.account_id, MISSING_LEAVE_IDENTITY])).rows;
   for (const job of jobs) {
-    const pinned = job.chat_id || job.job_chat_id || (/^-[1-9]\d*$/.test(job.target) ? job.target : null);
+    const pinned = job.chat_id || (/^-[1-9]\d*$/.test(job.target) ? job.target : null) || job.job_chat_id;
     if (!pinned || (job.job_chat_id && job.job_chat_id !== pinned)) continue;
     if (job.status === "pending" && job.chat_id === pinned && job.job_chat_id === pinned) continue;
     await client.query(`UPDATE advertising_groups SET chat_id=$3 WHERE owner_id=$1 AND id=$2 AND status='removed'`,

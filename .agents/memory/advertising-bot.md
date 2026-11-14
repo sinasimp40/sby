@@ -122,13 +122,19 @@ Failed group checks must not leave the destination enabled; the user explicitly 
 
 **Why:** The user changed the earlier exclusion and explicitly said “post activity uncertain result make it remove in the list and leave the account on that uncertain group.”
 
-**How to apply:** Preserve uncertain evidence and never retry an uncertain post automatically. Remove affected destinations locally and queue leaving through the verified-account membership worker, including attributable historical uncertain posts without newer successes. Keep successful groups untouched. Account-wide restrictions, connection errors without an uncertain post, and Telegram waits must not trigger mass leaving. Do not silently rediscover/rejoin removed destinations.
+**How to apply:** Preserve uncertain evidence until departure is confirmed and never retry an uncertain post automatically. Remove affected destinations locally and queue leaving through the verified-account membership worker, including attributable historical uncertain posts without newer successes. Keep successful groups untouched. Account-wide restrictions, connection errors without an uncertain post, and Telegram waits must not trigger mass leaving. Do not silently rediscover/rejoin destinations whose removal is still unresolved.
 
-Portable transfers must preserve removed-destination suppression without resuming remote join/leave actions.
+The user explicitly chose “Leave first, then erase” for permanent removal, including related group history, and wants duplicates erased rather than retained.
+
+**Why:** The user requested that removed, left, kicked and duplicate groups disappear from the database, then confirmed leaving before erasure after being informed about lost reasons/history and rediscovery risks. This supersedes indefinite removed-destination tombstones and dashboard-only manual removal.
+
+**How to apply:** Keep failed/uncertain departures disabled and recorded until same-account membership evidence confirms departure or absence. Then erase group-linked records, not merely hide them. Delete duplicate aliases without leaving the valid original group. Preserve recipient-free confirmation hashes to prevent replaying erased join requests. Do not interpret permanent erasure as authorization to rejoin or post automatically.
+
+Portable transfers must preserve unresolved removed-destination suppression without resuming remote join/leave actions.
 
 **Why:** A destination imported onto another installation has no verified personal-account authorization. Copying executable membership work could change the wrong account's memberships.
 
-**How to apply:** Require fresh account verification and explicit review before any new membership operation after import. Preserve posting history and removed destinations even when installation-local action queues are excluded.
+**How to apply:** Require fresh account verification and explicit review before any new membership operation after import. Preserve unresolved removed destinations until departure can safely be confirmed; already-purged records do not travel.
 
 A newly confirmed campaign start resets the merchant's old interval, not Telegram-required waits or ambiguous-send safeguards.
 

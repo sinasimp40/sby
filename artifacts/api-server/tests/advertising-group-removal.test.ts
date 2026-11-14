@@ -6,7 +6,7 @@ import { pool } from "@workspace/db";
 import app from "../src/app";
 import { issueAdminSession, adminCookieName } from "../src/lib/admin-auth";
 
-test("bulk group actions are authenticated, owner-scoped, atomic, history-preserving and never leave Telegram", async t => {
+test("bulk actions are authenticated and owner-scoped; disabling preserves history and removal queues confirmed leaving", async t => {
   process.env.TELECART_ADMIN_EMAIL = "test-only@example.invalid";
   process.env.TELECART_ADMIN_INITIAL_PASSWORD = "TEST_ONLY_PASSWORD";
   const owner = process.env.TELECART_OWNER_ID!;
@@ -24,6 +24,8 @@ test("bulk group actions are authenticated, owner-scoped, atomic, history-preser
       VALUES($1,$2,'chat_id',$2,'TEST_ONLY',$3,true) RETURNING *`, [tenant, target, status])).rows[0];
   const read = async (id: string) => (await pool.query("SELECT * FROM advertising_groups WHERE id=$1", [id])).rows[0];
   try {
+    await pool.query(`INSERT INTO advertising_accounts(owner_id,account_id,generation)
+      VALUES($1,'TEST_ONLY_ACCOUNT',1) ON CONFLICT(owner_id) DO UPDATE SET account_id='TEST_ONLY_ACCOUNT',generation=1`, [owner]);
     const error1 = await save("-10011111", "error"), error2 = await save("-10022222", "error");
     const hiddenReady = await save("-10033333", "ready");
     const otherOwner = await save("-10044444", "error", "TEST_ONLY_OTHER_OWNER");
@@ -90,9 +92,10 @@ test("bulk group actions are authenticated, owner-scoped, atomic, history-preser
       }
       assert.equal((await read(hiddenReady.id)).enabled, true);
       assert.equal((await pool.query("SELECT running FROM advertising_schedules WHERE group_id=$1", [hiddenReady.id])).rows[0].running, true);
-      assert.equal((await pool.query("SELECT status FROM advertising_membership_jobs WHERE group_id=$1", [error1.id])).rows[0].status, "stopped");
-      assert.equal((await pool.query("SELECT 1 FROM advertising_membership_jobs WHERE action='leave'")).rowCount, 0);
-      assert.equal((await request([error1.id, error2.id])).status, 200, "safe retries cannot delete records or create leave work");
+      assert.equal((await pool.query("SELECT status FROM advertising_membership_jobs WHERE group_id=$1 AND action='join'", [error1.id])).rows[0].status, "stopped");
+      assert.equal((await pool.query("SELECT 1 FROM advertising_membership_jobs WHERE action='leave'")).rowCount, 2);
+      assert.equal((await request([error1.id, error2.id])).status, 200, "safe retries cannot create duplicate leave work");
+      assert.equal((await pool.query("SELECT 1 FROM advertising_membership_jobs WHERE action='leave'")).rowCount, 2);
       assert.equal((await read(otherOwner.id)).enabled, true);
     });
     await t.test("single-row removal uses the same history-preserving semantics", async () => {

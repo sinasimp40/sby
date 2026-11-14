@@ -94,7 +94,9 @@ export async function startMembership(owner: string, input: AdvertisingMembershi
     throw new AccountError("Choose unique public group or invitation links from the preview.");
   const hash = createHash("sha256").update(JSON.stringify({ ...input, idempotencyKey: undefined })).digest("hex");
   return withAdvertisingLock(owner, async client => {
-    const prior = (await client.query("SELECT payload_hash FROM advertising_membership_jobs WHERE owner_id=$1 AND request_key=$2", [owner, input.idempotencyKey])).rows[0];
+    const prior = (await client.query(`SELECT payload_hash FROM advertising_membership_jobs WHERE owner_id=$1 AND request_key=$2
+      UNION ALL SELECT payload_hash FROM advertising_account_commands WHERE owner_id=$1 AND request_key=$3`,
+    [owner, input.idempotencyKey, `membership:${input.idempotencyKey}`])).rows[0];
     if (prior) { if (prior.payload_hash !== hash) throw new AccountError("This confirmation was used for a different selection. Preview again."); return; }
     const account = (await client.query("SELECT * FROM advertising_accounts WHERE owner_id=$1", [owner])).rows[0];
     if (!account?.session_encrypted || account.login_encrypted || account.last_error || input.accountId !== account.account_id)

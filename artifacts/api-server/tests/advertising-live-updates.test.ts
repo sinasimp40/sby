@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { once } from "node:events";
+import { randomUUID } from "node:crypto";
 import { Api, TelegramClient } from "telegram";
 import bigInt from "big-integer";
 import { pool, databaseChanges } from "@workspace/db";
@@ -71,17 +72,22 @@ test("missing leave identities recover safely and pushed snapshots update only t
       assert.equal((await pool.query("SELECT * FROM advertising_groups WHERE id=$1", [group.id])).rows[0].chat_id, chatId);
       await processAccountMembership(owner, factory);
       assert.equal(leaves, 1);
-      assert.equal((await pool.query("SELECT status FROM advertising_membership_jobs WHERE id=$1", [job.id])).rows[0].status, "left");
+      assert.equal((await pool.query("SELECT 1 FROM advertising_membership_jobs WHERE id=$1", [job.id])).rowCount, 0);
+      assert.equal((await pool.query("SELECT 1 FROM advertising_groups WHERE id=$1", [group.id])).rowCount, 0);
     });
     await t.test("known pre-RPC failures recover once without retrying uncertain or mismatched jobs", async () => {
-      await pool.query("UPDATE advertising_groups SET chat_id=NULL WHERE id=$1", [group.id]);
-      await pool.query(`UPDATE advertising_membership_jobs SET chat_id=NULL,status='failed',note=$2 WHERE owner_id=$1`,
-        [owner, MISSING_LEAVE_IDENTITY]);
+      const seedFailure = async (note: string) => {
+        await pool.query(`INSERT INTO advertising_groups(id,owner_id,target,kind,title,status,enabled)
+          VALUES($1,$2,$3,'chat_id','TEST_ONLY','removed',false)`, [group.id, owner, chatId]);
+        await pool.query(`INSERT INTO advertising_membership_jobs(owner_id,account_id,generation,group_id,target,action,request_key,payload_hash,status,note)
+          VALUES($1,$2,1,$3,$4,'leave',$5,'automatic','failed',$6)`, [owner, accountId, group.id, chatId, randomUUID(), note]);
+      };
+      await seedFailure(MISSING_LEAVE_IDENTITY);
       await processAccountMembership(owner, factory);
       assert.equal(leaves, 2);
       await processAccountMembership(owner, factory);
       assert.equal(leaves, 2);
-      await pool.query(`UPDATE advertising_membership_jobs SET status='failed',note='TEST_ONLY unrelated RPC failure' WHERE owner_id=$1`, [owner]);
+      await seedFailure("TEST_ONLY unrelated RPC failure");
       await processAccountMembership(owner, factory);
       assert.equal(leaves, 2);
       await pool.query(`UPDATE advertising_membership_jobs SET chat_id='-10099999',status='failed',note=$2 WHERE owner_id=$1`,
@@ -96,11 +102,11 @@ test("missing leave identities recover safely and pushed snapshots update only t
       await applyAccountGroupUpdate(owner, "other-account", 1, { chatId, left: true }, factory);
       assert.equal((await pool.query("SELECT status FROM advertising_groups WHERE id=$1", [group.id])).rows[0].status, "ready");
       await applyAccountGroupUpdate(owner, accountId, 1, { chatId, left: true }, factory);
-      assert.equal((await pool.query("SELECT status FROM advertising_groups WHERE id=$1", [group.id])).rows[0].status, "removed");
-      assert.equal((await pool.query("SELECT status FROM advertising_membership_jobs WHERE owner_id=$1", [owner])).rows[0].status, "already_absent");
+      assert.equal((await pool.query("SELECT 1 FROM advertising_groups WHERE id=$1", [group.id])).rowCount, 0);
+      assert.equal((await pool.query("SELECT 1 FROM advertising_membership_jobs WHERE owner_id=$1", [owner])).rowCount, 0);
       assert.equal(leaves, 2);
       await applyAccountGroupUpdate(owner, accountId, 1, { chatId }, factory);
-      assert.equal((await pool.query("SELECT status FROM advertising_groups WHERE id=$1", [group.id])).rows[0].status, "removed");
+      assert.equal((await pool.query("SELECT 1 FROM advertising_groups WHERE id=$1", [group.id])).rowCount, 0);
     });
     await t.test("authenticated streaming pushes new groups, changed counts and removal immediately; logout closes it", async () => {
       assert.equal((await fetch(`${base}/api/shop/advertising/events`)).status, 401);
@@ -130,7 +136,8 @@ test("missing leave identities recover safely and pushed snapshots update only t
         } finally { clearTimeout(deadline); }
       };
       assert.equal((await nextWorkspace()).groups.length, 0);
-      await pool.query("UPDATE advertising_groups SET status='ready',enabled=true,account_generation=1 WHERE id=$1", [group.id]);
+      await pool.query(`INSERT INTO advertising_groups(id,owner_id,target,chat_id,kind,title,status,enabled,account_generation)
+        VALUES($1,$2,$3,$3,'chat_id','TEST_ONLY','ready',true,1)`, [group.id, owner, chatId]);
       const added = await nextWorkspace();
       assert.equal(added.groups.length, 1); assert.equal(added.groups[0].status, "ready");
       // Another shop's write should not produce any snapshot or timing signal.

@@ -6,6 +6,7 @@ import { withAccountDriver, stopAccountSchedules } from "./advertising-account-a
 import { AccountError, createAccountDriver, safeAccountError, type AccountFactory, type AccountDriver } from "./advertising-account-driver";
 import { assertTransferReviewed } from "./shop-transfer-safety";
 import { definiteDestinationFailure, queueGroupRemoval } from "./advertising-membership-store";
+import { purgeAdvertisingGroup, purgeCompletedGroupRemovals } from "./advertising-group-purge";
 
 export async function queueRecordedUncertain(owner: string, client: AdvertisingClient, account: Record<string, any>) {
   if (!account?.account_id) return;
@@ -104,10 +105,26 @@ export async function processAccountMembership(owner: string, factory: AccountFa
     // A crash after a membership RPC may have changed Telegram. Never replay.
     await client.query(`UPDATE advertising_membership_jobs SET status='uncertain',note='Interrupted membership action. Preview/check membership before any new action.',updated_at=now()
       WHERE owner_id=$1 AND status='working' AND updated_at<now()-interval '60 seconds'`, [owner]);
+    await purgeCompletedGroupRemovals(owner, client);
     const account = (await client.query("SELECT * FROM advertising_accounts WHERE owner_id=$1", [owner])).rows[0];
     if (!account) return;
     await disableFailedChecks(owner, client);
     if (!account.account_id) return;
+    // Upgrade earlier dashboard-only removals with a known immutable identity.
+    // Imported removal notes are intentionally different and never authorize
+    // new remote work. Unknown historical usernames remain for manual review.
+    const localRemovals = (await client.query(`SELECT g.* FROM advertising_groups g WHERE g.owner_id=$1 AND g.status='removed'
+      AND g.note='Removed from advertising by the merchant. Telegram membership was not changed.'
+      AND NOT EXISTS(SELECT 1 FROM advertising_membership_jobs j WHERE j.owner_id=g.owner_id AND j.group_id=g.id AND j.action='leave')`, [owner])).rows;
+    for (const group of localRemovals) {
+      const pinned = group.chat_id || (/^-[1-9]\d*$/.test(group.target) ? group.target : null);
+      if (!pinned) continue;
+      await client.query("UPDATE advertising_groups SET chat_id=$3,note='Earlier removal upgraded: confirmed account departure is required before erasure.' WHERE owner_id=$1 AND id=$2",
+        [owner, group.id, pinned]);
+      await client.query(`INSERT INTO advertising_membership_jobs(owner_id,account_id,generation,group_id,target,chat_id,title,action,request_key,payload_hash,note)
+        VALUES($1,$2,$3,$4,$5,$6,$7,'leave',$8,'automatic','Owner selected leave-first permanent erasure for earlier local removals.') ON CONFLICT DO NOTHING`,
+      [owner, account.account_id, account.generation, group.id, group.target, pinned, group.title, `legacy-manual-leave:${group.id}`]);
+    }
     await repairMissingLeaveIdentities(owner, client, account);
     await recordedFailures(owner, client, account);
     await queueRecordedUncertain(owner, client, account);
@@ -149,6 +166,7 @@ export async function processAccountMembership(owner: string, factory: AccountFa
               job.action === "leave" ? probe.joined ? "pending" : "already_absent" : "failed",
               job.action === "leave" ? probe.joined ? "Read-only check confirmed membership remains. Safe leave retry queued." : "Read-only check confirmed the account is absent." :
                 "Read-only check did not confirm membership. Preview and explicitly confirm any new join."]);
+            if (job.action === "leave" && !probe.joined) await purgeAdvertisingGroup(owner, client, job.group_id);
           }
           return;
         }
@@ -157,7 +175,25 @@ export async function processAccountMembership(owner: string, factory: AccountFa
           if (!group || group.status !== "removed") {
             await client.query("UPDATE advertising_membership_jobs SET status='stopped',note='Destination is no longer marked removed.',updated_at=now() WHERE id=$1", [job.id]); return;
           }
-          if (!job.chat_id || group.chat_id !== job.chat_id) throw new AccountError(MISSING_LEAVE_IDENTITY);
+          if (!job.chat_id) {
+            let pinned = group.chat_id;
+            if (!pinned && driver.membership) {
+              const membership = await driver.membership(job.target);
+              pinned = membership.chatId;
+              if (pinned && (await client.query("SELECT 1 FROM advertising_groups WHERE owner_id=$1 AND id<>$2 AND chat_id=$3",
+                [owner, group.id, pinned])).rowCount) {
+                // Resolving an unchecked alias must never leave its original.
+                await client.query("UPDATE advertising_membership_jobs SET status='stopped',updated_at=now() WHERE owner_id=$1 AND id=$2", [owner, job.id]);
+                await purgeAdvertisingGroup(owner, client, group.id, { duplicateChatId: pinned });
+                return;
+              }
+            }
+            if (!pinned) throw new AccountError(MISSING_LEAVE_IDENTITY);
+            await client.query("UPDATE advertising_groups SET chat_id=$3 WHERE owner_id=$1 AND id=$2", [owner, group.id, pinned]);
+            await client.query("UPDATE advertising_membership_jobs SET chat_id=$3 WHERE owner_id=$1 AND id=$2", [owner, job.id, pinned]);
+            group.chat_id = job.chat_id = pinned;
+          }
+          if (group.chat_id !== job.chat_id) throw new AccountError(MISSING_LEAVE_IDENTITY);
           if (!driver.leave) throw new AccountError("This account client does not support leaving groups.");
           actionAttempted = true;
           const outcome = await driver.leave(job.target, job.chat_id);
@@ -165,6 +201,7 @@ export async function processAccountMembership(owner: string, factory: AccountFa
           await client.query("UPDATE advertising_membership_jobs SET status=$3,note=$4,updated_at=now() WHERE owner_id=$1 AND id=$2",
             [owner, job.id, outcome, outcome === "left" ? "Telegram confirmed leaving this group." : "The account is already absent from this group."]);
           await client.query("UPDATE advertising_groups SET note=$3 WHERE owner_id=$1 AND id=$2", [owner, group.id, `Removed. ${outcome === "left" ? "Account left the group." : "Account already absent."}`]);
+          await purgeAdvertisingGroup(owner, client, group.id);
           return;
         }
         if (!driver.membership || !driver.join) throw new AccountError("This account client does not support joining.");

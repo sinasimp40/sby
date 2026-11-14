@@ -22,7 +22,7 @@ test("groups-per-interval controls render one-copy semantics and bounded group c
   });
   try {
     const { GroupsPerIntervalPanel, ForwardingStatus, groupsPerIntervalOk, queueGroups } = await vite.ssrLoadModule("/src/components/advertising/forwarding-panels.tsx");
-    const { alphabeticalGroups, retainedGroupSelection, filteredGroups, selectedGroupIdsInView, selectGroupsInView, snapshotGroupRemoval, snapshotEnabledGroups, ScrollableGroupList, groupListViewportHeight } = await vite.ssrLoadModule("/src/components/advertising/group-list.tsx");
+    const { alphabeticalGroups, retainedGroupSelection, filteredGroups, selectedGroupIdsInView, selectGroupsInView, selectEnabledGroupsInView, snapshotGroupRemoval, snapshotEnabledGroups, ScrollableGroupList, groupListViewportHeight } = await vite.ssrLoadModule("/src/components/advertising/group-list.tsx");
     const { CampaignGroupCounts, campaignGroupCounts } = await vite.ssrLoadModule("/src/components/advertising/campaign-group-counts.tsx");
     const countGroups = Array.from({ length: 211 }, (_, i) => ({
       id: `count-${i}`, title: `Group ${i}`, target: `-${i + 1}`, chatId: i < 205 ? `-${i + 1}` : null,
@@ -90,6 +90,12 @@ test("groups-per-interval controls render one-copy semantics and bounded group c
     assert.match(stoppedStatus, /data-testid="status-forwarding"[^>]*><span[^>]*><\/span>Stopped<\/span>/);
     assert.deepEqual(alphabeticalGroups(groups).map(g => g.title || g.target), ["Alpha", "beta 2", "beta 10", "Charlie", "Zulu"]);
     assert.deepEqual(groups.map(g => g.id), original, "sorting must not mutate the cached workspace");
+    const mixedEnabled = groups.map((group, index) => ({ ...group, enabled: index % 2 === 0 }));
+    const enabledFirst = alphabeticalGroups(mixedEnabled);
+    assert.deepEqual(enabledFirst.slice(0, 3).map(group => group.enabled), [true, true, true]);
+    assert.ok(enabledFirst.slice(3).every(group => !group.enabled));
+    assert.deepEqual(enabledFirst.filter(group => group.enabled).map(group => group.id),
+      alphabeticalGroups(mixedEnabled.filter(group => group.enabled)).map(group => group.id));
     assert.deepEqual(queueGroups({ groups }, new Set(original)).map(g => g.id), alphabeticalGroups(groups).map(g => g.id));
     const staleSelected = new Set([...original, "TEST_ONLY_removed"]);
     const retained = retainedGroupSelection(groups, staleSelected);
@@ -120,6 +126,14 @@ test("groups-per-interval controls render one-copy semantics and bounded group c
       assert.deepEqual(filteredGroups(filterFixture, status, "").map(group => group.id), [status === "ready" ? "good" : status]);
     const enabledFixture = filterFixture.map((group, index) => ({ ...group, enabled: index !== 0 && index !== 2 }));
     const disabled = filteredGroups(enabledFixture, "disabled", "");
+    const enabled = filteredGroups(enabledFixture, "enabled", "");
+    assert.ok(enabled.every(group => group.enabled));
+    assert.equal(enabled.length, enabledFixture.filter(group => group.enabled).length);
+    const enabledSelected = selectEnabledGroupsInView(enabledFixture, new Set(["outside-view", "bad-1", "good"]));
+    assert.ok(enabledSelected.has("outside-view"), "hidden selections stay unchanged");
+    assert.ok(!enabledSelected.has("bad-1") && !enabledSelected.has("good"), "visible disabled groups are deselected");
+    assert.ok(enabled.every(group => enabledSelected.has(group.id)));
+    assert.deepEqual([...selectEnabledGroupsInView(disabled, new Set(["outside-view", ...disabled.map(group => group.id)]))], ["outside-view"]);
     assert.deepEqual(disabled.map(group => group.id), ["bad-1", "good"],
       "disabled is based on the enable switch, regardless of permission status");
     assert.deepEqual(filteredGroups(enabledFixture, "disabled", "ready").map(group => group.id), ["good"]);
@@ -157,6 +171,10 @@ test("groups-per-interval controls render one-copy semantics and bounded group c
         setSelected: () => {}, sequential: true, onRefresh: () => {}, refreshing })));
     const groupHtml = renderGroups(groups);
     assert.match(groupHtml, /data-testid="filter-group-disabled"/);
+    assert.match(groupHtml, /data-testid="filter-group-enabled"/);
+    assert.doesNotMatch(groupHtml, /data-testid="filter-group-needs_setup"/);
+    assert.match(groupHtml, /data-testid="button-select-enabled-groups"/);
+    assert.match(groupHtml, /data-testid="group-actions-toolbar"/);
     assert.match(groupHtml, /data-testid="text-selected-count">5 selected/);
     assert.match(groupHtml, /Select all 5 shown/);
     assert.match(groupHtml, /data-testid="text-visible-selected-count">5 selected here/);

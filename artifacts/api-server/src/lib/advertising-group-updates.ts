@@ -5,6 +5,7 @@ import type { AccountFactory } from "./advertising-account-driver";
 import { definiteDestinationFailure, queueGroupRemoval } from "./advertising-membership-store";
 import { safeAccountError } from "./advertising-account-errors";
 import { logger } from "./logger";
+import { purgeAdvertisingGroup } from "./advertising-group-purge";
 
 export type AccountGroupUpdate = { chatId: string; left?: boolean };
 
@@ -53,15 +54,24 @@ export async function applyAccountGroupUpdate(owner: string, accountId: string, 
   await withAdvertisingLock(owner, async client => {
     const account = (await client.query("SELECT * FROM advertising_accounts WHERE owner_id=$1", [owner])).rows[0];
     if (!account || account.account_id !== accountId || account.generation !== generation || account.login_encrypted) return;
-    const groups = (await client.query(`SELECT * FROM advertising_groups WHERE owner_id=$1 AND status<>'removed'
+    const groups = (await client.query(`SELECT * FROM advertising_groups WHERE owner_id=$1
       AND (chat_id=$2 OR target=$2)`, [owner, change.chatId])).rows;
     if (!groups.length) return; // Never rediscover or restore removed destinations.
     const remove = async (group: Record<string, any>, absent: boolean, reason: string) => {
       await queueGroupRemoval(owner, client, { ...group, chat_id: change.chatId }, account, reason);
-      if (absent) await client.query(`UPDATE advertising_membership_jobs SET status='already_absent',
+      if (absent) {
+        // Older dashboard removals may predate leave jobs. Record the verified
+        // self-membership event as proof before erasing them.
+        await client.query("UPDATE advertising_groups SET chat_id=$3 WHERE owner_id=$1 AND id=$2", [owner, group.id, change.chatId]);
+        await client.query(`INSERT INTO advertising_membership_jobs(owner_id,account_id,generation,group_id,target,chat_id,title,action,request_key,payload_hash,status,note)
+          VALUES($1,$2,$3,$4,$5,$6,$7,'leave',$8,'automatic','already_absent','Verified Telegram self-membership departure.') ON CONFLICT DO NOTHING`,
+        [owner, accountId, generation, group.id, group.target, change.chatId, group.title, `departed:${group.id}:${generation}`]);
+        await client.query(`UPDATE advertising_membership_jobs SET status='already_absent',
         note='Telegram confirmed the account left or was removed from this group.',updated_at=now()
         WHERE owner_id=$1 AND group_id=$2 AND action='leave' AND status='pending' AND account_id=$3`,
       [owner, group.id, accountId]);
+        await purgeAdvertisingGroup(owner, client, group.id);
+      }
     };
     // A self-participant update from this account is authoritative and needs no
     // additional leave RPC, which could fail after a kick.

@@ -219,16 +219,18 @@ paths:
     delete:
       operationId: deleteAdvertisingGroup
       responses:
-        "200": {description: Removed group, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
+        "200": {description: Posting stopped and verified-account leave queued before permanent erasure, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
+        "409": {description: A verified Telegram account is required before leaving}
   /shop/advertising/groups/remove:
     post:
       operationId: removeAdvertisingGroups
       requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingGroupRemoval"}}}}
       responses:
-        "200": {description: Selected destinations removed without leaving Telegram or deleting posting evidence, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
+        "200": {description: Selected destinations stopped and queued for leaving before permanent erasure; duplicate aliases erased without leaving the original, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
         "400": {description: Invalid selection}
         "401": {description: Sign-in required}
         "404": {description: A selected group was not found}
+        "409": {description: A verified Telegram account is required before leaving}
   /shop/advertising/groups/disable:
     post:
       operationId: disableAdvertisingGroups

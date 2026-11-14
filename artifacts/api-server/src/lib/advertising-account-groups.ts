@@ -3,6 +3,7 @@ import { withAdvertisingLock } from "./advertising-store";
 import { withAccountDriver, stopAccountSchedules } from "./advertising-account-auth";
 import { AccountError, createAccountDriver, safeAccountError, type AccountFactory } from "./advertising-account-driver";
 import { definiteDestinationFailure, queueGroupRemoval } from "./advertising-membership-store";
+import { purgeAdvertisingGroup } from "./advertising-group-purge";
 
 export async function accountMode(owner: string) {
   return Boolean((await pool.query("SELECT 1 FROM advertising_accounts WHERE owner_id=$1", [owner])).rowCount);
@@ -31,14 +32,15 @@ export async function checkAccountGroups(owner: string, ids: string[], factory: 
               await client.query("UPDATE advertising_groups SET chat_id=$3 WHERE owner_id=$1 AND id=$2",
                 [owner, group.id, membership.chatId]);
               group.chat_id = membership.chatId;
+            } else {
+              await purgeAdvertisingGroup(owner, client, group.id, { duplicateChatId: membership.chatId });
+              continue;
             }
           }
         }
         const checked = await driver.inspect(group.chat_id || group.target);
         const duplicate = (await client.query("SELECT status FROM advertising_groups WHERE owner_id=$1 AND chat_id=$2 AND id<>$3", [owner, checked.chatId, group.id])).rows[0];
-        if (duplicate?.status === "removed") await client.query(`UPDATE advertising_groups SET enabled=false,status='removed',account_generation=NULL,
-          note='This is an alias of a removed destination. Restore through membership import.',checked_at=now() WHERE owner_id=$1 AND id=$2`, [owner, group.id]);
-        else if (duplicate) await client.query("UPDATE advertising_groups SET chat_id=NULL,status='duplicate',account_generation=NULL,note='This group is already saved under another target.',checked_at=now() WHERE owner_id=$1 AND id=$2", [owner, group.id]);
+        if (duplicate) await purgeAdvertisingGroup(owner, client, group.id, { duplicateChatId: checked.chatId });
         else await client.query(`UPDATE advertising_groups SET chat_id=$3,title=$4,status='ready',account_generation=$5,
           note='Account membership and posting permissions verified.',checked_at=now() WHERE owner_id=$1 AND id=$2`,
           [owner, group.id, checked.chatId, checked.title.slice(0, 200), account.generation]);

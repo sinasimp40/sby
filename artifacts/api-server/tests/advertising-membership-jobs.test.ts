@@ -159,7 +159,7 @@ test("membership jobs are confirmed, durable, account-bound, and fail closed wit
       assert.deepEqual(await queryGroup("@test_only_existing_success"), before);
       assert.equal((await membershipJobs(owner))[0].status, "already_joined");
     });
-    await t.test("definite permission failures remove only that group and queue a leave, never rediscovery", async () => {
+    await t.test("definite failures queue leaving, then erase only that group and require explicit rejoining", async () => {
       await clearJobs();
       const failed = await save("@test_only_failed", await seed("@test_only_failed", 3, true));
       const good = await save("@test_only_good", await seed("@test_only_good", 4, true));
@@ -172,17 +172,16 @@ test("membership jobs are confirmed, durable, account-bound, and fail closed wit
       const before = leaves;
       await processAccountMembership(owner, factory);
       assert.equal(leaves, before + 1);
-      assert.equal((await membershipJobs(owner))[0].status, "left");
-      membership.get(failed.target)!.joined = true; // a stale dialog must not resurrect it
+      assert.equal(await queryGroup(failed.target), undefined);
+      assert.equal((await membershipJobs(owner)).length, 0);
       await discoverAccountGroups(owner, factory);
       const workspace = await advertisingWorkspace(owner);
       assert.ok(!workspace.groups.some(group => group.id === failed.id));
       assert.ok(workspace.groups.some(group => group.id === good.id));
-      await assert.rejects(checkAccountGroups(owner, [failed.id], factory), /removed/);
+      await assert.rejects(checkAccountGroups(owner, [failed.id], factory), /not found/);
       const preview = await previewMembership(owner, failed.target, factory);
-      assert.equal(preview.rows[0].state, "removed");
-      await assert.rejects(startMembership(owner, input(failed.target, failed.chat_id)), /Restore/);
-      await startMembership(owner, input(failed.target, failed.chat_id, [failed.target]));
+      assert.equal(preview.rows[0].state, "ready");
+      await startMembership(owner, input(failed.target, failed.chat_id));
       await processAccountMembership(owner, factory);
       assert.equal((await queryGroup(failed.target)).status, "ready");
       assert.equal((await queryGroup(failed.target)).enabled, false);
@@ -269,7 +268,8 @@ test("membership jobs are confirmed, durable, account-bound, and fail closed wit
       assert.equal(leaves, before + 1, "reconciliation itself is strictly read-only");
       leaveMode = "ok";
       await processAccountMembership(owner, factory);
-      assert.equal((await membershipJobs(owner))[0].status, "left");
+      assert.equal(await queryGroup(group.target), undefined);
+      assert.equal((await membershipJobs(owner)).length, 0);
       assert.equal(leaves, before + 2);
     });
     await t.test("historical cleanup removes UNCERTAIN destinations but protects newer successes", async () => {
@@ -288,15 +288,16 @@ test("membership jobs are confirmed, durable, account-bound, and fail closed wit
       const before = leaves;
       await processAccountMembership(owner, factory);
       assert.equal(leaves, before + 1);
-      assert.equal((await queryGroup(failed.target)).status, "removed");
+      assert.ok(["removed", "erased"].includes((await queryGroup(failed.target))?.status ?? "erased"));
       assert.equal((await queryGroup(successful.target)).status, "error", "newer success must prevent historical removal");
-      assert.equal((await queryGroup(uncertain.target)).status, "removed", "UNCERTAIN posts queue leaving without erasing the posting history");
+      assert.ok(["removed", "erased"].includes((await queryGroup(uncertain.target))?.status ?? "erased"));
       await processAccountMembership(owner, factory);
       await processAccountMembership(owner, factory);
       const job = (await pool.query("SELECT status FROM advertising_membership_jobs WHERE owner_id=$1 AND group_id=$2 AND action='leave'", [owner, uncertain.id])).rows;
-      assert.equal(job.length, 1, "historical cleanup does not create duplicate leaves");
-      assert.equal(job[0].status, "left");
-      assert.equal((await pool.query("SELECT status FROM advertising_account_runs WHERE owner_id=$1 AND group_id=$2", [owner, uncertain.id])).rows[0].status, "uncertain", "activity evidence remains unchanged");
+      assert.equal(job.length, 0, "confirmed departures erase their jobs");
+      assert.equal(await queryGroup(uncertain.target), undefined);
+      assert.equal((await pool.query("SELECT 1 FROM advertising_account_runs WHERE owner_id=$1 AND group_id=$2", [owner, uncertain.id])).rowCount, 0);
+      assert.equal(leaves, before + 2, "cleanup never creates duplicate leaves");
     });
     await t.test("historical UNCERTAIN cleanup binds the original account and protects success and explicit restoration", async () => {
       await clearJobs();
@@ -318,11 +319,11 @@ test("membership jobs are confirmed, durable, account-bound, and fail closed wit
         VALUES($1,$2,$3,$4,$5,$6,'join',$7,'TEST_ONLY',true,'joined')`,
         [owner, account.account_id, account.generation, restored.id, restored.target, restored.chat_id, randomUUID()]);
       await processAccountMembership(owner, factory);
-      assert.equal((await queryGroup(bound.target)).status, "removed");
+      assert.equal(await queryGroup(bound.target), undefined);
       assert.notEqual((await queryGroup(foreign.target)).status, "removed", "another account's uncertainty must not change this account's memberships");
       assert.notEqual((await queryGroup(success.target)).status, "removed", "a newer verified success protects the group");
       assert.notEqual((await queryGroup(restored.target)).status, "removed", "explicit restoration must not be undone by old activity");
-      assert.equal((await pool.query("SELECT status FROM advertising_membership_jobs WHERE owner_id=$1 AND group_id=$2 AND action='leave'", [owner, bound.id])).rows[0].status, "left");
+      assert.equal((await pool.query("SELECT 1 FROM advertising_membership_jobs WHERE owner_id=$1 AND group_id=$2 AND action='leave'", [owner, bound.id])).rowCount, 0);
     });
     await t.test("automatic leaves survive same-account sign-in without reviving manually stopped work", async () => {
       await clearJobs();
@@ -338,8 +339,8 @@ test("membership jobs are confirmed, durable, account-bound, and fail closed wit
       await pool.query("UPDATE advertising_membership_jobs SET status='stopped',note='Stopped by merchant.' WHERE owner_id=$1 AND group_id=$2", [owner, manual.id]);
       await processAccountMembership(owner, factory);
       const jobs = (await pool.query("SELECT group_id,status,generation FROM advertising_membership_jobs WHERE owner_id=$1", [owner])).rows;
-      assert.equal(jobs.find(row => row.group_id === original.id).status, "left");
-      assert.equal(jobs.find(row => row.group_id === original.id).generation, account.generation);
+      assert.equal(jobs.find(row => row.group_id === original.id), undefined);
+      assert.equal(await queryGroup(original.target), undefined);
       assert.equal(jobs.find(row => row.group_id === manual.id).status, "stopped");
       assert.equal(jobs.find(row => row.group_id === other.id).status, "stopped");
     });
