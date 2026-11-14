@@ -21,6 +21,7 @@ import { seedTransferFixture, cleanTransferFixture, syntheticInventory } from ".
 
 function withoutGroups(data: ReturnType<typeof decodeShopArchive>["data"]) {
   const copy = structuredClone(data);
+  delete (copy as Partial<typeof copy>).manualCredits;
   for (const key of tableKeys.filter(key => key.startsWith("advertising"))) delete (copy as Partial<typeof copy>)[key];
   copy.products.forEach(row => { delete row.groupId; delete row.groupName; delete row.groupDescription; delete row.optionName; });
   return copy;
@@ -51,7 +52,7 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
     const decoded = { ...archive, manifest: exported.manifest };
     await t.test("pre-advertising ZIPs keep option groups and receive empty advertising datasets", () => {
       const data = structuredClone(decoded.data);
-      for (const key of tableKeys.filter(key => key.startsWith("advertising"))) delete (data as Partial<typeof data>)[key];
+      for (const key of tableKeys.filter(key => key.startsWith("advertising") || key === "manualCredits")) delete (data as Partial<typeof data>)[key];
       const bytes = strToU8(JSON.stringify(data));
       const { signature: _, ...core } = decoded.manifest;
       core.schemaHash = preAdvertisingTransferSchemaHash;
@@ -70,7 +71,7 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
       const exportedTables = Object.values(database).filter(value => is(value, PgTable)).map(table => getTableConfig(table as PgTable).name);
       const included = Object.values(transferTables).map(table => getTableConfig(table).name);
       // New persistent tables must be explicitly covered or deliberately excluded.
-      assert.deepEqual(new Set(exportedTables), new Set([...included, "admin_sessions", "admin_login_limits", "emoji_import_sessions", "advertising_accounts"]));
+      assert.deepEqual(new Set(exportedTables), new Set([...included, "admin_sessions", "admin_login_limits", "emoji_import_sessions", "advertising_accounts", "advertising_membership_jobs", "advertising_checkpoints"]));
       assert.deepEqual(Object.keys(unzipSync(exported.zip)).sort(), ["README.txt", "manifest.json", "shop-data.json"]);
       assert.equal(Object.keys(decoded.data).length, tableKeys.length);
       for (const key of tableKeys) assert.equal(decoded.manifest.counts[key], decoded.data[key].length);

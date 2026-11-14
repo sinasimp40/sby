@@ -6619,6 +6619,98 @@ export const ListCustomersResponseItem = zod.object({
 export const ListCustomersResponse = zod.array(ListCustomersResponseItem)
 
 
+export const listCustomerWalletCreditsPathIdMax = 200;
+
+
+
+export const ListCustomerWalletCreditsParams = zod.object({
+  "id": zod.coerce.string().min(1).max(listCustomerWalletCreditsPathIdMax)
+})
+
+export const ListCustomerWalletCreditsQueryParams = zod.object({
+  "cursor": zod.coerce.string().uuid().optional()
+})
+
+export const listCustomerWalletCreditsResponseEntriesItemAmountCentsMax = 2000000000;
+
+export const listCustomerWalletCreditsResponseEntriesItemBalanceBeforeCentsMin = 0;
+export const listCustomerWalletCreditsResponseEntriesItemBalanceBeforeCentsMax = 2000000000;
+
+export const listCustomerWalletCreditsResponseEntriesItemBalanceAfterCentsMin = 0;
+export const listCustomerWalletCreditsResponseEntriesItemBalanceAfterCentsMax = 2000000000;
+
+export const listCustomerWalletCreditsResponseBalanceCentsMin = 0;
+export const listCustomerWalletCreditsResponseBalanceCentsMax = 2000000000;
+
+
+
+export const ListCustomerWalletCreditsResponse = zod.object({
+  "entries": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "customerId": zod.string(),
+  "actorId": zod.string(),
+  "amountCents": zod.number().int().min(1).max(listCustomerWalletCreditsResponseEntriesItemAmountCentsMax),
+  "balanceBeforeCents": zod.number().int().min(listCustomerWalletCreditsResponseEntriesItemBalanceBeforeCentsMin).max(listCustomerWalletCreditsResponseEntriesItemBalanceBeforeCentsMax),
+  "balanceAfterCents": zod.number().int().min(listCustomerWalletCreditsResponseEntriesItemBalanceAfterCentsMin).max(listCustomerWalletCreditsResponseEntriesItemBalanceAfterCentsMax),
+  "reason": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
+  "nextCursor": zod.string().nullable(),
+  "balanceCents": zod.number().int().min(listCustomerWalletCreditsResponseBalanceCentsMin).max(listCustomerWalletCreditsResponseBalanceCentsMax),
+  "currency": zod.enum(['USD'])
+})
+
+
+export const addCustomerWalletCreditPathIdMax = 200;
+
+
+
+export const AddCustomerWalletCreditParams = zod.object({
+  "id": zod.coerce.string().min(1).max(addCustomerWalletCreditPathIdMax)
+})
+
+export const addCustomerWalletCreditBodyAmountCentsMax = 2000000000;
+
+export const addCustomerWalletCreditBodyReasonMax = 500;
+
+
+
+export const AddCustomerWalletCreditBody = zod.object({
+  "requestKey": zod.string().uuid(),
+  "amountCents": zod.number().int().min(1).max(addCustomerWalletCreditBodyAmountCentsMax),
+  "reason": zod.string().min(1).max(addCustomerWalletCreditBodyReasonMax)
+})
+
+export const addCustomerWalletCreditResponseCreditAmountCentsMax = 2000000000;
+
+export const addCustomerWalletCreditResponseCreditBalanceBeforeCentsMin = 0;
+export const addCustomerWalletCreditResponseCreditBalanceBeforeCentsMax = 2000000000;
+
+export const addCustomerWalletCreditResponseCreditBalanceAfterCentsMin = 0;
+export const addCustomerWalletCreditResponseCreditBalanceAfterCentsMax = 2000000000;
+
+export const addCustomerWalletCreditResponseBalanceCentsMin = 0;
+export const addCustomerWalletCreditResponseBalanceCentsMax = 2000000000;
+
+
+
+export const AddCustomerWalletCreditResponse = zod.object({
+  "credit": zod.object({
+  "id": zod.string().uuid(),
+  "customerId": zod.string(),
+  "actorId": zod.string(),
+  "amountCents": zod.number().int().min(1).max(addCustomerWalletCreditResponseCreditAmountCentsMax),
+  "balanceBeforeCents": zod.number().int().min(addCustomerWalletCreditResponseCreditBalanceBeforeCentsMin).max(addCustomerWalletCreditResponseCreditBalanceBeforeCentsMax),
+  "balanceAfterCents": zod.number().int().min(addCustomerWalletCreditResponseCreditBalanceAfterCentsMin).max(addCustomerWalletCreditResponseCreditBalanceAfterCentsMax),
+  "reason": zod.string(),
+  "createdAt": zod.coerce.date()
+}),
+  "balanceCents": zod.number().int().min(addCustomerWalletCreditResponseBalanceCentsMin).max(addCustomerWalletCreditResponseBalanceCentsMax),
+  "currency": zod.enum(['USD']),
+  "replayed": zod.boolean()
+})
+
+
 export const ListDepositsResponseItem = zod.object({
   "id": zod.string(),
   "customer": zod.string(),

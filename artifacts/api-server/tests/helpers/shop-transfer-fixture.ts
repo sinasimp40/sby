@@ -35,6 +35,9 @@ export async function seedTransferFixture(owner: string) {
   await pool.query(`INSERT INTO wallet_entries(id,customer_id,payment_id,amount_cents) VALUES($1,$2,$3,500)`, [randomUUID(), c1, payments[0]]);
   await pool.query(`INSERT INTO wallet_entries(id,customer_id,payment_id,amount_cents) VALUES($1,$2,$3,-10),($4,$5,$6,-20)`,
     [randomUUID(), c1, payments[1], randomUUID(), c2, payments[4]]);
+  await pool.query(`INSERT INTO manual_wallet_credits
+    (id,owner_id,customer_id,request_key,actor_id,amount_cents,balance_before_cents,balance_after_cents,reason)
+    VALUES($1,$2,$3,$4,$2,10,1224,1234,'TEST_ONLY manual credit')`, [randomUUID(), owner, c2, randomUUID()]);
   await pool.query(`INSERT INTO shop_records(owner_id,kind,external_id,payload) VALUES($1,'order','TEST_ONLY_LEGACY','{"id":"TEST_ONLY_LEGACY","status":"delivered","amount":1}')`, [owner]);
   await pool.query(`INSERT INTO shop_settings(owner_id,preferences) VALUES($1,'{"shopName":"TEST_ONLY shop","minDeposit":5,"precisionProof":9007199254740993,"acceptedCoins":["BTC","ETH","LTC","SOL"]}')`, [owner]);
   await pool.query(`INSERT INTO shop_activity(owner_id,title,description,type) VALUES($1,'TEST_ONLY history','Synthetic credit adjustment','test')`, [owner]);
@@ -51,6 +54,7 @@ export async function seedTransferFixture(owner: string) {
 export async function cleanTransferFixture(owner: string) {
   if (!owner.startsWith("transfer-test-")) throw new Error("Refusing non-test cleanup.");
   await pool.query("DELETE FROM wallet_entries WHERE customer_id IN (SELECT id FROM bot_customers WHERE owner_id=$1)", [owner]);
+  await pool.query("DELETE FROM manual_wallet_credits WHERE owner_id=$1", [owner]);
   for (const table of ["shop_payments", "shop_inventory", "shop_products", "shop_custom_emojis", "emoji_import_sessions", "bot_customers", "shop_records", "shop_settings", "shop_activity", "provider_credentials", "bot_runtime_settings"]) {
     await pool.query(`DELETE FROM "${table}" WHERE owner_id=$1`, [owner]);
   }

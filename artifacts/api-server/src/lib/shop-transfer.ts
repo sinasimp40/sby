@@ -115,6 +115,8 @@ async function importRows(client: PoolClient, data: TransferData, source: string
     inventoryIds: p.inventoryIds === null ? null : JSON.stringify(assignedInventoryIds(p).map(id => inventory.get(id)!)),
   })));
   await write("walletEntries", data.walletEntries);
+  // Keep the original actor and credit/reference IDs; only installation ownership changes.
+  await write("manualCredits", data.manualCredits.map(row => ({ ...row, ownerId: owner })));
   for (const key of ["records", "activity"] as const) {
     await write(key, data[key].map(row => ({ ...row, ownerId: owner })), true);
   }

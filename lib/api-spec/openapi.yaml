@@ -612,6 +612,32 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/Customer" } }
+  /shop/customers/{id}/credits:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string, minLength: 1, maxLength: 200}}
+    get:
+      operationId: listCustomerWalletCredits
+      tags: [shop]
+      parameters:
+        - {name: cursor, in: query, schema: {type: string, format: uuid}}
+      responses:
+        "200": {description: Most recent 50 manual credits with a cursor for older records, content: {application/json: {schema: {$ref: "#/components/schemas/CustomerWalletCreditPage"}}}}
+        "401": {description: Sign-in required}
+        "404": {description: Customer not found in this shop}
+        "409": {description: History cursor changed; reload the latest page}
+    post:
+      operationId: addCustomerWalletCredit
+      tags: [shop]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/CustomerWalletCreditInput"}}}}
+      responses:
+        "200": {description: Credit recorded atomically or an identical previous operation recovered without crediting twice, content: {application/json: {schema: {$ref: "#/components/schemas/CustomerWalletCreditResult"}}}}
+        "400": {description: Invalid amount or reason}
+        "401": {description: Sign-in required}
+        "403": {description: Cross-origin changes are not permitted}
+        "404": {description: Customer not found in this shop}
+        "409": {description: Balance limit exceeded or operation key reused for different credit details}
+        "429": {description: Too many dashboard changes}
+        "503": {description: Imported shop requires review}
   /shop/deposits:
     get:
       operationId: listDeposits
@@ -1485,6 +1511,41 @@ components:
         spent: { type: number }
         walletBalance: { type: number }
         joinedAt: { type: string }
+    CustomerWalletCreditInput:
+      type: object
+      required: [requestKey, amountCents, reason]
+      properties:
+        requestKey: {type: string, format: uuid}
+        amountCents: {type: integer, minimum: 1, maximum: 2000000000}
+        reason: {type: string, minLength: 1, maxLength: 500}
+    CustomerWalletCredit:
+      type: object
+      required: [id, customerId, actorId, amountCents, balanceBeforeCents, balanceAfterCents, reason, createdAt]
+      properties:
+        id: {type: string, format: uuid}
+        customerId: {type: string}
+        actorId: {type: string}
+        amountCents: {type: integer, minimum: 1, maximum: 2000000000}
+        balanceBeforeCents: {type: integer, minimum: 0, maximum: 2000000000}
+        balanceAfterCents: {type: integer, minimum: 0, maximum: 2000000000}
+        reason: {type: string}
+        createdAt: {type: string, format: date-time}
+    CustomerWalletCreditPage:
+      type: object
+      required: [entries, nextCursor, balanceCents, currency]
+      properties:
+        entries: {type: array, items: {$ref: "#/components/schemas/CustomerWalletCredit"}}
+        nextCursor: {type: ["string", "null"]}
+        balanceCents: {type: integer, minimum: 0, maximum: 2000000000}
+        currency: {type: string, enum: [USD]}
+    CustomerWalletCreditResult:
+      type: object
+      required: [credit, balanceCents, currency, replayed]
+      properties:
+        credit: {$ref: "#/components/schemas/CustomerWalletCredit"}
+        balanceCents: {type: integer, minimum: 0, maximum: 2000000000}
+        currency: {type: string, enum: [USD]}
+        replayed: {type: boolean}
     Deposit:
       type: object
       required: [id, customer, amount, currency, status, createdAt]

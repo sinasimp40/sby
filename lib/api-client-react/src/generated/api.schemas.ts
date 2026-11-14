@@ -1046,6 +1046,80 @@ export interface Customer {
   joinedAt: string;
 }
 
+export interface CustomerWalletCreditInput {
+  requestKey: string;
+  /**
+     * @minimum 1
+     * @maximum 2000000000
+     */
+  amountCents: number;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  reason: string;
+}
+
+export interface CustomerWalletCredit {
+  id: string;
+  customerId: string;
+  actorId: string;
+  /**
+     * @minimum 1
+     * @maximum 2000000000
+     */
+  amountCents: number;
+  /**
+     * @minimum 0
+     * @maximum 2000000000
+     */
+  balanceBeforeCents: number;
+  /**
+     * @minimum 0
+     * @maximum 2000000000
+     */
+  balanceAfterCents: number;
+  reason: string;
+  createdAt: string;
+}
+
+export type CustomerWalletCreditPageCurrency = typeof CustomerWalletCreditPageCurrency[keyof typeof CustomerWalletCreditPageCurrency];
+
+
+export const CustomerWalletCreditPageCurrency = {
+  USD: 'USD',
+} as const;
+
+export interface CustomerWalletCreditPage {
+  entries: CustomerWalletCredit[];
+  /** @nullable */
+  nextCursor: string | null;
+  /**
+     * @minimum 0
+     * @maximum 2000000000
+     */
+  balanceCents: number;
+  currency: CustomerWalletCreditPageCurrency;
+}
+
+export type CustomerWalletCreditResultCurrency = typeof CustomerWalletCreditResultCurrency[keyof typeof CustomerWalletCreditResultCurrency];
+
+
+export const CustomerWalletCreditResultCurrency = {
+  USD: 'USD',
+} as const;
+
+export interface CustomerWalletCreditResult {
+  credit: CustomerWalletCredit;
+  /**
+     * @minimum 0
+     * @maximum 2000000000
+     */
+  balanceCents: number;
+  currency: CustomerWalletCreditResultCurrency;
+  replayed: boolean;
+}
+
 export type DepositStatus = typeof DepositStatus[keyof typeof DepositStatus];
 
 
@@ -1373,6 +1447,10 @@ to?: string;
  * @maxLength 512
  * @pattern ^[A-Za-z0-9_-]+$
  */
+cursor?: string;
+};
+
+export type ListCustomerWalletCreditsParams = {
 cursor?: string;
 };
 

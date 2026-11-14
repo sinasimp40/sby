@@ -57,7 +57,7 @@ export async function insertTransferRows(client: PoolClient, key: TransferTable,
 }
 
 export async function destinationTransferState(client: PoolClient, ownerId: string) {
-  const keys: TransferTable[] = ["products", "inventory", "customers", "payments", "records", "customEmojis", "advertisingBots", "advertisingGroups", "advertisingCampaigns", "advertisingDeliveries", "advertisingAccountSchedules", "advertisingAccountRuns", "advertisingAccountCommands"];
+  const keys: TransferTable[] = ["products", "inventory", "customers", "payments", "manualCredits", "records", "customEmojis", "advertisingBots", "advertisingGroups", "advertisingCampaigns", "advertisingDeliveries", "advertisingAccountSchedules", "advertisingAccountRuns", "advertisingAccountCommands"];
   const counts: Record<string, number> = {};
   for (const key of keys) {
     const result = await client.query(`SELECT count(*)::integer AS count FROM ${quote(tableInfo(key).name)} WHERE owner_id = $1`, [ownerId]);

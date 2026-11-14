@@ -1,11 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash, createHmac } from "node:crypto";
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { DatabaseSync } from "node:sqlite";
-import { unzipSync, zipSync, strToU8 } from "fflate";
+import { unzipSync, zipSync, strToU8, strFromU8 } from "fflate";
 import { pool } from "@workspace/db";
 import { decodeShopArchive, encodeShopArchive } from "../src/lib/shop-transfer-archive";
 import { encodeSqliteShopArchive } from "../src/lib/shop-transfer-sqlite";
@@ -14,7 +14,7 @@ import { decryptCredential } from "../src/lib/inventory-encryption";
 import { encryptProviderSecret, decryptProviderSecret } from "../src/lib/provider-credentials";
 import { readShopTransferData } from "../src/lib/shop-transfer-store";
 import { validateShopRelationships } from "../src/lib/shop-transfer-validation";
-import { tableKeys } from "../src/lib/shop-transfer-tables";
+import { tableKeys, preManualCreditTransferSchemaHash } from "../src/lib/shop-transfer-tables";
 import { seedTransferFixture, cleanTransferFixture, syntheticInventory } from "./helpers/shop-transfer-fixture";
 
 function changeDb(zip: Buffer, change: (db: DatabaseSync) => void) {
@@ -60,6 +60,34 @@ test("SQLite ZIPs transfer complete shop data across different installation keys
       });
     });
 
+    await t.test("previous SQLite and signed JSON exports receive an empty manual-credit dataset", () => {
+      const oldSqlite = changeDb(exported.zip, db => {
+        db.exec('DROP TABLE "manualCredits"; DELETE FROM transfer_counts WHERE dataset=\'manualCredits\'');
+        db.prepare("UPDATE transfer_meta SET schema_hash=?").run(preManualCreditTransferSchemaHash);
+      });
+      const old = decodeShopArchive(oldSqlite);
+      assert.deepEqual(old.data.manualCredits, []);
+      assert.deepEqual(old.data.customers, data.customers);
+      assert.equal(old.manifest.counts.manualCredits, 0);
+      assert.throws(() => decodeShopArchive(changeDb(exported.zip, db => {
+        db.prepare("UPDATE transfer_meta SET schema_hash=?").run(preManualCreditTransferSchemaHash);
+      })), /SQLite shop ZIP/, "old fingerprints may not smuggle in the new ledger table");
+      const files = unzipSync(legacy.zip);
+      const oldData = JSON.parse(strFromU8(files["shop-data.json"]!));
+      delete oldData.manualCredits;
+      const bytes = strToU8(JSON.stringify(oldData));
+      const { signature: _, ...core } = JSON.parse(strFromU8(files["manifest.json"]!));
+      core.schemaHash = preManualCreditTransferSchemaHash;
+      delete core.counts.manualCredits;
+      core.dataSha256 = createHash("sha256").update(bytes).digest("hex");
+      const signature = createHmac("sha256", process.env.SESSION_SECRET!).update(JSON.stringify(core)).digest("hex");
+      files["shop-data.json"] = bytes;
+      files["manifest.json"] = strToU8(JSON.stringify({ ...core, signature }));
+      const oldJson = decodeShopArchive(Buffer.from(zipSync(files)));
+      assert.deepEqual(oldJson.data.manualCredits, []);
+      assert.deepEqual(oldJson.data.customers, data.customers);
+      validateShopRelationships(oldJson.data, source);
+    });
     await t.test("source keys are not needed; legacy archives still require their original key", () => {
       process.env.SESSION_SECRET = `TEST_ONLY_DESTINATION_KEY_${randomUUID()}`;
       assert.throws(() => decodeShopArchive(legacy.zip), /matching original SESSION_SECRET/);

@@ -60,6 +60,9 @@ import type {
   AdvertisingWorkspace,
   CustomEmojiLibrary,
   Customer,
+  CustomerWalletCreditInput,
+  CustomerWalletCreditPage,
+  CustomerWalletCreditResult,
   Deposit,
   DepositCancellation,
   EmojiImportLink,
@@ -74,6 +77,7 @@ import type {
   InventoryInput,
   InventoryItem,
   InventoryRevealResult,
+  ListCustomerWalletCreditsParams,
   NOWPaymentsCredentialInput,
   NOWPaymentsCredentialResult,
   Order,
@@ -5279,6 +5283,199 @@ export function useListCustomers<TData = Awaited<ReturnType<typeof listCustomers
 
 
 
+
+export const getListCustomerWalletCreditsUrl = (id: string,
+    params?: ListCustomerWalletCreditsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/shop/customers/${id}/credits?${stringifiedParams}` : `/api/shop/customers/${id}/credits`
+}
+
+export const listCustomerWalletCredits = async (id: string,
+    params?: ListCustomerWalletCreditsParams, options?: Parameters<typeof customFetch>[1]): Promise<CustomerWalletCreditPage> => {
+
+  return customFetch<CustomerWalletCreditPage>(getListCustomerWalletCreditsUrl(id,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCustomerWalletCreditsQueryKey = (id: string,
+    params?: ListCustomerWalletCreditsParams,) => {
+    return [
+    `/api/shop/customers/${id}/credits`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListCustomerWalletCreditsQueryOptions = <TData = Awaited<ReturnType<typeof listCustomerWalletCredits>>, TError = ErrorType<void>>(id: string,
+    params?: ListCustomerWalletCreditsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCustomerWalletCredits>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCustomerWalletCreditsQueryKey(id,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCustomerWalletCredits>>> = ({ signal }) => listCustomerWalletCredits(id,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCustomerWalletCredits>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListCustomerWalletCreditsQueryResult = NonNullable<Awaited<ReturnType<typeof listCustomerWalletCredits>>>
+export type ListCustomerWalletCreditsQueryError = ErrorType<void>
+
+
+export function useListCustomerWalletCredits<TData = Awaited<ReturnType<typeof listCustomerWalletCredits>>, TError = ErrorType<void>>(
+ id: string,
+    params: undefined |  ListCustomerWalletCreditsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCustomerWalletCredits>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listCustomerWalletCredits>>,
+          TError,
+          Awaited<ReturnType<typeof listCustomerWalletCredits>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListCustomerWalletCredits<TData = Awaited<ReturnType<typeof listCustomerWalletCredits>>, TError = ErrorType<void>>(
+ id: string,
+    params?: ListCustomerWalletCreditsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCustomerWalletCredits>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listCustomerWalletCredits>>,
+          TError,
+          Awaited<ReturnType<typeof listCustomerWalletCredits>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListCustomerWalletCredits<TData = Awaited<ReturnType<typeof listCustomerWalletCredits>>, TError = ErrorType<void>>(
+ id: string,
+    params?: ListCustomerWalletCreditsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCustomerWalletCredits>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useListCustomerWalletCredits<TData = Awaited<ReturnType<typeof listCustomerWalletCredits>>, TError = ErrorType<void>>(
+ id: string,
+    params?: ListCustomerWalletCreditsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCustomerWalletCredits>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListCustomerWalletCreditsQueryOptions(id,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAddCustomerWalletCreditUrl = (id: string,) => {
+
+
+
+
+  return `/api/shop/customers/${id}/credits`
+}
+
+export const addCustomerWalletCredit = async (id: string,
+    customerWalletCreditInput: CustomerWalletCreditInput, options?: Parameters<typeof customFetch>[1]): Promise<CustomerWalletCreditResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CustomerWalletCreditResult>(getAddCustomerWalletCreditUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(customerWalletCreditInput)
+  }
+);}
+
+
+
+
+
+export const getAddCustomerWalletCreditMutationKey = () => ['addCustomerWalletCredit'] as const;
+
+export const getAddCustomerWalletCreditMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addCustomerWalletCredit>>, TError,AddCustomerWalletCreditMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addCustomerWalletCredit>>, TError,AddCustomerWalletCreditMutationVariables, TContext> => {
+
+const mutationKey = getAddCustomerWalletCreditMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addCustomerWalletCredit>>, AddCustomerWalletCreditMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  addCustomerWalletCredit(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddCustomerWalletCreditMutationResult = NonNullable<Awaited<ReturnType<typeof addCustomerWalletCredit>>>
+    export type AddCustomerWalletCreditMutationBody = BodyType<CustomerWalletCreditInput>
+    export type AddCustomerWalletCreditMutationError = ErrorType<void>
+    export type AddCustomerWalletCreditMutationVariables = {id: string;data: BodyType<CustomerWalletCreditInput>}
+
+    export const useAddCustomerWalletCredit = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addCustomerWalletCredit>>, TError,AddCustomerWalletCreditMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof addCustomerWalletCredit>>,
+        TError,
+        AddCustomerWalletCreditMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAddCustomerWalletCreditMutationOptions(options), queryClient);
+    }
 
 export const getListDepositsUrl = () => {
 

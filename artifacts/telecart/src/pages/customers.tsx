@@ -6,12 +6,14 @@ import { PageHeader, Panel, EmptyState, ErrorState, RowsSkeleton, StatusPill } f
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { customerName, money, shortDate } from "@/lib/format";
+import { CustomerWalletCredit } from "@/components/customer-wallet-credit";
 
 export default function CustomersPage() {
   const { data, isLoading, isError, error, refetch } = useListCustomers({ query: { refetchInterval: 5000, refetchOnWindowFocus: true } });
   const orders = useListOrders();
   const [q, setQ] = useState("");
-  const [sel, setSel] = useState<Customer | null>(null);
+  const [selection, setSel] = useState<Customer | null>(null);
+  const sel = data?.find(customer => customer.id === selection?.id) ?? selection;
   const rows = useMemo(() => (data ?? []).filter((c) => `${c.username} ${c.telegramId ?? ""}`.toLowerCase().includes(q.toLowerCase())), [data, q]);
   const selOrders = (orders.data ?? []).filter((o) => sel && o.customer === sel.username);
 
@@ -34,7 +36,7 @@ export default function CustomersPage() {
         )}
       </Panel>
       <Sheet open={!!sel} onOpenChange={(o) => !o && setSel(null)}>
-        <SheetContent className="w-full sm:max-w-md">
+        <SheetContent className="w-full overflow-y-auto sm:max-w-md">
           {sel && (<>
             <SheetHeader><SheetTitle className="font-display text-xl">{customerName(sel.username)}</SheetTitle><SheetDescription>Customer since {shortDate(sel.joinedAt)}</SheetDescription></SheetHeader>
             {sel.telegramId && <p className="mt-2 text-xs text-muted-foreground">{!sel.username.startsWith("@") && "No public username · "}Telegram ID: <span className="select-all font-mono">{sel.telegramId}</span></p>}
@@ -43,6 +45,7 @@ export default function CustomersPage() {
                 <div key={String(k)} className="rounded-lg border border-border p-2.5"><div className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{k}</div><div className="tabular mt-0.5 font-display font-bold">{v}</div></div>
               ))}
             </div>
+            <CustomerWalletCredit key={sel.id} customer={sel} />
             <div className="mt-5 text-sm font-semibold">Orders</div>
             {!selOrders.length ? <p className="mt-1 text-sm text-muted-foreground">No orders recorded.</p> : (
               <ul className="dashboard-scroll mt-2 divide-y divide-border rounded-lg border border-border text-sm" tabIndex={0} aria-label="Customer order history" data-testid="scroll-customer-orders">{selOrders.map((o) => (

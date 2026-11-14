@@ -26,3 +26,9 @@ Drizzle Kit can misread an absolute migration output directory as a path prefixe
 **Why:** Migration generation failed to load an existing snapshot even though the snapshot was present; passing the output directory relative to the current working directory resolved it without changing packages.
 
 **How to apply:** If generation reports a snapshot path containing `.//` followed by an absolute workspace path, verify the file exists and use a working-directory-relative output path before regenerating snapshots or replacing dependencies.
+
+Mixed path/query parameters can expose an Orval export-name collision even with a valid OpenAPI operation.
+
+**Why:** The split Zod output gives the path validator and the query-parameter TypeScript type the same exported name. Re-exporting both with wildcards makes TypeScript reject the package after otherwise successful generation.
+
+**How to apply:** Resolve the ambiguous name explicitly in the handwritten validation barrel, preferring the path validator. Import client query-parameter types from the client package. Do not patch generated files or redesign a valid endpoint just to hide the collision.

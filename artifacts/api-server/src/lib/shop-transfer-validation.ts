@@ -36,6 +36,8 @@ export function validateShopRelationships(data: TransferData, ownerId: string) {
     const payments = indexed(data.payments);
     indexed(data.walletEntries);
     indexed(data.walletEntries, "paymentId");
+    indexed(data.manualCredits);
+    indexed(data.manualCredits, "requestKey");
     indexed(data.updates);
     indexed(data.customers, "telegramId");
     indexed(data.payments, "requestKey");
@@ -115,6 +117,18 @@ export function validateShopRelationships(data: TransferData, ownerId: string) {
       const credit = p.kind === "deposit" && p.fulfillment === "credited" && entry.amountCents === p.amountCents;
       const debit = p.kind === "wallet" && Number(entry.amountCents) === -Number(p.amountCents);
       if (!credit && !debit) throw new Error();
+    }
+    area = "bot identity";
+    for (const entry of data.manualCredits) {
+      area = "manual wallet credit references";
+      if (!customers.has(entry.customerId) || typeof entry.id !== "string" || !/^[0-9a-f-]{36}$/i.test(entry.id) ||
+        typeof entry.requestKey !== "string" || !/^[0-9a-f-]{36}$/i.test(entry.requestKey) ||
+        typeof entry.actorId !== "string" || !entry.actorId.trim() || entry.actorId.length > 300 ||
+        typeof entry.reason !== "string" || !entry.reason.trim() || entry.reason.length > 500 ||
+        !Number.isSafeInteger(entry.amountCents) || Number(entry.amountCents) <= 0 ||
+        !Number.isSafeInteger(entry.balanceBeforeCents) || Number(entry.balanceBeforeCents) < 0 ||
+        !Number.isSafeInteger(entry.balanceAfterCents) || Number(entry.balanceAfterCents) > 2000000000 ||
+        Number(entry.balanceAfterCents) !== Number(entry.balanceBeforeCents) + Number(entry.amountCents)) throw new Error();
     }
     area = "bot identity";
     const connection = data.connection[0];

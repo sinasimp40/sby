@@ -43,6 +43,13 @@
       "when": 1794574001747,
       "tag": "0005_public_serpent_society",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1794624578730,
+      "tag": "0006_manual_wallet_credits",
+      "breakpoints": true
     }
   ]
 }
