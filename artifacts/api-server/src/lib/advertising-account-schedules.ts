@@ -4,6 +4,7 @@ import type { AdvertisingAccountStartInput } from "@workspace/api-zod";
 import { configuredOwnerId } from "./admin-bootstrap";
 import { withAdvertisingLock } from "./advertising-store";
 import { withAccountDriver, stopAccountSchedules } from "./advertising-account-auth";
+import { UNKNOWN_REQUEST_SKIPPED_NOTE } from "./advertising-account-errors";
 import { accountMessage, AccountError, safeAccountError, createAccountDriver, type AccountFactory } from "./advertising-account-driver";
 import { assertTransferReviewed } from "./shop-transfer-safety";
 import { logger } from "./logger";
@@ -183,11 +184,13 @@ export async function processAccountSchedules(owner: string, factory: AccountFac
       } else {
         if (forward) await client.query("UPDATE advertising_accounts SET next_send_at=GREATEST(next_send_at,now()+$2*interval '1 second') WHERE owner_id=$1", [owner, gap]);
         const uncertain = dispatched && ["network", "uncertain"].includes(safe.kind);
+        const unknownRequest = safe.kind === "network" && safe.telegramCode === "UNKNOWN";
         await client.query("UPDATE advertising_account_runs SET status=$2,note=$3 WHERE id=$1", [run.id, uncertain ? "uncertain" : "failed",
-          uncertain ? "Telegram did not confirm the post. Destination removed; account leave queued. No post retry." : safe.message]);
+          unknownRequest ? UNKNOWN_REQUEST_SKIPPED_NOTE : uncertain ? "Telegram did not confirm the post. Destination removed; account leave queued. No post retry." : safe.message]);
         const invalidSource = forward && ["SAVED_MESSAGE_MISSING", "SAVED_MESSAGE_CHANGED", "CHAT_FORWARDS_RESTRICTED",
           "MESSAGE_ID_INVALID", "PREMIUM_ACCOUNT_REQUIRED"].includes(safe.telegramCode);
-        await stopAccountSchedules(owner, client, ["auth", "restricted"].includes(safe.kind) || invalidSource ? undefined : [group.id], safe.message);
+        await stopAccountSchedules(owner, client, ["auth", "restricted"].includes(safe.kind) || invalidSource ? undefined : [group.id],
+          unknownRequest ? UNKNOWN_REQUEST_SKIPPED_NOTE : safe.message, unknownRequest);
         if (safe.kind === "permission") {
           await client.query(`UPDATE advertising_groups SET enabled=false,status='error',account_generation=NULL,
             checked_at=now(),note=$3 WHERE owner_id=$1 AND id=$2`,
@@ -195,7 +198,7 @@ export async function processAccountSchedules(owner: string, factory: AccountFac
           await client.query(`UPDATE advertising_schedules SET note=$3 WHERE owner_id=$1 AND group_id=$2`,
             [owner, group.id, "Group automatically disabled because membership or posting permission was denied."]);
         }
-        if (uncertain || (!invalidSource && definiteDestinationFailure(safe)))
+        if (uncertain && !unknownRequest || (!invalidSource && definiteDestinationFailure(safe)))
           await queueGroupRemoval(owner, client, group, account, safe.message, uncertain ? "uncertain" : "definite", uncertain ? run.id : undefined);
         if (["auth", "restricted"].includes(safe.kind))
           await client.query("UPDATE advertising_accounts SET last_error=$2,checked_at=now() WHERE owner_id=$1", [owner, safe.message]);

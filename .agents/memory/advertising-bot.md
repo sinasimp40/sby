@@ -117,7 +117,7 @@ Message and emoji previews must not broaden account activity just to display art
 
 **How to apply:** Keep pack lookup explicitly requested and read-only, without installing packs or posting. Any future artwork preview must preserve the main session's containment guarantees; do not silently enable SDK reconnects or use the shop bot as a substitute.
 
-The user requires leaving and removing destinations after all definite sending failures, permission-check failures, and UNCERTAIN posting results. Successful groups must stay untouched.
+The user requires leaving and removing destinations after definite sending failures, permission-check failures, and UNCERTAIN posting results, except unclassified UNKNOWN requests (see advertising-unknown-requests.md). Successful groups must stay untouched.
 Failed group checks must not leave the destination enabled; the user explicitly repeated that errored groups should be removed from the advertising list and leaving queued.
 
 **Why:** The user changed the earlier exclusion and explicitly said “post activity uncertain result make it remove in the list and leave the account on that uncertain group.”

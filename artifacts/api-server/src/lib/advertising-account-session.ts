@@ -1,7 +1,7 @@
 import { pool } from "@workspace/db";
 import type { PoolClient } from "@workspace/db";
 import type { AccountDriver, AccountFactory } from "./advertising-account-driver";
-import { AccountError, isTransportFailure, reportAccountError } from "./advertising-account-errors";
+import { AccountError, isTransportFailure, reportAccountError, requiresAccountContainment } from "./advertising-account-errors";
 import { queueAccountGroupUpdate } from "./advertising-group-updates";
 import { logger } from "./logger";
 
@@ -117,6 +117,7 @@ export function promoteAccountSession(owner: string, loginId: string, generation
   failed.delete(owner);
 }
 function failAccountSession(owner: string, key: string, error: AccountError) {
+  if (!requiresAccountContainment(error)) return;
   const entry = live.get(owner);
   if (entry?.key !== key) return;
   failed.set(owner, { key, error });

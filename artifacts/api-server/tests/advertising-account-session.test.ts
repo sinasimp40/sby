@@ -32,6 +32,25 @@ test("safe diagnostics preserve known codes but never RPC payloads, credentials 
   } finally { logger.warn = warn; }
 });
 
+test("an unclassified SDK request error does not poison the next request on the same client", async () => {
+  const getMe = TelegramClient.prototype.getMe, destroy = TelegramClient.prototype.destroy;
+  let calls = 0;
+  TelegramClient.prototype.getMe = async () => {
+    if (++calls === 1) throw new Error("TEST_ONLY missing acknowledgement");
+    return new Api.User({ id: bigInt(900001), firstName: "TEST_ONLY", self: true });
+  };
+  TelegramClient.prototype.destroy = async function () { this._destroyed = true; };
+  const driver = createAccountDriver({ apiId: 12345, apiHash: "a".repeat(32) });
+  try {
+    await assert.rejects(driver.me(), (error: AccountError) => error.kind === "network" && error.telegramCode === "UNKNOWN");
+    assert.equal((await driver.me())!.id, "900001");
+    assert.equal(calls, 2, "the original client remains usable without reconnecting or logging in");
+  } finally {
+    await driver.disconnect();
+    TelegramClient.prototype.getMe = getMe; TelegramClient.prototype.destroy = destroy;
+  }
+});
+
 test("disposal destroys the SDK client and prevents a delayed preflight from posting", async () => {
   const getEntity = TelegramClient.prototype.getEntity, invoke = TelegramClient.prototype.invoke, destroy = TelegramClient.prototype.destroy;
   let resolveEntity: (value: Api.Channel) => void = () => {};
@@ -307,6 +326,36 @@ test("personal-account connection ownership, login promotion, failure stops and 
       assert.equal(h.stats.disposed, 1);
       await assert.rejects(connectedAccountSession(id, key, api, h.factory), /exclusive server lease/);
       assert.equal(h.stats.created, 1);
+    });
+    await t.test("UNKNOWN RPC and background errors preserve the session and exclusive client", async () => {
+      const id = owner(), h = harness();
+      await phoneLogin(id, h.factory);
+      const before = (await pool.query("SELECT session_encrypted,generation FROM advertising_accounts WHERE owner_id=$1", [id])).rows[0];
+      await assert.rejects(withAdvertisingLock(id, client => withAccountDriver(id, client,
+        async () => { throw new AccountError("TEST_ONLY unconfirmed request", "network"); }, h.factory, "post_ad")), /unconfirmed request/);
+      h.background(new AccountError("TEST_ONLY unclassified background error", "network"));
+      await withAdvertisingLock(id, async () => {});
+      const after = (await pool.query("SELECT session_encrypted,generation,last_error FROM advertising_accounts WHERE owner_id=$1", [id])).rows[0];
+      assert.equal(after.session_encrypted, before.session_encrypted); assert.equal(after.generation, before.generation);
+      assert.equal(after.last_error, null); assert.equal((await accountStatus(id)).connected, true);
+      await withAdvertisingLock(id, client => withAccountDriver(id, client, driver => driver.me(), h.factory));
+      assert.equal(h.stats.created, 1); assert.equal(h.stats.disposed, 0); assert.equal(h.stats.logouts, 0);
+    });
+    await t.test("explicit checking recovers a legacy UNKNOWN stop without a new login or automatic posts", async () => {
+      const id = owner(), h = harness();
+      await phoneLogin(id, h.factory);
+      const generation = (await pool.query("SELECT generation FROM advertising_accounts WHERE owner_id=$1", [id])).rows[0].generation;
+      await closeAccountSession(id);
+      await pool.query("UPDATE advertising_accounts SET last_error=$2 WHERE owner_id=$1",
+        [id, "Account connection stopped [UNKNOWN]. Telegram did not confirm the request. Check the connection before continuing."]);
+      await checkAccountConnection(id, h.factory);
+      const pending = recoveryState((await accountStatus(id)).error)!;
+      assert.ok(pending, "the existing authorization is checked through bounded recovery, not a sign-in challenge");
+      await withAdvertisingLock(id, client => recoverAccountConnection(id, client, h.factory, pending.next));
+      assert.equal((await accountStatus(id)).connected, true);
+      assert.equal((await pool.query("SELECT generation FROM advertising_accounts WHERE owner_id=$1", [id])).rows[0].generation, generation);
+      assert.equal(h.stats.logouts, 0); assert.equal(h.stats.posts, 0);
+      assert.equal((await accountStatus(id)).login, null);
     });
     await t.test("transport recovery reuses the exact saved authorization, preserves stopped groups and avoids catch-up", async () => {
       const id = owner(), h = harness();

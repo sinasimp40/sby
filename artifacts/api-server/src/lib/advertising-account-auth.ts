@@ -9,7 +9,7 @@ import { AccountError, safeAccountError, createAccountDriver, type AccountFactor
 import { connectedLoginDriver, closeQrDriver } from "./advertising-account-qr";
 import { connectedAccountSession, closeAccountSession, loginConnectionKey, accountConnectionKey,
   promoteAccountSession, setAccountSessionFailureHandler } from "./advertising-account-session";
-import { isSessionStopped, isTransportFailure, sessionStopped, stoppedAccountError, reportAccountError, type AccountOperation } from "./advertising-account-errors";
+import { isSessionStopped, isTransportFailure, sessionStopped, stoppedAccountError, reportAccountError, requiresAccountContainment, type AccountOperation } from "./advertising-account-errors";
 import { queueNetworkRecovery, recoveryState, recoverAccountConnection } from "./advertising-account-recovery";
 import { captureCheckpoint } from "./advertising-checkpoint-store";
 import { disableFailedChecks } from "./advertising-failed-checks";
@@ -58,6 +58,7 @@ async function savePending(owner: string, p: PendingAccountLogin, client: Advert
     [owner, p.id, seal(JSON.stringify(p), owner), new Date(p.expires)]);
 }
 export async function recordStoppedAccount(owner: string, client: AdvertisingClient, generation: number, error: AccountError) {
+  if (!requiresAccountContainment(error)) return;
   const row = (await client.query("SELECT generation,last_error FROM advertising_accounts WHERE owner_id=$1", [owner])).rows[0];
   if (!row || row.generation !== generation) return;
   const message = sessionStopped(error);
@@ -230,7 +231,7 @@ export async function withAccountDriver<T>(owner: string, client: AdvertisingCli
   }
   catch (error) {
     const safe = reportAccountError(operation, error);
-    if (["auth", "restricted", "network"].includes(safe.kind)) {
+    if (requiresAccountContainment(safe)) {
       if (isTransportFailure(safe)) await queueNetworkRecovery(owner, client, row.generation, safe);
       else await recordStoppedAccount(owner, client, row.generation, safe);
       await closeAccountSession(owner, key, safe);
@@ -245,6 +246,10 @@ export async function withAccountDriver<T>(owner: string, client: AdvertisingCli
 export async function checkAccountConnection(owner: string, factory: AccountFactory = createAccountDriver) {
   return withAdvertisingLock(owner, async client => {
     const row = (await client.query("SELECT generation,last_error FROM advertising_accounts WHERE owner_id=$1", [owner])).rows[0];
+    if (/^Account connection stopped \[UNKNOWN\]\./.test(row?.last_error ?? ""))
+      await queueNetworkRecovery(owner, client, row.generation,
+        new AccountError("Verify the existing saved authorization after an unconfirmed request. No login or post will be replayed.",
+          "network", 0, "TRANSPORT_UNAVAILABLE"));
     if (/^Account connection stopped \[(CONNECTION_LOST|REQUEST_TIMEOUT|TRANSPORT_UNAVAILABLE)\]/.test(row?.last_error ?? ""))
       await queueNetworkRecovery(owner, client, row.generation, stoppedAccountError(row.last_error));
     if (recoveryState((await client.query("SELECT last_error FROM advertising_accounts WHERE owner_id=$1", [owner])).rows[0]?.last_error)) {
@@ -259,6 +264,7 @@ export async function checkAccountConnection(owner: string, factory: AccountFact
       }, factory, "check_account");
     } catch (error) {
       const safe = safeAccountError(error);
+      if (safe.kind === "network" && safe.telegramCode === "UNKNOWN") throw safe;
       if (isTransportFailure(safe)) return; // Already queued; do not turn a recoverable drop into a hard stop.
       await stopAccountSchedules(owner, client, undefined, "Posting stopped because the account connection could not be verified.");
       await client.query("UPDATE advertising_accounts SET checked_at=now(),last_error=$2 WHERE owner_id=$1", [owner,

@@ -13,6 +13,8 @@ import { savedMessagePreview, readSavedMessages, readSavedMessage } from "../src
 import { loadOwnerSavedMessages, startForwardLoop } from "../src/lib/advertising-forward-loop";
 import { processAccountSchedules, stopSelectedAccountSchedules } from "../src/lib/advertising-account-schedules";
 import { closeAccountSession } from "../src/lib/advertising-account-session";
+import { queueRecordedUncertain } from "../src/lib/advertising-membership-worker";
+import { readCheckpoint } from "../src/lib/advertising-checkpoint-store";
 import { queueNetworkRecovery, recoverAccountConnection } from "../src/lib/advertising-account-recovery";
 import { exportShopTransfer, previewShopTransfer, importShopTransfer } from "../src/lib/shop-transfer";
 import { withAdvertisingLock } from "../src/lib/advertising-store";
@@ -142,6 +144,7 @@ test("a single persisted queue spaces groups and cycles, stops safely, and trans
       if (mode === "permission-forward" && chatId === groups[0]!.chatId) throw { errorMessage: permissionCode };
       assert.equal(snapshot.source.id, 42);
       if (mode === "uncertain") throw new AccountError("TEST_ONLY unconfirmed forward", "network", 0, "POST_NOT_CONFIRMED");
+      if (mode === "unknown") throw new AccountError("TEST_ONLY missing RPC acknowledgement", "network");
       if (mode === "flood") throw new AccountError("TEST_ONLY Telegram wait", "rate_limit", 120, "FLOOD_WAIT");
       if (mode === "changed") throw new AccountError("TEST_ONLY source changed", "validation", 0, "SAVED_MESSAGE_CHANGED");
       posts.push(chatId); return { chatId, messageId: posts.length + 100 };
@@ -365,15 +368,29 @@ test("a single persisted queue spaces groups and cycles, stops safely, and trans
       assert.ok(new Date(retained).getTime() >= new Date(wait).getTime());
       mode = "ok"; await processAccountSchedules(owner, factory); assert.equal(posts.length, count);
       await due(); await processAccountSchedules(owner, factory); assert.equal(posts.at(-1), groups[0]!.chatId);
-      await due(); mode = "uncertain"; await processAccountSchedules(owner, factory);
+      await due(); mode = "unknown"; await processAccountSchedules(owner, factory);
       mode = "ok"; const after = posts.length; await processAccountSchedules(owner, factory); assert.equal(posts.length, after);
       const stopped = (await pool.query("SELECT running FROM advertising_schedules WHERE group_id=$1", [groups[1]!.id])).rows[0];
       assert.equal(stopped.running, false);
       assert.equal((await pool.query("SELECT groups_sent_in_interval FROM advertising_accounts WHERE owner_id=$1", [owner])).rows[0].groups_sent_in_interval, 1,
         "an uncertain send to the second group never advances batch progress or gets replayed");
-      assert.equal((await pool.query("SELECT status,enabled FROM advertising_groups WHERE id=$1", [groups[1]!.id])).rows[0].status, "removed");
-      assert.equal((await pool.query("SELECT count(*)::int n FROM advertising_membership_jobs WHERE owner_id=$1 AND group_id=$2 AND action='leave'", [owner, groups[1]!.id])).rows[0].n, 1,
-        "uncertain post queues one leave, never a second post");
+      assert.equal((await pool.query("SELECT status,enabled FROM advertising_groups WHERE id=$1", [groups[1]!.id])).rows[0].status, "ready");
+      assert.equal((await pool.query("SELECT count(*)::int n FROM advertising_membership_jobs WHERE owner_id=$1 AND group_id=$2 AND action='leave'", [owner, groups[1]!.id])).rows[0].n, 0,
+        "UNKNOWN is a skip, not authorization to leave the group");
+      assert.equal((await request()).data.account.connected, true, "UNKNOWN leaves the same account connected");
+      const checkpoint = await readCheckpoint(owner);
+      assert.equal(checkpoint!.data.queue.some(entry => entry.groupId === groups[1]!.id && entry.eligible), false,
+        "Resume cannot silently replay the skipped unconfirmed group");
+      await withAdvertisingLock(owner, async client => {
+        const account = (await client.query("SELECT * FROM advertising_accounts WHERE owner_id=$1", [owner])).rows[0];
+        await queueRecordedUncertain(owner, client, account);
+      });
+      assert.equal((await pool.query("SELECT count(*)::int n FROM advertising_membership_jobs WHERE owner_id=$1 AND group_id=$2 AND action='leave'", [owner, groups[1]!.id])).rows[0].n, 0,
+        "historical cleanup must not reinterpret a persisted UNKNOWN skip as permission to leave");
+      const beforeNext = posts.length;
+      await due(); await processAccountSchedules(owner, factory);
+      assert.equal(posts.length, beforeNext + 1, "the campaign proceeds to the next group without another login");
+      assert.equal(posts.at(-1), groups[2]!.chatId, "the unconfirmed group is skipped rather than retried");
     });
     await t.test("changed or missing source stops the whole loop instead of forwarding different content", async () => {
       assert.equal((await request()).data.account.connected, true,

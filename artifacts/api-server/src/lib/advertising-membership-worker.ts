@@ -7,12 +7,13 @@ import { AccountError, createAccountDriver, safeAccountError, type AccountFactor
 import { assertTransferReviewed } from "./shop-transfer-safety";
 import { definiteDestinationFailure, queueGroupRemoval } from "./advertising-membership-store";
 import { purgeAdvertisingGroup, purgeCompletedGroupRemovals } from "./advertising-group-purge";
+import { UNKNOWN_REQUEST_SKIPPED_NOTE } from "./advertising-account-errors";
 
 export async function queueRecordedUncertain(owner: string, client: AdvertisingClient, account: Record<string, any>) {
   if (!account?.account_id) return;
   const rows = (await client.query(`SELECT g.*,r.id AS run_id,r.account_generation AS run_generation,r.draft
     FROM advertising_groups g JOIN advertising_account_runs r ON r.owner_id=g.owner_id AND r.group_id=g.id AND r.chat_id=g.chat_id
-    WHERE g.owner_id=$1 AND g.status<>'removed' AND r.status='uncertain'
+    WHERE g.owner_id=$1 AND g.status<>'removed' AND r.status='uncertain' AND r.note<>$4
       AND (r.draft->'forward'->'source'->>'accountId'=$3 OR
         (r.draft->'forward'->'source'->>'accountId' IS NULL AND r.account_generation=$2))
       AND NOT EXISTS(SELECT 1 FROM advertising_account_runs newer WHERE newer.owner_id=r.owner_id AND newer.chat_id=r.chat_id
@@ -20,7 +21,7 @@ export async function queueRecordedUncertain(owner: string, client: AdvertisingC
       AND NOT EXISTS(SELECT 1 FROM advertising_membership_jobs restored WHERE restored.owner_id=g.owner_id
         AND restored.action='join' AND restored.restore_allowed=true AND restored.status IN ('joined','already_joined')
         AND restored.updated_at>=r.started_at AND (restored.group_id=g.id OR restored.chat_id=g.chat_id))
-    ORDER BY r.started_at DESC,r.id DESC LIMIT 100`, [owner, account.generation, account.account_id])).rows;
+    ORDER BY r.started_at DESC,r.id DESC LIMIT 100`, [owner, account.generation, account.account_id, UNKNOWN_REQUEST_SKIPPED_NOTE])).rows;
   const seen = new Set<string>();
   for (const group of rows) {
     if (seen.has(group.id)) continue;

@@ -7,7 +7,7 @@ import { readSavedMessages, readSavedMessage } from "./advertising-saved-message
 import { loadAccountEmojiSet, verifyAccountEmoji } from "./advertising-account-emoji";
 import { telegramAdEntities } from "./advertising-formatting";
 import { validateAdvertisingDraft } from "./advertising-telegram";
-import { AccountError, safeAccountError, reportAccountError, type AccountOperation } from "./advertising-account-errors";
+import { AccountError, safeAccountError, reportAccountError, requiresAccountContainment, type AccountOperation } from "./advertising-account-errors";
 import { confirmAccountPost, type AccountPostReceipt } from "./advertising-account-receipt";
 import { inspectMembership, joinMembership, leaveMembership, resolveGroup, type MembershipProbe } from "./advertising-membership-telegram";
 import { accountGroupUpdate, type AccountGroupUpdate } from "./advertising-group-updates";
@@ -76,7 +76,7 @@ export const createAccountDriver: AccountFactory = ({ apiId, apiHash, session = 
     catch (error) {
       const raw = safeAccountError(error);
       const safe = reportAccountError(operation, ["auth", "restricted"].includes(raw.kind) ? raw : fatal ?? raw);
-      if (["auth", "restricted", "network"].includes(safe.kind)) fatal = safe;
+      if (requiresAccountContainment(safe)) fatal = safe;
       throw safe;
     }
   };
@@ -148,7 +148,7 @@ export const createAccountDriver: AccountFactory = ({ apiId, apiHash, session = 
     if (closed || fatal) return;
     if (!authorized && !preserveAuthorization && (error as { errorMessage?: string }).errorMessage === "AUTH_KEY_UNREGISTERED") return;
     const safe = reportAccountError("background", error);
-    if (["auth", "restricted", "network"].includes(safe.kind)) { fatal = safe; onFailure?.(safe); }
+    if (requiresAccountContainment(safe)) { fatal = safe; onFailure?.(safe); }
   };
   let qrAccepted = false;
   let selfId = "";

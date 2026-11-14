@@ -41,8 +41,8 @@ export async function queueNetworkRecovery(owner: string, client: AdvertisingCli
   const pending = recoveryState(row.last_error);
   if (pending) { handled.add(error); return; }
   // Never downgrade a hard stop to a transport retry. Permit an explicitly
-  // checked legacy CONNECTION_LOST/REQUEST_TIMEOUT stop, but no other stop.
-  if (row.last_error && !/^Account connection stopped \[(CONNECTION_LOST|REQUEST_TIMEOUT|TRANSPORT_UNAVAILABLE)\]/.test(row.last_error)) return;
+  // checked legacy transport/UNKNOWN stop, but never an authorization stop.
+  if (row.last_error && !/^Account connection stopped \[(CONNECTION_LOST|REQUEST_TIMEOUT|TRANSPORT_UNAVAILABLE|UNKNOWN)\]/.test(row.last_error)) return;
   const used = budget(owner, generation, now).attempts.length;
   if (used >= 3) { await recordStoppedAccount(owner, client, generation, exhausted()); handled.add(error); return; }
   await client.query("UPDATE advertising_accounts SET last_error=$3 WHERE owner_id=$1 AND generation=$2",

@@ -79,6 +79,11 @@ export type AccountOperation = "connect" | "identity" | "send_code" | "verify_co
   "check_account" | "post_ad" | "begin_login" | "verify_login" | "qr_poll" | "lease_lost" | "background" | "recover_connection" | "emoji_set" | "saved_messages" | "membership" | "join_group" | "leave_group";
 export const isTransportFailure = (error: AccountError) => error.kind === "network" &&
   ["CONNECTION_LOST", "REQUEST_TIMEOUT", "TRANSPORT_UNAVAILABLE"].includes(error.telegramCode);
+// An unclassified/missing RPC acknowledgement is not evidence that the
+// authorization or transport was lost. Preserve it; never replay its post.
+export const requiresAccountContainment = (error: AccountError) =>
+  ["auth", "restricted"].includes(error.kind) || error.kind === "network" && error.telegramCode !== "UNKNOWN";
+export const UNKNOWN_REQUEST_SKIPPED_NOTE = "Telegram did not confirm the request [UNKNOWN]. Group skipped without retry; account session and group membership retained.";
 export function reportAccountError(operation: AccountOperation, error: unknown): AccountError {
   const safe = safeAccountError(error);
   logger.warn({ event: "advertising_account_failure", operation, telegramCode: diagnosticCode(safe.telegramCode), kind: safe.kind },

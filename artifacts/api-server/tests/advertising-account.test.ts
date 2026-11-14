@@ -227,10 +227,10 @@ test("account sign-in, selected-group schedules and transfers are safe without r
       const afterUnknown = posts.length;
       await resetGlobalWait(); await processAccountSchedules(owner, factory);
       const current = (await request()).data;
-      assert.equal(current.groups.some((item: { id: string }) => item.id === group.id), false);
+      assert.equal(current.groups.some((item: { id: string }) => item.id === group.id), true, "an UNKNOWN request skips posting without removing group membership");
       assert.equal(current.accountRuns[0].status, "uncertain"); assert.equal(posts.length, afterUnknown);
-      assert.equal(current.account.connected, false, "uncertain network outcomes stop the account instead of reconnecting");
-      assert.equal((await start([group.id])).status, 400);
+      assert.equal(current.account.connected, true, "an UNKNOWN acknowledgement must not close or log out a healthy account");
+      assert.equal((await pool.query("SELECT count(*)::integer AS count FROM advertising_membership_jobs WHERE owner_id=$1 AND group_id=$2 AND action='leave'", [owner, group.id])).rows[0].count, 0);
       sendMode = "ok";
       await explicitlyAuthorizeAgain();
     });
