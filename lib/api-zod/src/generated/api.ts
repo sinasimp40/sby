@@ -6619,6 +6619,130 @@ export const ListCustomersResponseItem = zod.object({
 export const ListCustomersResponse = zod.array(ListCustomersResponseItem)
 
 
+export const GetCustomerPromotionsResponse = zod.object({
+  "enabled": zod.boolean(),
+  "intervalMinutes": zod.number().int(),
+  "nextAt": zod.coerce.date().nullable(),
+  "info": zod.string(),
+  "eligibleCount": zod.number().int(),
+  "recipientCount": zod.number().int(),
+  "products": zod.array(zod.object({
+  "productId": zod.number().int(),
+  "enabled": zod.boolean()
+})),
+  "rounds": zod.array(zod.object({
+  "id": zod.string(),
+  "productId": zod.number().int().nullable(),
+  "productName": zod.string(),
+  "status": zod.enum(['running', 'completed', 'stopped']),
+  "sent": zod.number().int(),
+  "failed": zod.number().int(),
+  "uncertain": zod.number().int(),
+  "skipped": zod.number().int(),
+  "info": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullable()
+})),
+  "deliveries": zod.array(zod.object({
+  "id": zod.string(),
+  "roundId": zod.string(),
+  "status": zod.string(),
+  "attempts": zod.number().int(),
+  "error": zod.string(),
+  "updatedAt": zod.coerce.date()
+}))
+})
+
+
+export const saveCustomerPromotionsBodyIntervalMinutesMax = 43200;
+
+
+
+export const SaveCustomerPromotionsBody = zod.object({
+  "enabled": zod.boolean(),
+  "intervalMinutes": zod.number().int().min(1).max(saveCustomerPromotionsBodyIntervalMinutesMax)
+})
+
+export const SaveCustomerPromotionsResponse = zod.object({
+  "enabled": zod.boolean(),
+  "intervalMinutes": zod.number().int(),
+  "nextAt": zod.coerce.date().nullable(),
+  "info": zod.string(),
+  "eligibleCount": zod.number().int(),
+  "recipientCount": zod.number().int(),
+  "products": zod.array(zod.object({
+  "productId": zod.number().int(),
+  "enabled": zod.boolean()
+})),
+  "rounds": zod.array(zod.object({
+  "id": zod.string(),
+  "productId": zod.number().int().nullable(),
+  "productName": zod.string(),
+  "status": zod.enum(['running', 'completed', 'stopped']),
+  "sent": zod.number().int(),
+  "failed": zod.number().int(),
+  "uncertain": zod.number().int(),
+  "skipped": zod.number().int(),
+  "info": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullable()
+})),
+  "deliveries": zod.array(zod.object({
+  "id": zod.string(),
+  "roundId": zod.string(),
+  "status": zod.string(),
+  "attempts": zod.number().int(),
+  "error": zod.string(),
+  "updatedAt": zod.coerce.date()
+}))
+})
+
+
+
+export const setPromotedProductsBodyProductIdsMax = 500;
+
+
+
+export const SetPromotedProductsBody = zod.object({
+  "productIds": zod.array(zod.number().int().min(1)).min(1).max(setPromotedProductsBodyProductIdsMax),
+  "enabled": zod.boolean()
+})
+
+export const SetPromotedProductsResponse = zod.object({
+  "enabled": zod.boolean(),
+  "intervalMinutes": zod.number().int(),
+  "nextAt": zod.coerce.date().nullable(),
+  "info": zod.string(),
+  "eligibleCount": zod.number().int(),
+  "recipientCount": zod.number().int(),
+  "products": zod.array(zod.object({
+  "productId": zod.number().int(),
+  "enabled": zod.boolean()
+})),
+  "rounds": zod.array(zod.object({
+  "id": zod.string(),
+  "productId": zod.number().int().nullable(),
+  "productName": zod.string(),
+  "status": zod.enum(['running', 'completed', 'stopped']),
+  "sent": zod.number().int(),
+  "failed": zod.number().int(),
+  "uncertain": zod.number().int(),
+  "skipped": zod.number().int(),
+  "info": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullable()
+})),
+  "deliveries": zod.array(zod.object({
+  "id": zod.string(),
+  "roundId": zod.string(),
+  "status": zod.string(),
+  "attempts": zod.number().int(),
+  "error": zod.string(),
+  "updatedAt": zod.coerce.date()
+}))
+})
+
+
 export const listCustomerWalletCreditsPathIdMax = 200;
 
 

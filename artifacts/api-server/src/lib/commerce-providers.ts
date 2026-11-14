@@ -3,13 +3,14 @@ import QRCode from "qrcode";
 import { paymentCaption, paymentKeyboard, type InvoiceMessage } from "./payment-message";
 import { readProviderCredentials } from "./provider-credentials";
 import { getBotRuntime, legacyPublicUrl } from "./bot-runtime";
+import { pool } from "@workspace/db";
 
 export class CommerceError extends Error {
   constructor(message: string, public status = 400) { super(message); }
 }
 export class ProviderRejectedError extends CommerceError {}
 export class TelegramRequestError extends CommerceError {
-  constructor(public operation: string, public providerStatus: number, public reason = "provider_error") {
+  constructor(public operation: string, public providerStatus: number, public reason = "provider_error", public retryAfterSeconds = 0) {
     super("Telegram could not complete the request. Try again.", 502);
   }
 }
@@ -29,16 +30,27 @@ export async function telegramControl<T = Record<string, unknown>>(
   return telegramRequest<T>(method, body);
 }
 
-async function telegramRequest<T>(method: string, body: Record<string, unknown> | FormData): Promise<T> {
-  const token = (await readProviderCredentials()).telegramToken;
+// Pin the shop owner before reading credentials; a later account change cannot
+// redirect an old shop's customer promotion through somebody else's bot.
+export async function telegramForOwner<T = Record<string, unknown>>(ownerId: string, method: string, body: Record<string, unknown>, beforeSubmit?: () => Promise<void>): Promise<T> {
+  if (!(await getBotRuntime(ownerId)).enabled) throw new CommerceError("Shop bot is paused.", 503);
+  const binding = (await pool.query("SELECT owner_id,active FROM bot_connections WHERE id='primary'")).rows[0];
+  if (binding?.owner_id !== ownerId || binding.active !== "yes") throw new CommerceError("Shop bot connection changed.", 503);
+  return telegramRequest<T>(method, body, ownerId, beforeSubmit);
+}
+async function telegramRequest<T>(method: string, body: Record<string, unknown> | FormData, ownerId?: string, beforeSubmit?: () => Promise<void>): Promise<T> {
+  const token = (await readProviderCredentials(ownerId)).telegramToken;
   if (!token) throw new CommerceError("Telegram token is not configured.", 503);
+  // Run local stop/eligibility checks after asynchronous credential lookup and
+  // outside the transport catch: rejection here proves nothing was submitted.
+  await beforeSubmit?.();
   try {
     const multipart = body instanceof FormData;
     const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
       method: "POST", headers: multipart ? undefined : { "content-type": "application/json" },
       body: multipart ? body : JSON.stringify(body), signal: AbortSignal.timeout(12000),
     });
-    const result = await response.json() as { ok: boolean; result: T; error_code?: number; description?: string };
+    const result = await response.json() as { ok: boolean; result: T; error_code?: number; description?: string; parameters?: { retry_after?: number } };
     if (!response.ok || !result.ok) {
       const d = result.description?.toLowerCase() ?? "";
       const reason = d.includes("message is not modified") ? "not_modified" :
@@ -46,8 +58,10 @@ async function telegramRequest<T>(method: string, body: Record<string, unknown> 
         method === "deleteMessage" && d.includes("message to delete not found") ? "message_missing" :
         method === "deleteMessage" && d.includes("message can't be deleted") ? "cannot_delete" :
         d.includes("terminated by other getupdates") ? "other_poller" :
-        d.includes("webhook is active") ? "webhook_active" : "provider_error";
-      throw new TelegramRequestError(method, result.error_code ?? response.status, reason);
+        d.includes("webhook is active") ? "webhook_active" :
+        d.includes("chat not found") || d.includes("blocked") || d.includes("deactivated") ? "chat_unavailable" : "provider_error";
+      throw new TelegramRequestError(method, result.error_code ?? response.status, reason,
+        Number.isSafeInteger(result.parameters?.retry_after) ? Math.max(0, Math.min(86400, result.parameters!.retry_after!)) : 0);
     }
     return result.result;
   } catch (error) {

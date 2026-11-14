@@ -26,7 +26,7 @@ export function validateShopRelationships(data: TransferData, ownerId: string) {
     for (const key of tableKeys) for (const row of data[key]) {
       if ("ownerId" in row && row.ownerId !== ownerId) throw new Error();
     }
-    for (const key of ["settings", "providerCredentials", "runtime", "connection", "advertisingBots"] as const) {
+    for (const key of ["settings", "providerCredentials", "runtime", "connection", "advertisingBots", "promotionSettings"] as const) {
       if (data[key].length > 1) throw new Error();
     }
     area = "duplicate identifiers";
@@ -38,6 +38,35 @@ export function validateShopRelationships(data: TransferData, ownerId: string) {
     indexed(data.walletEntries, "paymentId");
     indexed(data.manualCredits);
     indexed(data.manualCredits, "requestKey");
+    area = "customer promotion relationships";
+    indexed(data.promotionProducts, "productId");
+    indexed(data.promotionPreferences, "customerId");
+    const promoRounds = indexed(data.promotionRounds);
+    indexed(data.promotionDeliveries);
+    const deliveryKeys = new Set<string>();
+    for (const flag of data.promotionProducts) if (!products.has(flag.productId)) throw new Error();
+    for (const pref of data.promotionPreferences) if (!customers.has(pref.customerId)) throw new Error();
+    for (const round of data.promotionRounds) {
+      if (round.productId !== null && !products.has(round.productId) || !["running", "completed", "stopped"].includes(String(round.status)) ||
+        typeof round.productName !== "string" || round.productName.length > 200 ||
+        typeof round.info !== "string" || round.info.length > 500 ||
+        [round.sent, round.failed, round.uncertain, round.skipped].some(n => !Number.isSafeInteger(n) || Number(n) < 0)) throw new Error();
+    }
+    for (const config of data.promotionSettings) {
+      if (!Number.isSafeInteger(config.intervalMinutes) || Number(config.intervalMinutes) < 1 || Number(config.intervalMinutes) > 43200 ||
+        config.activeRoundId !== null && promoRounds.get(config.activeRoundId)?.status !== "running" ||
+        (config.leaseToken === null) !== (config.leaseUntil === null) ||
+        typeof config.info !== "string" || config.info.length > 500) throw new Error();
+    }
+    for (const delivery of data.promotionDeliveries) {
+      const key = JSON.stringify([delivery.roundId, delivery.customerId]);
+      if (!promoRounds.has(delivery.roundId) || !customers.has(delivery.customerId) || deliveryKeys.has(key) ||
+        !["sending", "retry", "sent", "failed", "unknown", "skipped"].includes(String(delivery.status)) ||
+        !Number.isSafeInteger(delivery.attempts) || Number(delivery.attempts) < 0 || Number(delivery.attempts) > 3 ||
+        typeof delivery.error !== "string" || delivery.error.length > 500 ||
+        delivery.messageId !== null && (!Number.isSafeInteger(delivery.messageId) || Number(delivery.messageId) < 1)) throw new Error();
+      deliveryKeys.add(key);
+    }
     indexed(data.updates);
     indexed(data.customers, "telegramId");
     indexed(data.payments, "requestKey");

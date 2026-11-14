@@ -1,3 +1,4 @@
+export * from "./customer-promotions";
 export * from "./manual-wallet-credits";
 export * from "./bot-runtime";
 // Export your models here. Add one export per file

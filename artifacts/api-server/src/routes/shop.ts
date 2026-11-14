@@ -17,6 +17,7 @@ import transferRouter from "./shop-transfer";
 import emojiRouter from "./shop-emojis";
 import advertisingRouter from "./shop-advertising";
 import walletCreditRouter from "./shop-wallet-credit";
+import customerPromotionsRouter from "./shop-customer-promotions";
 import { validateCoinButtonIcons } from "../lib/coin-button-icons";
 import { validProductMediaUrl, PRODUCT_MEDIA_ERROR } from "../lib/product-media";
 import { WELCOME_CAPTION_LIMIT } from "../lib/welcome-message";
@@ -49,6 +50,7 @@ router.use(transferRouter);
 router.use(emojiRouter);
 router.use(advertisingRouter);
 router.use(walletCreditRouter);
+router.use(customerPromotionsRouter);
 
 router.get("/overview", async (req, res): Promise<void> => {
   const ownerId = getAuth(req).userId;

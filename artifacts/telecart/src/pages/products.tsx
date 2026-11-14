@@ -4,7 +4,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQueryClient } from "@tanstack/react-query";
-import { useListProducts, useCreateProduct, useUpdateProduct, useDeleteProduct, getListProductsQueryKey, useListProductGroups, useDeleteProductGroup, getListProductGroupsQueryKey, getGetOverviewQueryKey, getListActivityQueryKey } from "@workspace/api-client-react";
+import { useListProducts, useCreateProduct, useUpdateProduct, useDeleteProduct, getListProductsQueryKey, useListProductGroups, useDeleteProductGroup, getListProductGroupsQueryKey, getGetOverviewQueryKey, getListActivityQueryKey, useGetCustomerPromotions, getGetCustomerPromotionsQueryKey } from "@workspace/api-client-react";
+import { CustomerPromotionsPanel, PromoToggle, promotedMap, usePromotionToggle } from "@/components/customer-promotions";
 import type { Product, ProductGroup } from "@workspace/api-client-react";
 import { Plus, Pencil, Trash2, Package, Search, KeyRound, Loader2, Layers, ChevronRight } from "lucide-react";
 import { ProductGroupEditor } from "@/components/product-group-editor";
@@ -178,6 +179,9 @@ export default function ProductsPage() {
   const [groupOpen, setGroupOpen] = useState(false);
   const [deletingGroup, setDeletingGroup] = useState<ProductGroup | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const promoQ = useGetCustomerPromotions({ query: { queryKey: getGetCustomerPromotionsQueryKey(), enabled: isSignedIn, refetchInterval: 20000, refetchOnWindowFocus: true } });
+  const promoted = useMemo(() => promotedMap(promoQ.data), [promoQ.data]);
+  const promo = usePromotionToggle();
 
   const ql = q.toLowerCase();
   const groups = useMemo(() => (groupsQ.data ?? []).filter(g => groupMatches(g, filter, ql)), [groupsQ.data, filter, ql]);
@@ -200,6 +204,7 @@ export default function ProductsPage() {
           <Button variant="outline" onClick={() => openGroup(null)} data-testid="button-new-group"><Layers className="mr-1.5 h-4 w-4" />Grouped product</Button>
           <Button onClick={openNew} data-testid="button-new-product"><Plus className="mr-1.5 h-4 w-4" />New product</Button></div>} />
       {!isSignedIn && <div className="mb-4 rounded-lg border border-signal/25 bg-signal-soft px-3 py-2 text-xs text-foreground/80">These are <b>labelled sample products</b> for the preview. Your own shop starts empty.</div>}
+      {isSignedIn && <CustomerPromotionsPanel data={promoQ.data} isLoading={promoQ.isLoading} isError={promoQ.isError} onRetry={() => promoQ.refetch()} />}
       <Panel bodyClassName="p-0">
         <div className="flex flex-col gap-2 border-b border-border/70 p-3 sm:flex-row sm:items-center">
           <div className="relative flex-1"><Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search product or option name" className="pl-8" data-testid="input-search-products" /></div>
@@ -215,7 +220,7 @@ export default function ProductsPage() {
           <div className="dashboard-scroll dashboard-table-scroll" tabIndex={0} role="region" aria-label="Products and options" data-testid="scroll-products">
             <table className="w-full text-sm">
               <thead><tr className="border-b border-border/70 text-left font-mono text-[10.5px] uppercase tracking-wider text-muted-foreground">
-                <th className="px-4 py-2.5 font-medium">Product</th><th className={th}>Status</th><th className={cn(th, "text-right")}>Stock</th><th className={cn(th, "text-right")}>Sold</th><th className={cn(th, "text-right")}>Price</th><th className="px-4 py-2.5" /></tr></thead>
+                <th className="px-4 py-2.5 font-medium">Product</th><th className={th}>Status</th><th className={cn(th, "text-right")}>Stock</th><th className={cn(th, "text-right")}>Sold</th><th className={cn(th, "text-right")}>Price</th><th className={th}>Promo</th><th className="px-4 py-2.5" /></tr></thead>
               {groups.map(g => {
                 const open = expanded[g.id] ?? false;
                 const stock = g.options.reduce((a, o) => a + o.stock, 0);
@@ -233,6 +238,13 @@ export default function ProductsPage() {
                     <td className={cn("tabular px-3 py-3 text-right font-mono", stock === 0 && "text-signal")}>{stock}</td>
                     <td className="tabular px-3 py-3 text-right font-mono text-muted-foreground">{sold}</td>
                     <td className="px-3 py-3 text-right text-xs text-muted-foreground">Per option</td>
+                    <td className="px-3 py-3" onClick={e => e.stopPropagation()}>{(() => {
+                      const ids = g.options.map(o => o.id);
+                      const on = ids.filter(id => promoted.get(id) ?? false).length;
+                      const all = on === ids.length && ids.length > 0;
+                      return <PromoToggle on={all} mixed={on > 0 && !all} count={`${on}/${ids.length}`} busy={promo.busy(ids)} disabled={!isSignedIn || !ids.length}
+                        onClick={() => promo.toggle(ids, !all, `${g.name}: all ${ids.length} options`)} testId={`button-promo-group-${g.id}`} />;
+                    })()}</td>
                     <td className="px-4 py-3" onClick={e => e.stopPropagation()}><div className="flex justify-end gap-0.5">
                       <Button size="icon" variant="ghost" className="h-8 w-8" title="Edit group and options" onClick={() => openGroup(g)} data-testid={`button-edit-group-${g.id}`}><Pencil className="h-4 w-4" /></Button>
                       <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" title="Delete group" onClick={() => askDeleteGroup(g)} data-testid={`button-delete-group-${g.id}`}><Trash2 className="h-4 w-4" /></Button>
@@ -246,6 +258,8 @@ export default function ProductsPage() {
                       <td className={cn("tabular px-3 py-2.5 text-right font-mono", o.stock === 0 && "text-signal")}>{o.stock}</td>
                       <td className="tabular px-3 py-2.5 text-right font-mono text-muted-foreground">{o.sold}</td>
                       <td className="tabular px-3 py-2.5 text-right font-mono font-medium">{money(o.price)}</td>
+                      <td className="px-3 py-2.5"><PromoToggle on={promoted.get(o.id) ?? false} busy={promo.busy([o.id])} disabled={!isSignedIn}
+                        onClick={() => promo.toggle([o.id], !(promoted.get(o.id) ?? false), `${g.name} · ${o.optionName ?? o.name}`)} testId={`button-promo-option-${o.id}`} /></td>
                       <td className="px-4 py-2.5"><ProductActions p={o} onEdit={() => openGroup(g)} /></td>
                     </tr>
                   ))}
@@ -262,6 +276,8 @@ export default function ProductsPage() {
                     <td className={cn("tabular px-3 py-3 text-right font-mono", p.stock === 0 && "text-signal")}>{p.stock}</td>
                     <td className="tabular px-3 py-3 text-right font-mono text-muted-foreground">{p.sold}</td>
                     <td className="tabular px-3 py-3 text-right font-mono font-medium">{money(p.price)}</td>
+                    <td className="px-3 py-3"><PromoToggle on={promoted.get(p.id) ?? false} busy={promo.busy([p.id])} disabled={!isSignedIn}
+                      onClick={() => promo.toggle([p.id], !(promoted.get(p.id) ?? false), p.name)} testId={`button-promo-product-${p.id}`} /></td>
                     <td className="px-4 py-3"><ProductActions p={p} onGroup={() => openGroup(null, p)} onEdit={() => openEdit(p)} onDelete={() => askDelete(p)} /></td>
                   </tr>
                 ))}

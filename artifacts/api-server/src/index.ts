@@ -7,6 +7,7 @@ import { runAccountAdvertisingWorker } from "./lib/advertising-account-schedules
 import { initializeAccountAdvertising } from "./lib/advertising-account-auth";
 import { configuredOwnerId } from "./lib/admin-bootstrap";
 import { shutdownAccountSessions } from "./lib/advertising-account-session";
+import { runCustomerPromotionsWorker, stopCustomerPromotionsWorker } from "./lib/customer-promotions-worker";
 
 const rawPort = process.env["PORT"];
 
@@ -43,11 +44,13 @@ const server = app.listen(port, process.env.TELECART_LOCAL_ONLY === "true" ? "12
   void runWorkspacePolling().catch(() => logger.error("Workspace Telegram poller stopped."));
   void runPaymentReconciliation().catch(() => logger.error("Payment reconciliation stopped."));
   void runAccountAdvertisingWorker().catch(() => logger.error("Account advertising sender stopped."));
+  void runCustomerPromotionsWorker().catch(() => logger.error("Customer promotion sender stopped."));
 });
 let stopping = false;
 const shutdown = () => {
   if (stopping) return;
   stopping = true;
+  stopCustomerPromotionsWorker();
   server.close();
   const deadline = setTimeout(() => process.exit(1), 8000);
   deadline.unref();

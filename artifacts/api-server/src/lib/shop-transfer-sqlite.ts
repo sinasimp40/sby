@@ -9,7 +9,7 @@ import { CommerceError } from "./commerce-providers";
 import { decryptCredential, encryptCredential, credentialFingerprint } from "./inventory-encryption";
 import { decryptProviderSecret, encryptProviderSecret } from "./provider-credentials";
 import {
-  tableKeys, tableInfo, quote, parseTransferData, transferSchemaHash, preManualCreditTransferSchemaHash,
+  tableKeys, tableInfo, quote, parseTransferData, transferSchemaHash, preManualCreditTransferSchemaHash, prePromotionsTransferSchemaHash, promotionTransferKeys,
   MAX_TRANSFER_BYTES, MAX_TRANSFER_ROWS, MAX_ZIP_BYTES, type TransferData, type TransferTable,
 } from "./shop-transfer-tables";
 
@@ -157,7 +157,7 @@ export function encodeSqliteShopArchive(sourceOwnerId: string, input: TransferDa
 
 const metadata = z.object({
   format: z.literal("telecart-shop-data"), version: z.literal(2),
-  schema_hash: z.enum([transferSchemaHash, preManualCreditTransferSchemaHash]), created_at: z.iso.datetime(),
+  schema_hash: z.enum([transferSchemaHash, prePromotionsTransferSchemaHash, preManualCreditTransferSchemaHash]), created_at: z.iso.datetime(),
   source_owner: z.string().min(1).max(300),
 }).strict();
 
@@ -183,14 +183,16 @@ export function decodeSqliteShopArchive(bytes: Uint8Array, zip: Buffer) {
         const meta = metadata.parse(metaRows[0]);
         // Previous SQLite exports contain all the same tables except manualCredits.
         // Check their exact original table/count sets before adding an empty default.
-        const archiveKeys = tableKeys.filter(key => meta.schema_hash === transferSchemaHash || key !== "manualCredits");
+        const archiveKeys = tableKeys.filter(key =>
+          !(meta.schema_hash === preManualCreditTransferSchemaHash && key === "manualCredits") &&
+          !(meta.schema_hash !== transferSchemaHash && (promotionTransferKeys as readonly string[]).includes(key)));
         const archiveTables = ["transfer_meta", "transfer_counts", ...archiveKeys];
         if (definitions.length !== archiveTables.length || definitions.some(row => !archiveTables.includes(String(row.name)))) throw new Error();
         const countRows = db.prepare("SELECT * FROM transfer_counts LIMIT ?").all(tableKeys.length + 1);
         if (countRows.length !== archiveKeys.length || new Set(countRows.map(row => row.dataset)).size !== archiveKeys.length ||
           countRows.some(row => !archiveKeys.includes(row.dataset as TransferTable))) throw new Error();
         const counts: Record<string, number> = {};
-        const data = { manualCredits: [] } as unknown as TransferData;
+        const data = Object.fromEntries(tableKeys.map(key => [key, []])) as unknown as TransferData;
         let total = 0;
         for (const key of archiveKeys) {
           const count = countRows.find(row => row.dataset === key)?.row_count;
@@ -219,7 +221,7 @@ export function decodeSqliteShopArchive(bytes: Uint8Array, zip: Buffer) {
         }
         const check = db.prepare("PRAGMA quick_check(1)").get();
         if (!check || Object.values(check)[0] !== "ok") throw new Error();
-        if (meta.schema_hash === preManualCreditTransferSchemaHash) counts.manualCredits = 0;
+        for (const key of tableKeys) if (!(key in counts)) counts[key] = 0;
         return {
           data: protectData(data, meta.source_owner),
           manifest: { format: meta.format, version: meta.version, schemaHash: meta.schema_hash, createdAt: meta.created_at, sourceOwnerId: meta.source_owner, counts },

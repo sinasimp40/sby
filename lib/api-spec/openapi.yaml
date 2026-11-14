@@ -612,6 +612,51 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/Customer" } }
+  /shop/customer-promotions:
+    get:
+      operationId: getCustomerPromotions
+      tags: [shop]
+      responses:
+        "200":
+          description: Shared customer promotion schedule and recent delivery history
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CustomerPromotions" }
+        "401": { description: Sign in required }
+    put:
+      operationId: saveCustomerPromotions
+      tags: [shop]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CustomerPromotionInput" }
+      responses:
+        "200":
+          description: Saved shared schedule
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CustomerPromotions" }
+        "400": { description: Invalid interval }
+        "401": { description: Sign in required }
+  /shop/customer-promotions/products:
+    post:
+      operationId: setPromotedProducts
+      tags: [shop]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PromotionProductsInput" }
+      responses:
+        "200":
+          description: Product and option promotion flags updated atomically
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CustomerPromotions" }
+        "400": { description: Invalid selection }
+        "401": { description: Sign in required }
+        "404": { description: One or more products not in your shop }
   /shop/customers/{id}/credits:
     parameters:
       - {name: id, in: path, required: true, schema: {type: string, minLength: 1, maxLength: 200}}
@@ -1511,6 +1556,71 @@ components:
         spent: { type: number }
         walletBalance: { type: number }
         joinedAt: { type: string }
+    PromotionProductsInput:
+      type: object
+      required: [productIds, enabled]
+      properties:
+        productIds:
+          type: array
+          minItems: 1
+          maxItems: 500
+          uniqueItems: true
+          items: { type: integer, minimum: 1 }
+        enabled: { type: boolean }
+    CustomerPromotionInput:
+      type: object
+      required: [enabled, intervalMinutes]
+      properties:
+        enabled: { type: boolean }
+        intervalMinutes: { type: integer, minimum: 1, maximum: 43200 }
+    CustomerPromotionRound:
+      type: object
+      required: [id, productId, productName, status, sent, failed, uncertain, skipped, info, createdAt, completedAt]
+      properties:
+        id: { type: string }
+        productId: { type: ["integer", "null"] }
+        productName: { type: string }
+        status: { type: string, enum: [running, completed, stopped] }
+        sent: { type: integer }
+        failed: { type: integer }
+        uncertain: { type: integer }
+        skipped: { type: integer }
+        info: { type: string }
+        createdAt: { type: string, format: date-time }
+        completedAt: { type: ["string", "null"], format: date-time }
+    CustomerPromotions:
+      type: object
+      required: [enabled, intervalMinutes, nextAt, info, eligibleCount, recipientCount, products, rounds, deliveries]
+      properties:
+        enabled: { type: boolean }
+        intervalMinutes: { type: integer }
+        nextAt: { type: ["string", "null"], format: date-time }
+        info: { type: string }
+        eligibleCount: { type: integer }
+        recipientCount: { type: integer }
+        products:
+          type: array
+          items:
+            type: object
+            required: [productId, enabled]
+            properties:
+              productId: { type: integer }
+              enabled: { type: boolean }
+        rounds:
+          type: array
+          items: { $ref: "#/components/schemas/CustomerPromotionRound" }
+        deliveries:
+          type: array
+          items:
+            type: object
+            required: [id, roundId, status, attempts, error, updatedAt]
+            properties:
+              id: { type: string }
+              roundId: { type: string }
+              status: { type: string }
+              attempts: { type: integer }
+              error: { type: string }
+              updatedAt: { type: string, format: date-time }
     CustomerWalletCreditInput:
       type: object
       required: [requestKey, amountCents, reason]

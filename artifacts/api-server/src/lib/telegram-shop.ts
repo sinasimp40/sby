@@ -1,3 +1,4 @@
+import { setCustomerPromotionPreference } from "./customer-promotions-store";
 import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { db, pool, botCustomers, botUpdates, shopPayments } from "@workspace/db";
@@ -143,7 +144,15 @@ export async function handleTelegramUpdate(update: TelegramUpdate, services = cu
         // Its failure must not block idempotent checkout/delivery recovery.
         await services.telegram("answerCallbackQuery", { callback_query_id: update.callback_query.id }).catch(() => undefined);
       }
-      if (settings.maintenanceMode) {
+      if (data === "promotions:off" || data === "promotions:on" || text === "/promotions_off" || text === "/promotions_on") {
+        const optedOut = data === "promotions:off" || text === "/promotions_off";
+        await setCustomerPromotionPreference(connection.ownerId, customer!.id, optedOut);
+        await send(optedOut
+          ? "Scheduled product promotions are off. Stock updates, ordering and support are unchanged. Use /promotions_on to subscribe again."
+          : "Product promotions are on. Use /promotions_off or Stop product promotions on a card to unsubscribe.",
+        { inline_keyboard: [[{ text: optedOut ? "Enable product promotions" : "Stop product promotions",
+          callback_data: optedOut ? "promotions:on" : "promotions:off" }]] });
+      } else if (settings.maintenanceMode) {
         // Keep polling and payment reconciliation alive, but never run a
         // customer command/callback or retain a pending purchase selection.
         await db.update(botCustomers).set({ state: {} }).where(eq(botCustomers.id, customer!.id));

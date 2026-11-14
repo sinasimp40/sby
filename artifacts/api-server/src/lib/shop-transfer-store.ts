@@ -3,11 +3,15 @@ import {
   tableKeys, tableInfo, quote, MAX_TRANSFER_ROWS, type TransferTable, type TransferRow, type TransferData,
 } from "./shop-transfer-tables";
 import { CommerceError } from "./commerce-providers";
+import { PROMOTION_HISTORY_ROUNDS, PROMOTION_HISTORY_DELIVERIES } from "./customer-promotions-retention";
 
 export async function readShopTransferData(client: PoolClient, ownerId: string): Promise<TransferData> {
   const data = {} as TransferData;
   let total = 0;
-  for (const key of tableKeys) {
+  // Financial/shop state gets the existing budget first. Optional recent
+  // promotion audit must never make an otherwise exportable shop unexportable.
+  const history = ["promotionRounds", "promotionDeliveries"] as const;
+  for (const key of [...tableKeys.filter(key => !history.includes(key as typeof history[number])), ...history]) {
     const info = tableInfo(key);
     const columns = info.columns.map(([name, column]) => {
       const field = `t.${quote(column.name)}`;
@@ -23,12 +27,41 @@ export async function readShopTransferData(client: PoolClient, ownerId: string):
       where = `split_part(t."id", ':', 1) = $1`;
       value = String(connection.botId);
     }
-    const result = await client.query(`SELECT /*portable*/ ${columns} FROM ${quote(info.name)} t WHERE ${where} LIMIT ${MAX_TRANSFER_ROWS + 1}`, [value]);
+    let limit = MAX_TRANSFER_ROWS + 1, order = "";
+    const parameters: unknown[] = [value];
+    if (key === "promotionRounds") {
+      limit = Math.min(PROMOTION_HISTORY_ROUNDS, MAX_TRANSFER_ROWS - total);
+      parameters.push(data.promotionSettings[0]?.activeRoundId ?? "");
+      order = " ORDER BY CASE WHEN t.id=$2 THEN 0 ELSE 1 END,t.created_at DESC,t.id DESC";
+    } else if (key === "promotionDeliveries") {
+      if (!data.promotionRounds.length) { data[key] = []; continue; }
+      limit = Math.min(PROMOTION_HISTORY_DELIVERIES, MAX_TRANSFER_ROWS - total);
+      where += " AND t.round_id=ANY($2::text[])";
+      parameters.push(data.promotionRounds.map(row => row.id));
+      order = " ORDER BY CASE WHEN t.status IN ('sending','retry') THEN 0 ELSE 1 END,t.updated_at DESC,t.id DESC";
+    }
+    const result = await client.query(`SELECT /*portable*/ ${columns} FROM ${quote(info.name)} t WHERE ${where}${order} LIMIT ${limit}`, parameters);
     total += result.rowCount ?? 0;
     if (total > MAX_TRANSFER_ROWS) throw new CommerceError("Shop exceeds the 50,000-row portable transfer limit. No partial export was created.", 413);
     data[key] = result.rows.map(row => Object.fromEntries(info.columns.map(([name, column]) => [
       name, column.dataType === "boolean" && row[name] !== null ? Boolean(row[name]) : row[name],
     ])));
+  }
+  const roundIds = new Set(data.promotionRounds.map(row => row.id));
+  for (const config of data.promotionSettings) if (config.activeRoundId && !roundIds.has(config.activeRoundId)) {
+    config.activeRoundId = null; config.leaseToken = null; config.leaseUntil = null;
+  }
+  // If the budget omitted an in-flight/retry detail, still carry its safe
+  // transfer outcome in the retained aggregate. Import converts included ones.
+  if (roundIds.size) {
+    const pending = await client.query(`SELECT round_id,status,count(*)::integer AS count FROM customer_promotion_deliveries
+      WHERE owner_id=$1 AND round_id=ANY($2::text[]) AND status IN ('sending','retry') GROUP BY round_id,status`, [ownerId, [...roundIds]]);
+    for (const row of pending.rows) {
+      const round = data.promotionRounds.find(round => round.id === row.round_id)!;
+      const included = data.promotionDeliveries.filter(delivery => delivery.roundId === row.round_id && delivery.status === row.status).length;
+      const key = row.status === "sending" ? "uncertain" : "skipped";
+      round[key] = Number(round[key]) + Number(row.count) - included;
+    }
   }
   return data;
 }
@@ -57,7 +90,8 @@ export async function insertTransferRows(client: PoolClient, key: TransferTable,
 }
 
 export async function destinationTransferState(client: PoolClient, ownerId: string) {
-  const keys: TransferTable[] = ["products", "inventory", "customers", "payments", "manualCredits", "records", "customEmojis", "advertisingBots", "advertisingGroups", "advertisingCampaigns", "advertisingDeliveries", "advertisingAccountSchedules", "advertisingAccountRuns", "advertisingAccountCommands"];
+  const keys: TransferTable[] = ["products", "inventory", "customers", "payments", "manualCredits", "records", "customEmojis", "advertisingBots", "advertisingGroups", "advertisingCampaigns", "advertisingDeliveries", "advertisingAccountSchedules", "advertisingAccountRuns", "advertisingAccountCommands",
+    "promotionProducts", "promotionPreferences", "promotionRounds", "promotionDeliveries"];
   const counts: Record<string, number> = {};
   for (const key of keys) {
     const result = await client.query(`SELECT count(*)::integer AS count FROM ${quote(tableInfo(key).name)} WHERE owner_id = $1`, [ownerId]);

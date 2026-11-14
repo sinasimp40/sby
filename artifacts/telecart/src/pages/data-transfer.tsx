@@ -13,6 +13,8 @@ import { errMsg, dateTime } from "@/lib/format";
 const tableLabels: Record<string, string> = {
   products: "Products", inventory: "Stock credentials", customers: "Customers & balances",
   payments: "Orders & deposits", walletEntries: "Wallet ledger", manualCredits: "Manual credit audit", records: "Legacy records",
+  promotionSettings: "Customer promotion schedule", promotionProducts: "Promoted products/options",
+  promotionPreferences: "Customer promotion preferences", promotionRounds: "Promotion rounds", promotionDeliveries: "Promotion deliveries",
   settings: "Shop settings", activity: "Activity history", providerCredentials: "Saved provider credentials",
   runtime: "Bot runtime settings", connection: "Bot connection", updates: "Telegram update deduplication",
   customEmojis: "Custom emoji library",

@@ -9,6 +9,7 @@ import {
   shopCustomEmojis,
   advertisingBots, advertisingGroups, advertisingCampaigns, advertisingDeliveries,
   advertisingSchedules, advertisingAccountRuns, advertisingAccountCommands,
+  customerPromotionSettings, customerPromotionProducts, customerPromotionPreferences, customerPromotionRounds, customerPromotionDeliveries,
 } from "@workspace/db";
 
 // Explicit allowlist: login sessions and database/platform credentials never travel.
@@ -19,6 +20,8 @@ export const transferTables = {
   connection: botConnections, updates: botUpdates, customEmojis: shopCustomEmojis,
   advertisingBots, advertisingGroups, advertisingCampaigns, advertisingDeliveries,
   advertisingAccountSchedules: advertisingSchedules, advertisingAccountRuns, advertisingAccountCommands,
+  promotionSettings: customerPromotionSettings, promotionProducts: customerPromotionProducts,
+  promotionPreferences: customerPromotionPreferences, promotionRounds: customerPromotionRounds, promotionDeliveries: customerPromotionDeliveries,
 };
 export type TransferTable = keyof typeof transferTables;
 export type TransferRow = Record<string, unknown>;
@@ -42,7 +45,9 @@ function schemaHash() { return createHash("sha256").update(JSON.stringify(tableK
   })),
 })))).digest("hex"); }
 // Portable format is independent of the live SQL engine; keep existing ZIPs readable.
-export const transferSchemaHash = "e01054d73059f6fbb361bda1b983efcbf787a5324c7d1d16bc9225ed8d67ef5f";
+export const transferSchemaHash = "4dc3d24749b80e6c7a272a145f177c54e06c2534dbbcab77875805ab1b9193ac";
+export const prePromotionsTransferSchemaHash = "e01054d73059f6fbb361bda1b983efcbf787a5324c7d1d16bc9225ed8d67ef5f";
+export const promotionTransferKeys = ["promotionSettings", "promotionProducts", "promotionPreferences", "promotionRounds", "promotionDeliveries"] as const;
 export const preManualCreditTransferSchemaHash = "373cdd8d92c967430cc73ced542c259dbff5f0027004a99d9cf6b323d811c9e7";
 export const preAdvertisingTransferSchemaHash = "3713eeb9bf5cd5165800e1c7bd281f307d9e62213111a1d198ce415eb46a3468";
 export const preAccountTransferSchemaHash = "fba412306e31c36efd6e43be3bb65411095ff38c71de7f2069b03b61abee6249";

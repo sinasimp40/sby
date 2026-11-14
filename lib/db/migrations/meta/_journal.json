@@ -50,6 +50,13 @@
       "when": 1794624578730,
       "tag": "0006_manual_wallet_credits",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1794625580667,
+      "tag": "0007_customer_promotions",
+      "breakpoints": true
     }
   ]
 }

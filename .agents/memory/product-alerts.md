@@ -13,6 +13,18 @@ Use “New product” for the first stocked announcement and “Added stock” f
 
 **How to apply:** Remember the distinction across restarts and sold-out periods; becoming available again does not make an existing product new.
 
+Scheduled customer product promotions use one shared interval and randomly choose a product or individual grouped option. Their product-and-Buy-now cards must not say “New product,” “Added stock,” or “accounts just added.”
+
+**Why:** The user requested advertising cards resembling their existing product image card, but explicitly without stock-event wording, and chose one shared interval rather than product-specific timers.
+
+**How to apply:** Keep scheduled shop-bot customer promotions separate from actual stock alerts and from personal-account group advertising. Preserve the selected leaf option's own identity, price, stock and purchase button.
+
+Portable backups prioritize complete shop data over expendable promotion delivery history. Closed-round totals remain authoritative when old delivery details are discarded.
+
+**Why:** Repeated broadcasts must not consume the portable archive's capacity and prevent exporting wallet balances, stock or customer preferences.
+
+**How to apply:** Bound non-financial audit details without trimming active-send safety records or opt-outs. Never recalculate retained round totals from an intentionally partial audit.
+
 Product images should be configured with an optional direct public HTTPS link in the dashboard, including `.gif` links, not by uploading to a storage bucket. Send each stock alert and Buy now product card as ONE message with the name and description in the photo/GIF caption, not a separate name message.
 
 **Why:** The user explicitly chose image links, including GIFs, instead of creating a bucket. They corrected the separate name message and said to make it one message.

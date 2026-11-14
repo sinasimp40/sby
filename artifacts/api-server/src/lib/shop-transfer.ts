@@ -117,6 +117,33 @@ async function importRows(client: PoolClient, data: TransferData, source: string
   await write("walletEntries", data.walletEntries);
   // Keep the original actor and credit/reference IDs; only installation ownership changes.
   await write("manualCredits", data.manualCredits.map(row => ({ ...row, ownerId: owner })));
+  // Imported sends are never resumed automatically. Keep identities/outcomes for
+  // audit, preserve preferences/flags, and require a fresh explicit enable.
+  await client.query("DELETE FROM customer_promotion_settings WHERE owner_id=$1", [owner]);
+  await write("promotionSettings", data.promotionSettings.map(row => ({ ...row, ownerId: owner,
+    enabled: false, nextAt: null, activeRoundId: null, leaseToken: null, leaseUntil: null, nextDispatchAt: null,
+    lastProductId: row.lastProductId == null ? null : products.get(Number(row.lastProductId)) ?? null,
+    info: "Imported paused. Review this shop and explicitly enable customer promotions.",
+  })));
+  await write("promotionProducts", data.promotionProducts.map(row => ({ ...row, ownerId: owner, productId: products.get(Number(row.productId)) })));
+  await write("promotionPreferences", data.promotionPreferences.map(row => ({ ...row, ownerId: owner })));
+  await write("promotionRounds", data.promotionRounds.map(row => ({ ...row, ownerId: owner,
+    productId: row.productId == null ? null : products.get(Number(row.productId)),
+    ...(row.status === "running" ? { status: "stopped", completedAt: new Date(), info: "Interrupted by shop transfer; not automatically resumed." } : {}),
+  })));
+  await write("promotionDeliveries", data.promotionDeliveries.map(row => ({ ...row, ownerId: owner,
+    ...(row.status === "sending" ? { status: "unknown", retryAt: null, error: "Transferred during submission; uncertain outcome. Not retried." } :
+      row.status === "retry" ? { status: "skipped", retryAt: null, error: "Pending retry stopped during transfer." } : {}),
+  })));
+  // Recent detailed audit may be bounded; do not replace authoritative totals
+  // with counts of only those retained details.
+  for (const round of data.promotionRounds) {
+    const deliveries = data.promotionDeliveries.filter(row => row.roundId === round.id);
+    const uncertain = Number(round.uncertain) + deliveries.filter(row => row.status === "sending").length;
+    const skipped = Number(round.skipped) + deliveries.filter(row => row.status === "retry").length;
+    await client.query("UPDATE customer_promotion_rounds SET uncertain=$1,skipped=$2 WHERE id=$3 AND owner_id=$4",
+      [uncertain, skipped, round.id, owner]);
+  }
   for (const key of ["records", "activity"] as const) {
     await write(key, data[key].map(row => ({ ...row, ownerId: owner })), true);
   }

@@ -14,7 +14,7 @@ import { decryptCredential } from "../src/lib/inventory-encryption";
 import { encryptProviderSecret, decryptProviderSecret } from "../src/lib/provider-credentials";
 import { readShopTransferData } from "../src/lib/shop-transfer-store";
 import { validateShopRelationships } from "../src/lib/shop-transfer-validation";
-import { tableKeys, preManualCreditTransferSchemaHash } from "../src/lib/shop-transfer-tables";
+import { tableKeys, preManualCreditTransferSchemaHash, prePromotionsTransferSchemaHash, promotionTransferKeys } from "../src/lib/shop-transfer-tables";
 import { seedTransferFixture, cleanTransferFixture, syntheticInventory } from "./helpers/shop-transfer-fixture";
 
 function changeDb(zip: Buffer, change: (db: DatabaseSync) => void) {
@@ -63,6 +63,7 @@ test("SQLite ZIPs transfer complete shop data across different installation keys
     await t.test("previous SQLite and signed JSON exports receive an empty manual-credit dataset", () => {
       const oldSqlite = changeDb(exported.zip, db => {
         db.exec('DROP TABLE "manualCredits"; DELETE FROM transfer_counts WHERE dataset=\'manualCredits\'');
+        for (const key of promotionTransferKeys) { db.exec(`DROP TABLE "${key}"`); db.prepare("DELETE FROM transfer_counts WHERE dataset=?").run(key); }
         db.prepare("UPDATE transfer_meta SET schema_hash=?").run(preManualCreditTransferSchemaHash);
       });
       const old = decodeShopArchive(oldSqlite);
@@ -75,10 +76,12 @@ test("SQLite ZIPs transfer complete shop data across different installation keys
       const files = unzipSync(legacy.zip);
       const oldData = JSON.parse(strFromU8(files["shop-data.json"]!));
       delete oldData.manualCredits;
+      for (const key of promotionTransferKeys) delete oldData[key];
       const bytes = strToU8(JSON.stringify(oldData));
       const { signature: _, ...core } = JSON.parse(strFromU8(files["manifest.json"]!));
       core.schemaHash = preManualCreditTransferSchemaHash;
       delete core.counts.manualCredits;
+      for (const key of promotionTransferKeys) delete core.counts[key];
       core.dataSha256 = createHash("sha256").update(bytes).digest("hex");
       const signature = createHmac("sha256", process.env.SESSION_SECRET!).update(JSON.stringify(core)).digest("hex");
       files["shop-data.json"] = bytes;
@@ -87,6 +90,12 @@ test("SQLite ZIPs transfer complete shop data across different installation keys
       assert.deepEqual(oldJson.data.manualCredits, []);
       assert.deepEqual(oldJson.data.customers, data.customers);
       validateShopRelationships(oldJson.data, source);
+      const previous = decodeShopArchive(changeDb(exported.zip, db => {
+        for (const key of promotionTransferKeys) { db.exec(`DROP TABLE "${key}"`); db.prepare("DELETE FROM transfer_counts WHERE dataset=?").run(key); }
+        db.prepare("UPDATE transfer_meta SET schema_hash=?").run(prePromotionsTransferSchemaHash);
+      }));
+      assert.deepEqual(previous.data.manualCredits, data.manualCredits);
+      for (const key of promotionTransferKeys) assert.deepEqual(previous.data[key], []);
     });
     await t.test("source keys are not needed; legacy archives still require their original key", () => {
       process.env.SESSION_SECRET = `TEST_ONLY_DESTINATION_KEY_${randomUUID()}`;

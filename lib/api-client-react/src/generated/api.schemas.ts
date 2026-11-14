@@ -1046,6 +1046,77 @@ export interface Customer {
   joinedAt: string;
 }
 
+export interface PromotionProductsInput {
+  /**
+     * @minItems 1
+     * @maxItems 500
+     * @items.minimum 1
+     */
+  productIds: number[];
+  enabled: boolean;
+}
+
+export interface CustomerPromotionInput {
+  enabled: boolean;
+  /**
+     * @minimum 1
+     * @maximum 43200
+     */
+  intervalMinutes: number;
+}
+
+export type CustomerPromotionRoundStatus = typeof CustomerPromotionRoundStatus[keyof typeof CustomerPromotionRoundStatus];
+
+
+export const CustomerPromotionRoundStatus = {
+  running: 'running',
+  completed: 'completed',
+  stopped: 'stopped',
+} as const;
+
+export interface CustomerPromotionRound {
+  id: string;
+  /** @nullable */
+  productId: number | null;
+  productName: string;
+  status: CustomerPromotionRoundStatus;
+  sent: number;
+  failed: number;
+  uncertain: number;
+  skipped: number;
+  info: string;
+  createdAt: string;
+  /** @nullable */
+  completedAt: string | null;
+}
+
+export type CustomerPromotionsProductsItem = {
+  productId: number;
+  enabled: boolean;
+};
+
+export type CustomerPromotionsDeliveriesItem = {
+  id: string;
+  roundId: string;
+  status: string;
+  attempts: number;
+  error: string;
+  updatedAt: string;
+};
+
+export interface CustomerPromotions {
+  enabled: boolean;
+  intervalMinutes: number;
+  /** @nullable */
+  nextAt: string | null;
+  info: string;
+  eligibleCount: number;
+  recipientCount: number;
+  products: CustomerPromotionsProductsItem[];
+  rounds: CustomerPromotionRound[];
+  deliveries: CustomerPromotionsDeliveriesItem[];
+}
+
 export interface CustomerWalletCreditInput {
   requestKey: string;
   /**

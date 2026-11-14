@@ -6,7 +6,7 @@
 - [Telegram icon eligibility](telegram-button-icons.md) — Selectable product/coin custom icons need bot-owner eligibility; normal fallbacks can be cleared.
 - [Product organization](product-organization.md) — The user wants product names without category fields or category requirements.
 - [Product options](product-options.md) — One product entry can contain independently named, priced and stocked options; grouping must preserve existing inventory identity.
-- [Product alerts](product-alerts.md) — Wait for stock; label the first announcement “New product” and subsequent restocks “Added stock.”
+- [Product alerts and promotions](product-alerts.md) — Stock events keep New/Added labels; scheduled customer cards use one shared interval and no stock-event wording.
 - [Welcome message media](welcome-media.md) — The user requires an image link above welcome text, delivered with its menu in exactly one Telegram message.
 - [Separate advertising account](advertising-bot.md) — Forward one Saved Message through selected groups with one shared interval; personal-account ads stay separate from the shop bot.
 - [Advertising history limits](advertising-activity.md) — Show ten rows in a scrollable daily history with five-day retention; preserve duplicate-send safeguards.

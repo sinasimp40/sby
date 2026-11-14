@@ -60,6 +60,8 @@ import type {
   AdvertisingWorkspace,
   CustomEmojiLibrary,
   Customer,
+  CustomerPromotionInput,
+  CustomerPromotions,
   CustomerWalletCreditInput,
   CustomerWalletCreditPage,
   CustomerWalletCreditResult,
@@ -89,6 +91,7 @@ import type {
   ProductGroup,
   ProductGroupInput,
   ProductInput,
+  PromotionProductsInput,
   SettingsInput,
   ShopSettings,
   ShopTransferPreview,
@@ -5283,6 +5286,265 @@ export function useListCustomers<TData = Awaited<ReturnType<typeof listCustomers
 
 
 
+
+export const getGetCustomerPromotionsUrl = () => {
+
+
+
+
+  return `/api/shop/customer-promotions`
+}
+
+export const getCustomerPromotions = async ( options?: Parameters<typeof customFetch>[1]): Promise<CustomerPromotions> => {
+
+  return customFetch<CustomerPromotions>(getGetCustomerPromotionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCustomerPromotionsQueryKey = () => {
+    return [
+    `/api/shop/customer-promotions`
+    ] as const;
+    }
+
+
+export const getGetCustomerPromotionsQueryOptions = <TData = Awaited<ReturnType<typeof getCustomerPromotions>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCustomerPromotions>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCustomerPromotionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCustomerPromotions>>> = ({ signal }) => getCustomerPromotions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCustomerPromotions>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetCustomerPromotionsQueryResult = NonNullable<Awaited<ReturnType<typeof getCustomerPromotions>>>
+export type GetCustomerPromotionsQueryError = ErrorType<void>
+
+
+export function useGetCustomerPromotions<TData = Awaited<ReturnType<typeof getCustomerPromotions>>, TError = ErrorType<void>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCustomerPromotions>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCustomerPromotions>>,
+          TError,
+          Awaited<ReturnType<typeof getCustomerPromotions>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetCustomerPromotions<TData = Awaited<ReturnType<typeof getCustomerPromotions>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCustomerPromotions>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCustomerPromotions>>,
+          TError,
+          Awaited<ReturnType<typeof getCustomerPromotions>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetCustomerPromotions<TData = Awaited<ReturnType<typeof getCustomerPromotions>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCustomerPromotions>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetCustomerPromotions<TData = Awaited<ReturnType<typeof getCustomerPromotions>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCustomerPromotions>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetCustomerPromotionsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSaveCustomerPromotionsUrl = () => {
+
+
+
+
+  return `/api/shop/customer-promotions`
+}
+
+export const saveCustomerPromotions = async (customerPromotionInput: CustomerPromotionInput, options?: Parameters<typeof customFetch>[1]): Promise<CustomerPromotions> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CustomerPromotions>(getSaveCustomerPromotionsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(customerPromotionInput)
+  }
+);}
+
+
+
+
+
+export const getSaveCustomerPromotionsMutationKey = () => ['saveCustomerPromotions'] as const;
+
+export const getSaveCustomerPromotionsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveCustomerPromotions>>, TError,SaveCustomerPromotionsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveCustomerPromotions>>, TError,SaveCustomerPromotionsMutationVariables, TContext> => {
+
+const mutationKey = getSaveCustomerPromotionsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveCustomerPromotions>>, SaveCustomerPromotionsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  saveCustomerPromotions(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveCustomerPromotionsMutationResult = NonNullable<Awaited<ReturnType<typeof saveCustomerPromotions>>>
+    export type SaveCustomerPromotionsMutationBody = BodyType<CustomerPromotionInput>
+    export type SaveCustomerPromotionsMutationError = ErrorType<void>
+    export type SaveCustomerPromotionsMutationVariables = {data: BodyType<CustomerPromotionInput>}
+
+    export const useSaveCustomerPromotions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveCustomerPromotions>>, TError,SaveCustomerPromotionsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof saveCustomerPromotions>>,
+        TError,
+        SaveCustomerPromotionsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSaveCustomerPromotionsMutationOptions(options), queryClient);
+    }
+
+export const getSetPromotedProductsUrl = () => {
+
+
+
+
+  return `/api/shop/customer-promotions/products`
+}
+
+export const setPromotedProducts = async (promotionProductsInput: PromotionProductsInput, options?: Parameters<typeof customFetch>[1]): Promise<CustomerPromotions> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<CustomerPromotions>(getSetPromotedProductsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(promotionProductsInput)
+  }
+);}
+
+
+
+
+
+export const getSetPromotedProductsMutationKey = () => ['setPromotedProducts'] as const;
+
+export const getSetPromotedProductsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setPromotedProducts>>, TError,SetPromotedProductsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setPromotedProducts>>, TError,SetPromotedProductsMutationVariables, TContext> => {
+
+const mutationKey = getSetPromotedProductsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setPromotedProducts>>, SetPromotedProductsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  setPromotedProducts(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetPromotedProductsMutationResult = NonNullable<Awaited<ReturnType<typeof setPromotedProducts>>>
+    export type SetPromotedProductsMutationBody = BodyType<PromotionProductsInput>
+    export type SetPromotedProductsMutationError = ErrorType<void>
+    export type SetPromotedProductsMutationVariables = {data: BodyType<PromotionProductsInput>}
+
+    export const useSetPromotedProducts = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setPromotedProducts>>, TError,SetPromotedProductsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof setPromotedProducts>>,
+        TError,
+        SetPromotedProductsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSetPromotedProductsMutationOptions(options), queryClient);
+    }
 
 export const getListCustomerWalletCreditsUrl = (id: string,
     params?: ListCustomerWalletCreditsParams,) => {
