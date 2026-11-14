@@ -27,6 +27,12 @@ The user requires that new transfers work with the ZIP alone, without a matching
 
 **How to apply:** Do not export the installation secret. Warn clearly that possession of a portable ZIP exposes its stock and saved provider credentials. Preserve legacy authenticated imports without claiming old encrypted values can be recovered without their original key.
 
+During local restore, a prior bot-owner binding may be reassigned only when the archive has the same bot identity, the destination binding is inactive, and the previous owner has no shop data.
+
+**Why:** Local installs can retain an inactive setup binding under an earlier owner ID, but taking over an active bot or an owner with shop records could disrupt another shop.
+
+**How to apply:** Keep the import atomic and show a warning before safe rebinding. If the bot differs, is active, or the prior owner has business data or running processing, continue to block import.
+
 The user explicitly changed the storage requirement: "instead using postgre using sqlite" for live data as well as export/import, and asked to fix start-local.bat without requiring PostgreSQL.
 
 **Why:** The user requested SQLite for their local-computer installation.

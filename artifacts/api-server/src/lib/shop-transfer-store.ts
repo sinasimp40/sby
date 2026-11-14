@@ -100,11 +100,17 @@ export async function destinationTransferState(client: PoolClient, ownerId: stri
   const wallet = await client.query("SELECT count(*)::integer AS count FROM wallet_entries w JOIN bot_customers c ON c.id=w.customer_id WHERE c.owner_id=$1", [ownerId]);
   counts.walletEntries = wallet.rows[0].count;
   const runtime = await client.query("SELECT enabled, transfer_review_required FROM bot_runtime_settings WHERE owner_id=$1", [ownerId]);
-  const connection = await client.query("SELECT owner_id, active FROM bot_connections WHERE id='primary'");
+  const connection = await client.query("SELECT owner_id, bot_id, active FROM bot_connections WHERE id='primary'");
   const blockers: string[] = [];
   if (Object.values(counts).some(n => n > 0)) blockers.push("This shop already contains business data. Import is restricted to an empty shop; nothing will be overwritten.");
   if (runtime.rows[0]?.enabled || (connection.rows[0]?.owner_id === ownerId && connection.rows[0]?.active === "yes")) blockers.push("Disable Telegram processing before importing.");
   if ((await client.query("SELECT 1 FROM advertising_accounts WHERE owner_id=$1 AND (session_encrypted IS NOT NULL OR login_encrypted IS NOT NULL)", [ownerId])).rowCount)
     blockers.push("Disconnect the advertising account and cancel pending login before importing.");
-  return { counts, empty: !Object.values(counts).some(n => n > 0), blockers, reviewRequired: runtime.rows[0]?.transfer_review_required === true, connectionOwner: connection.rows[0]?.owner_id as string | undefined };
+  return {
+    counts, empty: !Object.values(counts).some(n => n > 0), blockers,
+    reviewRequired: runtime.rows[0]?.transfer_review_required === true,
+    connectionOwner: connection.rows[0]?.owner_id as string | undefined,
+    connectionBotId: connection.rows[0]?.bot_id as string | undefined,
+    connectionActive: connection.rows[0]?.active as string | undefined,
+  };
 }

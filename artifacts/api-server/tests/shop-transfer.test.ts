@@ -32,6 +32,9 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
   const source = `transfer-test-source-${randomUUID()}`;
   const destination = `transfer-test-destination-${randomUUID()}`;
   const foreign = `transfer-test-foreign-${randomUUID()}`;
+  const bindingSource = `transfer-test-binding-source-${randomUUID()}`;
+  const bindingOwner = `transfer-test-binding-owner-${randomUUID()}`;
+  const bindingDestination = `transfer-test-binding-destination-${randomUUID()}`;
   const originalFetch = globalThis.fetch;
   const originalOwner = process.env.TELECART_OWNER_ID;
   let networkCalls = 0;
@@ -282,6 +285,60 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
       assert.throws(() => verifyPreviewToken(previewToken(destination, ready.archiveHash, Date.now() - 1), destination, ready.archiveHash));
       assert.throws(() => verifyPreviewToken(`${ready.confirmationToken}.extra`, destination, ready.archiveHash));
     });
+    await t.test("local import safely rebinds only the same inactive bot from an empty prior owner", async () => {
+      await seedTransferFixture(bindingSource);
+      const archiveData = decodeShopArchive((await exportShopTransfer(bindingSource)).zip).data;
+      archiveData.connection = [{
+        id: "primary", ownerId: bindingSource, botId: "999999999999", botUsername: "TEST_ONLY_BOT",
+        publicUrl: "", active: "no", verifiedAt: new Date(),
+      }];
+      const archiveZip = encodeShopArchive(bindingSource, archiveData).zip;
+      const previous = (await pool.query(`SELECT id,owner_id,bot_id,bot_username,public_url,active,verified_at
+        FROM bot_connections WHERE id='primary'`)).rows[0];
+      const restorePrevious = async () => {
+        await pool.query("DELETE FROM bot_connections WHERE id='primary'");
+        if (previous) await pool.query(`INSERT INTO bot_connections(id,owner_id,bot_id,bot_username,public_url,active,verified_at)
+          VALUES($1,$2,$3,$4,$5,$6,$7)`, [
+          previous.id, previous.owner_id, previous.bot_id, previous.bot_username,
+          previous.public_url, previous.active, previous.verified_at,
+        ]);
+      };
+      try {
+        await pool.query("DELETE FROM bot_connections WHERE id='primary'");
+        await seedTransferFixture(bindingOwner);
+        await pool.query(`INSERT INTO bot_connections(id,owner_id,bot_id,bot_username,public_url,active)
+          VALUES('primary',$1,'999999999999','TEST_ONLY_BOT','', 'no')`, [bindingOwner]);
+        const occupied = await previewShopTransfer(bindingDestination, archiveZip);
+        assert.equal(occupied.canImport, false, "a prior owner with shop data cannot be taken over");
+        assert.match(occupied.blockers.join(" "), /cannot be safely reassigned/);
+
+        await cleanTransferFixture(bindingOwner);
+        await pool.query("UPDATE bot_connections SET bot_id='888888888888' WHERE id='primary'");
+        const differentBot = await previewShopTransfer(bindingDestination, archiveZip);
+        assert.equal(differentBot.canImport, false, "a different bot identity is never reassigned");
+        await pool.query("UPDATE bot_connections SET bot_id='999999999999' WHERE id='primary'");
+        const ready = await previewShopTransfer(bindingDestination, archiveZip);
+        assert.equal(ready.canImport, true, "an inactive same-bot binding with no prior shop data is safe to reassign");
+        assert.match(ready.warnings.join(" "), /safely reassign that binding/);
+        await cleanTransferFixture(bindingSource);
+        const result = await importShopTransfer(bindingDestination, archiveZip, ready.confirmationToken);
+        assert.equal(result.reviewRequired, true);
+        const rebound = (await pool.query("SELECT owner_id,bot_id,active FROM bot_connections WHERE id='primary'")).rows[0];
+        assert.deepEqual(rebound, { owner_id: bindingDestination, bot_id: "999999999999", active: "no" });
+
+        await cleanTransferFixture(bindingDestination);
+        await pool.query("DELETE FROM bot_connections WHERE id='primary'");
+        await pool.query(`INSERT INTO bot_connections(id,owner_id,bot_id,bot_username,public_url,active)
+          VALUES('primary',$1,'999999999999','TEST_ONLY_BOT','', 'yes')`, [bindingOwner]);
+        const active = await previewShopTransfer(bindingDestination, archiveZip);
+        assert.equal(active.canImport, false, "an active connection is never reassigned");
+      } finally {
+        await cleanTransferFixture(bindingOwner);
+        await cleanTransferFixture(bindingDestination);
+        await cleanTransferFixture(bindingSource);
+        await restorePrevious();
+      }
+    });
     await t.test("a stale preview cannot overwrite data added afterwards", async () => {
       const preview = await previewShopTransfer(destination, exported.zip);
       await pool.query(`INSERT INTO shop_products(owner_id,name,category,price_cents,delivery_format)
@@ -380,6 +437,9 @@ test("portable ZIP round trip preserves business data and refuses unsafe imports
     await cleanTransferFixture(source);
     await cleanTransferFixture(destination);
     await cleanTransferFixture(foreign);
+    await cleanTransferFixture(bindingOwner);
+    await cleanTransferFixture(bindingDestination);
+    await cleanTransferFixture(bindingSource);
     await pool.end();
   }
 });

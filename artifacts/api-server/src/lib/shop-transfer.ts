@@ -35,6 +35,18 @@ async function advertisingImportBlocker(client: PoolClient, owner: string, data:
   return conflict.rowCount ? "The imported advertising bot is already assigned here. Disconnect its existing advertising connection or use an empty destination server; never reuse a shop bot." : null;
 }
 
+async function canRebindInactiveDestinationBot(
+  client: PoolClient,
+  owner: string,
+  archivedConnection: TransferData["connection"][number] | undefined,
+  state: Awaited<ReturnType<typeof destinationTransferState>>,
+) {
+  if (!archivedConnection || !state.connectionOwner || state.connectionOwner === owner) return false;
+  if (state.connectionBotId !== String(archivedConnection.botId) || state.connectionActive !== "no") return false;
+  const previousOwner = await destinationTransferState(client, state.connectionOwner);
+  return previousOwner.empty && previousOwner.blockers.length === 0;
+}
+
 export async function shopTransferStatus(ownerId: string | null) {
   requireOwner(ownerId);
   const client = await pool.connect();
@@ -68,13 +80,20 @@ export async function previewShopTransfer(ownerId: string | null, zip: Buffer) {
   const client = await pool.connect();
   try {
     const state = await destinationTransferState(client, ownerId);
-    if (archive.data.connection.length && state.connectionOwner && state.connectionOwner !== ownerId) state.blockers.push("The destination bot is bound to another shop. An operator must resolve that binding first.");
+    const canRebindBot = await canRebindInactiveDestinationBot(client, ownerId, archive.data.connection[0], state);
+    if (archive.data.connection.length && state.connectionOwner && state.connectionOwner !== ownerId && !canRebindBot) {
+      state.blockers.push("The destination bot is bound to another shop and cannot be safely reassigned. Sign in as its owner or use a clean local database.");
+    }
     const advertisingBlocker = await advertisingImportBlocker(client, ownerId, archive.data);
     if (advertisingBlocker) state.blockers.push(advertisingBlocker);
     return {
       createdAt: archive.manifest.createdAt, counts: archive.manifest.counts,
       archiveHash: archive.archiveHash, confirmationToken: previewToken(ownerId, archive.archiveHash),
-      canImport: state.blockers.length === 0, blockers: state.blockers, warnings,
+      canImport: state.blockers.length === 0, blockers: state.blockers,
+      warnings: canRebindBot ? [
+        ...warnings,
+        "The local database has an inactive binding for this same bot but no shop data under its previous owner. Import will safely reassign that binding to this local admin; the imported bot remains paused.",
+      ] : warnings,
     };
   } finally { client.release(); }
 }
@@ -224,12 +243,22 @@ export async function importShopTransfer(ownerId: string | null, zip: Buffer, to
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,72))", [`advertising:${ownerId}`]);
     const advertisingId = archive.data.advertisingBots[0]?.botId;
     if (advertisingId) await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,74))", [`telegram-bot:${advertisingId}`]);
+    await client.query("SELECT id FROM bot_connections WHERE id='primary' FOR UPDATE");
     // Serialize concurrent import/setup/checkout writes for the empty destination.
     // Normal SELECT readers continue; writers wait briefly or this transaction fails.
     // BEGIN IMMEDIATE serializes all writes for the entire SQLite import.
     const state = await destinationTransferState(client, ownerId);
     if (state.blockers.length) throw new CommerceError(state.blockers.join(" "), 409);
-    if (archive.data.connection.length && state.connectionOwner && state.connectionOwner !== ownerId) throw new CommerceError("The bot is bound to another shop. Nothing was imported.", 409);
+    if (archive.data.connection.length && state.connectionOwner && state.connectionOwner !== ownerId) {
+      const canRebindBot = await canRebindInactiveDestinationBot(client, ownerId, archive.data.connection[0], state);
+      if (!canRebindBot) {
+        throw new CommerceError("The destination bot is bound to another shop and cannot be safely reassigned. Sign in as its owner or use a clean local database. Nothing was imported.", 409);
+      }
+      const rebound = await client.query(`UPDATE bot_connections SET owner_id=$1
+        WHERE id='primary' AND owner_id=$2 AND bot_id=$3 AND active='no'`,
+      [ownerId, state.connectionOwner, state.connectionBotId]);
+      if (rebound.rowCount !== 1) throw new CommerceError("The destination bot binding changed during import. Nothing was imported; validate the ZIP again.", 409);
+    }
     const advertisingBlocker = await advertisingImportBlocker(client, ownerId, archive.data);
     if (advertisingBlocker) throw new CommerceError(advertisingBlocker, 409);
     await importRows(client, archive.data, archive.manifest.sourceOwnerId, ownerId);
