@@ -217,7 +217,13 @@ export function ImportPanel({ ws }: { ws: AdvertisingWorkspace }) {
   const addable = (rows ?? []).filter(r => (r.status === "new" || r.status === "needs_setup") && r.target);
   async function addAll() {
     setErr("");
-    try { sync(await add.mutateAsync({ data: { targets: addable.map(r => r.target!), permissionConfirmed: true } })); toast({ title: `${addable.length} groups added` }); setRows(null); setText(""); setOk(false); }
+    try {
+      const next = await add.mutateAsync({ data: { targets: addable.map(r => r.target!), permissionConfirmed: true } });
+      sync(next);
+      toast({ title: next.addedCount ? `${next.addedCount} groups added` : "No new groups added",
+        description: next.duplicateCount ? `${next.duplicateCount} duplicate destinations skipped—not saved again.` : undefined });
+      setRows(null); setText(""); setOk(false);
+    }
     catch (x) { setErr(errMsg(x)); }
   }
   async function discoverJoined() {
@@ -252,7 +258,7 @@ export function ImportPanel({ ws }: { ws: AdvertisingWorkspace }) {
           <Button size="sm" disabled={!text.trim() || preview.isPending || text.length > 65536} onClick={segregate} data-testid="button-segregate">{preview.isPending && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}Segregate</Button>
           <Button variant="ghost" size="sm" className="ml-auto" disabled={!ws.account.connected || discover.isPending} onClick={discoverJoined} data-testid="button-discover-groups">{discover.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Radar className="mr-1 h-3.5 w-3.5" />}Discover joined groups</Button>
         </div>
-        <p className="text-xs leading-relaxed text-muted-foreground">Discover scans up to 1,000 chats and lists groups and channels your connected account already belongs to—never personal chats. Nothing is joined or posted automatically. Channel posting may require administrator rights. Private invite links stay in needs setup until you join them yourself in Telegram, then Discover or enter the negative chat ID.</p>
+        <p className="text-xs leading-relaxed text-muted-foreground">Discover scans up to 1,000 chats and lists groups and channels your connected account already belongs to—never personal chats. Nothing is joined or posted automatically. New entries have their Telegram group identity checked before saving, and duplicates are skipped. If a private invite’s identity cannot be verified, use the membership preview first. Posting permissions still require a separate check.</p>
         {discoveryResult && <p role="status" className="text-sm text-muted-foreground" data-testid="text-discovery-result">{discoveryResult}</p>}
         {err && <p role="alert" className="text-sm text-destructive" data-testid="error-import">{err}</p>}
         {rows && (

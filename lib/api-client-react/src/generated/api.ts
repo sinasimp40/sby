@@ -43,6 +43,7 @@ import type {
   AdvertisingEmojiSetInput,
   AdvertisingForwardStartInput,
   AdvertisingGroupDisableInput,
+  AdvertisingGroupImportResult,
   AdvertisingGroupRemoval,
   AdvertisingGroupSelection,
   AdvertisingGroupUpdate,
@@ -2185,7 +2186,7 @@ export const getAddAdvertisingGroupsUrl = () => {
   return `/api/shop/advertising/groups`
 }
 
-export const addAdvertisingGroups = async (advertisingGroupsInput: AdvertisingGroupsInput, options?: Parameters<typeof customFetch>[1]): Promise<AdvertisingWorkspace> => {
+export const addAdvertisingGroups = async (advertisingGroupsInput: AdvertisingGroupsInput, options?: Parameters<typeof customFetch>[1]): Promise<AdvertisingGroupImportResult> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -2201,7 +2202,7 @@ export const addAdvertisingGroups = async (advertisingGroupsInput: AdvertisingGr
     }
     return headers;
   };
-return customFetch<AdvertisingWorkspace>(getAddAdvertisingGroupsUrl(),
+return customFetch<AdvertisingGroupImportResult>(getAddAdvertisingGroupsUrl(),
   {
     ...options,
     method: 'POST',

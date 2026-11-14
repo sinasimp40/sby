@@ -5,6 +5,8 @@ import { encryptProviderSecret, decryptProviderSecret } from "./provider-credent
 import { advertisingBotForOwner, withAdvertisingLock, type AdvertisingClient } from "./advertising-store";
 import { advertisingTelegram, AdvertisingTelegramError, inspectAdvertisingGroup, type AdvertisingCaller } from "./advertising-telegram";
 import { parseAdvertisingTarget } from "./advertising-targets";
+import { reviewAdvertisingRows } from "./advertising-import-review";
+import type { AccountFactory } from "./advertising-account-driver";
 
 export async function connectAdvertising(owner: string, token: string, call: AdvertisingCaller = advertisingTelegram) {
   if (!/^\d{5,20}:[A-Za-z0-9_-]{20,150}$/.test(token)) throw new CommerceError("Paste the full advertising bot token from BotFather.");
@@ -47,20 +49,30 @@ export async function stopAdvertising(owner: string, client: AdvertisingClient) 
   await client.query("UPDATE advertising_deliveries SET status='uncertain',note='Interrupted send; check Telegram before resending.' WHERE owner_id=$1 AND status='sending'", [owner]);
   await client.query("UPDATE advertising_campaigns SET status='cancelled' WHERE owner_id=$1 AND status IN ('queued','sending')", [owner]);
 }
-export async function addAdvertisingTargets(owner: string, targets: string[], permission: boolean) {
+export async function addAdvertisingTargets(owner: string, targets: string[], permission: boolean, factory?: AccountFactory) {
   if (!permission) throw new CommerceError("Confirm you have permission to advertise in these groups.");
   const rows = targets.map(parseAdvertisingTarget);
   if (rows.some(row => !row.target)) throw new CommerceError("Remove invalid entries before adding groups.");
   return withAdvertisingLock(owner, async client => {
+    const review = await reviewAdvertisingRows(owner, client, rows, factory);
+    const invalid = review.rows.find(row => row.status === "invalid");
+    if (invalid) throw new CommerceError(invalid.reason);
+    const fresh = review.rows.filter(row => row.target && ["new", "needs_setup"].includes(row.status));
     const count = (await client.query("SELECT count(*)::integer AS n FROM advertising_groups WHERE owner_id=$1", [owner])).rows[0].n;
-    if (count + new Set(rows.map(row => row.target)).size > 1000) throw new CommerceError("This dashboard supports up to 1,000 saved advertising groups.");
+    if (count + fresh.length > 1000) throw new CommerceError("This dashboard supports up to 1,000 saved advertising groups.");
     await client.query("BEGIN");
     try {
-      for (const row of rows) await client.query(`INSERT INTO advertising_groups(owner_id,target,kind,status,note)
-        VALUES($1,$2,$3,$4,$5) ON CONFLICT(owner_id,target) DO NOTHING`, [
-        owner, row.target, row.kind, row.kind === "private_invite" ? "needs_setup" : "pending", row.reason,
+      let addedCount = 0;
+      for (const row of fresh) {
+        const saved = await client.query(`INSERT INTO advertising_groups(owner_id,target,kind,status,note,chat_id,title)
+        VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING`, [
+        owner, row.target, row.kind, row.kind === "private_invite" && !review.identities.has(row.target!) ? "needs_setup" : "pending", row.reason,
+        review.identities.get(row.target!)?.chatId ?? null, review.identities.get(row.target!)?.title.slice(0, 200) ?? "",
       ]);
+        addedCount += saved.rowCount ?? 0;
+      }
       await client.query("COMMIT");
+      return { addedCount, duplicateCount: rows.length - addedCount };
     } catch (error) { await client.query("ROLLBACK"); throw error; }
   });
 }

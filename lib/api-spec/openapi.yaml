@@ -201,7 +201,7 @@ paths:
       operationId: addAdvertisingGroups
       requestBody: {required: true, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingGroupsInput"}}}}
       responses:
-        "200": {description: Saved groups, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingWorkspace"}}}}
+        "200": {description: Unique groups saved after identity review; duplicate entries skipped before insertion, content: {application/json: {schema: {$ref: "#/components/schemas/AdvertisingGroupImportResult"}}}}
   /shop/advertising/groups/check:
     post:
       operationId: checkAdvertisingGroups
@@ -1025,6 +1025,14 @@ components:
       required: [rows]
       properties:
         rows: {type: array, items: {$ref: "#/components/schemas/AdvertisingImportRow"}}
+    AdvertisingGroupImportResult:
+      allOf:
+        - {$ref: "#/components/schemas/AdvertisingWorkspace"}
+        - type: object
+          required: [addedCount, duplicateCount]
+          properties:
+            addedCount: {type: integer, minimum: 0}
+            duplicateCount: {type: integer, minimum: 0}
     AdvertisingMembershipRow:
       type: object
       required: [target, title, chatId, state, note, canJoin]

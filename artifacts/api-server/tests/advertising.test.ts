@@ -112,6 +112,10 @@ test("advertising API and durable sender isolate credentials, require approval, 
     assert.equal((await request("/groups", "POST", { targets, permissionConfirmed: false })).status, 400);
     const added = await request("/groups", "POST", { targets, permissionConfirmed: true });
     assert.equal(added.data.groups.length, 3);
+    assert.equal(added.data.addedCount, 3);
+    const repeated = await request("/groups", "POST", { targets, permissionConfirmed: true });
+    assert.equal(repeated.data.addedCount, 0);
+    assert.equal(repeated.data.duplicateCount, targets.length);
     const checked = await request("/groups/check", "POST", { groupIds: added.data.groups.map((group: { id: string }) => group.id) });
     const ready = checked.data.groups.filter((group: { status: string }) => group.status === "ready");
     assert.equal(ready.length, 2); assert.equal(checked.data.groups.find((group: { kind: string }) => group.kind === "private_invite").status, "needs_setup");

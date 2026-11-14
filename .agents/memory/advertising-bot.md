@@ -124,11 +124,11 @@ Failed group checks must not leave the destination enabled; the user explicitly 
 
 **How to apply:** Preserve uncertain evidence until departure is confirmed and never retry an uncertain post automatically. Remove affected destinations locally and queue leaving through the verified-account membership worker, including attributable historical uncertain posts without newer successes. Keep successful groups untouched. Account-wide restrictions, connection errors without an uncertain post, and Telegram waits must not trigger mass leaving. Do not silently rediscover/rejoin destinations whose removal is still unresolved.
 
-The user explicitly chose “Leave first, then erase” for permanent removal, including related group history, and wants duplicates erased rather than retained.
+The user explicitly chose “Leave first, then erase” for permanent removal, including related group history. Duplicate aliases must be rejected before saving, not added to the list/database and only removed later.
 
-**Why:** The user requested that removed, left, kicked and duplicate groups disappear from the database, then confirmed leaving before erasure after being informed about lost reasons/history and rediscovery risks. This supersedes indefinite removed-destination tombstones and dashboard-only manual removal.
+**Why:** The user requested that removed, left, kicked and duplicate groups disappear from the database, then confirmed leaving before erasure after being informed about lost reasons/history and rediscovery risks. They subsequently corrected saving duplicate aliases pending checks: duplicates should be denied before insertion. This supersedes indefinite removed-destination tombstones and dashboard-only manual removal.
 
-**How to apply:** Keep failed/uncertain departures disabled and recorded until same-account membership evidence confirms departure or absence. Then erase group-linked records, not merely hide them. Delete duplicate aliases without leaving the valid original group. Preserve recipient-free confirmation hashes to prevent replaying erased join requests. Do not interpret permanent erasure as authorization to rejoin or post automatically.
+**How to apply:** Keep failed/uncertain departures disabled and recorded until same-account membership evidence confirms departure or absence. Then erase group-linked records, not merely hide them. Resolve candidate group identities read-only before import insertion and recheck at commit; reject matching numeric IDs across public/invite aliases and report actual insert/skip counts. Delete legacy duplicate aliases without leaving the valid original group. Preserve recipient-free confirmation hashes to prevent replaying erased join requests. Do not interpret permanent erasure as authorization to rejoin or post automatically.
 
 Portable transfers must preserve unresolved removed-destination suppression without resuming remote join/leave actions.
 

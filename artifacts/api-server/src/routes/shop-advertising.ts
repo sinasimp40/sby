@@ -2,7 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { z } from "zod";
 import { pool } from "@workspace/db";
 import {
-  ConnectAdvertisingBotBody, PreviewAdvertisingGroupsBody, AddAdvertisingGroupsBody,
+  ConnectAdvertisingBotBody, PreviewAdvertisingGroupsBody, AddAdvertisingGroupsBody, AddAdvertisingGroupsResponse,
   CheckAdvertisingGroupsBody, UpdateAdvertisingGroupBody, SaveAdvertisingDraftBody, StartAdvertisingCampaignBody,
   GetAdvertisingActivityQueryParams,
   RemoveAdvertisingGroupsBody, RemoveAdvertisingGroupsResponse,
@@ -13,7 +13,8 @@ import { advertisingActivityPage, maintainAdvertisingActivity } from "../lib/adv
 import { CommerceError } from "../lib/commerce-providers";
 import { advertisingWorkspace, advertisingBotForOwner, advertisingCampaigns, withAdvertisingLock, cancelAdvertisingCampaign } from "../lib/advertising-store";
 import { addAdvertisingTargets, checkAdvertisingTargets, connectAdvertising, discoverAdvertisingTargets, stopAdvertising } from "../lib/advertising-management";
-import { parseAdvertisingTarget, segregateAdvertisingTargets } from "../lib/advertising-targets";
+import { advertisingPreviewRows, reviewAdvertisingRows } from "../lib/advertising-import-review";
+import { parseAdvertisingTarget } from "../lib/advertising-targets";
 import { advertisingTelegram, validateAdvertisingDraft } from "../lib/advertising-telegram";
 import { createAdvertisingCampaign } from "../lib/advertising-campaigns";
 import accountRouter from "./shop-advertising-account";
@@ -81,12 +82,15 @@ router.post("/advertising/groups/discover", run(async req => {
 }));
 router.post("/advertising/groups/preview", run(async req => {
   const input = PreviewAdvertisingGroupsBody.parse(req.body);
-  const existing = (await pool.query("SELECT target FROM advertising_groups WHERE owner_id=$1", [owner(req)])).rows;
-  return segregateAdvertisingTargets(input.text, existing.map(row => row.target));
+  return withAdvertisingLock(owner(req), async client => {
+    const { rows } = await reviewAdvertisingRows(owner(req), client, advertisingPreviewRows(input.text));
+    return { rows };
+  });
 }));
 router.post("/advertising/groups", run(async req => {
   const input = AddAdvertisingGroupsBody.parse(req.body);
-  await addAdvertisingTargets(owner(req), input.targets, input.permissionConfirmed); return advertisingWorkspace(owner(req));
+  const result = await addAdvertisingTargets(owner(req), input.targets, input.permissionConfirmed);
+  return AddAdvertisingGroupsResponse.parse({ ...await advertisingWorkspace(owner(req)), ...result });
 }));
 router.post("/advertising/groups/check", run(async req => {
   const ids = CheckAdvertisingGroupsBody.parse(req.body).groupIds;

@@ -335,44 +335,6 @@ export interface AdvertisingImportPreview {
   rows: AdvertisingImportRow[];
 }
 
-export interface AdvertisingMembershipRow {
-  target: string;
-  title: string;
-  /** @nullable */
-  chatId: string | null;
-  state: string;
-  note: string;
-  canJoin: boolean;
-}
-
-export interface AdvertisingMembershipPreview {
-  accountId: string;
-  rows: AdvertisingMembershipRow[];
-}
-
-export type AdvertisingMembershipInputTargetsItem = {
-  /** @maxLength 300 */
-  target: string;
-  /** @nullable */
-  chatId: string | null;
-};
-
-export interface AdvertisingMembershipInput {
-  accountId: string;
-  /**
-     * @minItems 1
-     * @maxItems 50
-     */
-  targets: AdvertisingMembershipInputTargetsItem[];
-  /**
-     * @maxItems 50
-     * @items.maxLength 300
-     */
-  restoreTargets: string[];
-  confirmed: boolean;
-  idempotencyKey: string;
-}
-
 export interface AdvertisingMembershipJob {
   id: string;
   target: string;
@@ -382,115 +344,6 @@ export interface AdvertisingMembershipJob {
   note: string;
   accountId: string;
   createdAt: string;
-}
-
-export interface AdvertisingGroupsInput {
-  /**
-     * @minItems 1
-     * @maxItems 500
-     * @items.maxLength 300
-     */
-  targets: string[];
-  permissionConfirmed: boolean;
-}
-
-export interface AdvertisingGroupSelection {
-  /**
-     * @minItems 1
-     * @maxItems 20
-     */
-  groupIds: string[];
-}
-
-export interface AdvertisingGroupRemoval {
-  /**
-     * @minItems 1
-     * @maxItems 1000
-     */
-  groupIds: string[];
-}
-
-export interface AdvertisingGroupDisableInput {
-  /**
-     * @minItems 1
-     * @maxItems 1000
-     */
-  groupIds: string[];
-}
-
-export interface AdvertisingGroupUpdate {
-  /**
-     * @minimum 60
-     * @maximum 2592000
-     */
-  intervalSeconds?: number;
-  /**
-     * @minLength 1
-     * @maxLength 300
-     */
-  target?: string;
-  enabled?: boolean;
-}
-
-export interface AdvertisingCampaignInput {
-  draft: AdvertisingDraft;
-  /**
-     * @minItems 1
-     * @maxItems 500
-     */
-  groupIds: string[];
-  permissionConfirmed: boolean;
-  idempotencyKey: string;
-}
-
-export type AdvertisingCampaignStatus = typeof AdvertisingCampaignStatus[keyof typeof AdvertisingCampaignStatus];
-
-
-export const AdvertisingCampaignStatus = {
-  queued: 'queued',
-  sending: 'sending',
-  completed: 'completed',
-  partial: 'partial',
-  cancelled: 'cancelled',
-} as const;
-
-export interface AdvertisingCampaign {
-  id: string;
-  status: AdvertisingCampaignStatus;
-  text: string;
-  createdAt: string;
-  total: number;
-  sent: number;
-  failed: number;
-  uncertain: number;
-  pending: number;
-  cancelled: number;
-}
-
-export type AdvertisingDeliveryStatus = typeof AdvertisingDeliveryStatus[keyof typeof AdvertisingDeliveryStatus];
-
-
-export const AdvertisingDeliveryStatus = {
-  pending: 'pending',
-  sending: 'sending',
-  sent: 'sent',
-  failed: 'failed',
-  uncertain: 'uncertain',
-  cancelled: 'cancelled',
-} as const;
-
-export interface AdvertisingDelivery {
-  id: string;
-  target: string;
-  status: AdvertisingDeliveryStatus;
-  note: string;
-  /** @nullable */
-  sentAt: string | null;
-}
-
-export interface AdvertisingCampaignDetail {
-  campaign: AdvertisingCampaign;
-  deliveries: AdvertisingDelivery[];
 }
 
 export type AdvertisingAccountLoginMethod = typeof AdvertisingAccountLoginMethod[keyof typeof AdvertisingAccountLoginMethod];
@@ -558,6 +411,30 @@ export interface AdvertisingAccountRun {
   sentAt: string | null;
 }
 
+export type AdvertisingCampaignStatus = typeof AdvertisingCampaignStatus[keyof typeof AdvertisingCampaignStatus];
+
+
+export const AdvertisingCampaignStatus = {
+  queued: 'queued',
+  sending: 'sending',
+  completed: 'completed',
+  partial: 'partial',
+  cancelled: 'cancelled',
+} as const;
+
+export interface AdvertisingCampaign {
+  id: string;
+  status: AdvertisingCampaignStatus;
+  text: string;
+  createdAt: string;
+  total: number;
+  sent: number;
+  failed: number;
+  uncertain: number;
+  pending: number;
+  cancelled: number;
+}
+
 export interface AdvertisingWorkspace {
   resume?: AdvertisingResume;
   membershipJobs?: AdvertisingMembershipJob[];
@@ -570,6 +447,136 @@ export interface AdvertisingWorkspace {
   shopBotUrl: string | null;
   groups: AdvertisingGroup[];
   campaigns: AdvertisingCampaign[];
+}
+
+export type AdvertisingGroupImportResult = AdvertisingWorkspace & {
+  /** @minimum 0 */
+  addedCount: number;
+  /** @minimum 0 */
+  duplicateCount: number;
+};
+
+export interface AdvertisingMembershipRow {
+  target: string;
+  title: string;
+  /** @nullable */
+  chatId: string | null;
+  state: string;
+  note: string;
+  canJoin: boolean;
+}
+
+export interface AdvertisingMembershipPreview {
+  accountId: string;
+  rows: AdvertisingMembershipRow[];
+}
+
+export type AdvertisingMembershipInputTargetsItem = {
+  /** @maxLength 300 */
+  target: string;
+  /** @nullable */
+  chatId: string | null;
+};
+
+export interface AdvertisingMembershipInput {
+  accountId: string;
+  /**
+     * @minItems 1
+     * @maxItems 50
+     */
+  targets: AdvertisingMembershipInputTargetsItem[];
+  /**
+     * @maxItems 50
+     * @items.maxLength 300
+     */
+  restoreTargets: string[];
+  confirmed: boolean;
+  idempotencyKey: string;
+}
+
+export interface AdvertisingGroupsInput {
+  /**
+     * @minItems 1
+     * @maxItems 500
+     * @items.maxLength 300
+     */
+  targets: string[];
+  permissionConfirmed: boolean;
+}
+
+export interface AdvertisingGroupSelection {
+  /**
+     * @minItems 1
+     * @maxItems 20
+     */
+  groupIds: string[];
+}
+
+export interface AdvertisingGroupRemoval {
+  /**
+     * @minItems 1
+     * @maxItems 1000
+     */
+  groupIds: string[];
+}
+
+export interface AdvertisingGroupDisableInput {
+  /**
+     * @minItems 1
+     * @maxItems 1000
+     */
+  groupIds: string[];
+}
+
+export interface AdvertisingGroupUpdate {
+  /**
+     * @minimum 60
+     * @maximum 2592000
+     */
+  intervalSeconds?: number;
+  /**
+     * @minLength 1
+     * @maxLength 300
+     */
+  target?: string;
+  enabled?: boolean;
+}
+
+export interface AdvertisingCampaignInput {
+  draft: AdvertisingDraft;
+  /**
+     * @minItems 1
+     * @maxItems 500
+     */
+  groupIds: string[];
+  permissionConfirmed: boolean;
+  idempotencyKey: string;
+}
+
+export type AdvertisingDeliveryStatus = typeof AdvertisingDeliveryStatus[keyof typeof AdvertisingDeliveryStatus];
+
+
+export const AdvertisingDeliveryStatus = {
+  pending: 'pending',
+  sending: 'sending',
+  sent: 'sent',
+  failed: 'failed',
+  uncertain: 'uncertain',
+  cancelled: 'cancelled',
+} as const;
+
+export interface AdvertisingDelivery {
+  id: string;
+  target: string;
+  status: AdvertisingDeliveryStatus;
+  note: string;
+  /** @nullable */
+  sentAt: string | null;
+}
+
+export interface AdvertisingCampaignDetail {
+  campaign: AdvertisingCampaign;
+  deliveries: AdvertisingDelivery[];
 }
 
 export type AdvertisingAccountLoginInputMethod = typeof AdvertisingAccountLoginInputMethod[keyof typeof AdvertisingAccountLoginInputMethod];
