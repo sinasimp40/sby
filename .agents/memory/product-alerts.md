@@ -21,6 +21,8 @@ Product images should be configured with an optional direct public HTTPS link in
 
 Scheduled product promotions are separate from stock-change announcements. The user wants configurable sending intervals, product advertising enable/disable controls, and random product cards sent to customers with a Buy button, including individual options inside grouped products. Promotional cards must not say “Added stock” or “New product.”
 
+The user chose one shared interval for scheduled customer product promotions, not separate intervals per product.
+
 **Why:** The user requested recurring advertising resembling the existing product card, without stock-event labels.
 
 **How to apply:** Reuse the single-message product-card presentation and the correct option's price, stock and purchase identity. Keep scheduled promotion wording distinct from actual stock-event announcements.
